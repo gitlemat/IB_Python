@@ -138,6 +138,7 @@ class IBI_App(EWrapper, EClient):
     def tickPrice(self, reqId, tickType, price, attrib):
         ## Overriden method EWrapper
         #print('The current ask price (',tickType,') for reqid', reqId, 'is: ', price)
+        logging.info ('[TICK] - The current ask price (%d) for reqid %d is: %.4f', tickType, reqId, price)  
         data = {'reqId': reqId, 'tickType': tickType, 'price': price, 'attrib':attrib }
         queueEntry = {'type':'tick', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
@@ -145,8 +146,27 @@ class IBI_App(EWrapper, EClient):
 
     @iswrapper
     def tickSize(self, reqId: TickerId, tickType: TickType, size: Decimal):
+        logging.info ('[TICK] - The current size (%d) for reqid %d is: %d', tickType, reqId, size) 
         #super().tickSize(reqId, tickType, size)
         data = {'reqId': reqId, 'tickType': tickType, 'size': size}
+        queueEntry = {'type':'tick', 'data': data}
+        self.CallbacksQueue_.put(queueEntry)
+    
+    @iswrapper
+    def tickString(self, reqId, tickType, value):
+        ## overriden method
+
+        ## value is a string, make it a float, and then in the parent class will be resolved to int if size
+        logging.info ('[TICK] - The string tick (%d) for reqid %d is: %d', tickType, reqId, value) 
+        data = {'reqId': reqId, 'tickType': tickType, 'value': value}
+        queueEntry = {'type':'tick', 'data': data}
+        self.CallbacksQueue_.put(queueEntry)
+
+    @iswrapper
+    def tickGeneric(self, reqId, tickType, value):
+        ## overriden method
+        logging.info ('[TICK] - The generic tick (%d) for reqid %d is: %d', tickType, reqId, value) 
+        data = {'reqId': reqId, 'tickType': tickType, 'valueGen': value}
         queueEntry = {'type':'tick', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
         
