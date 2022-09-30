@@ -1,0 +1,94 @@
+HEM3-2HEN3+HEQ3,,,,  -7,    1.5,-0.75,-4, -0.75,-1.25, 0,   -1.25,   -2, 4,-2,-2.75, 7, -2.75,   -4   
+--------- 1.5
+
+
+--------- -0.75
+
+
+--------- -1.25
+
+
+--------- -2
+
+
+--------- -2.75
+
+
+--------- -4
+
+
+
+ --------------------------------------
+Orden 39 actualizada
+     Orden:
+         PermId:401022376
+         Action:BUY
+         Qty:1
+         Status:PreSubmitted
+         Filled:0
+         Remaining:1
+         LastFillPrice:0.0
+         Price (BUY/SELL/LAST): 0/0/7.525
+     Contrato:
+         gConId:491205281496647135
+         ConId: 32615157
+         Symbol: HE
+         SecType: BAG
+         Leg:
+             ConId: 491205281
+             Action: BUY
+             Symbol: HE
+             Ratio: 1
+             LocalSymbol: HEV2
+             LastOrderDate: 20221014
+         Leg:
+             ConId: 496647135
+             Action: SELL
+             Symbol: HE
+             Ratio: 1
+             LocalSymbol: HEZ2
+             LastOrderDate: 20221214
+--------------------------------------
+
+
+
+
+
+> list contratos
+list CONTRATOS
+> [496647135] - HEZ2, Price (BUY/SELL/LAST): -100/-100/83.525
+[508146607] - HEG3, Price (BUY/SELL/LAST): -100/-100/87.325
+[520534377] - HEJ3, Price (BUY/SELL/LAST): -100/-100/92
+[496647135508146607520534377] - HEZ2-2HEG3+HEJ3, Price (BUY/SELL/LAST): 0/0/0.875
+[532513468] - HEM3, Price (BUY/SELL/LAST): -100/-100/101.7
+[544436082] - HEN3, Price (BUY/SELL/LAST): -100/-100/101.75
+[556236475] - HEQ3, Price (BUY/SELL/LAST): -100/-100/100.425
+[532513468544436082556236475] - HEM3-2HEN3+HEQ3, Price (BUY/SELL/LAST): 0/0/-1.375
+[265598] - AAPL, Price (BUY/SELL/LAST): 155.49/155.48/155.49
+[491205281] - HEV2, Price (BUY/SELL/LAST): -100/-100/91.05
+[491205281496647135] - HEV2-HEZ2, Price (BUY/SELL/LAST): 0/0/7.525
+
+
+Order Executed (reqId:  -1 )
+  Symbol: AAPL  ( STK )
+  ExecId: 00012ec5.631ce897.01.01
+  OrderId/PermId: -6 / 401022379
+  Number/Price: 1 at 155.56
+  Liquidity: 2
+ANSWER commissionReport {'commissionReport': 4807036784: ExecId: 00012ec5.631ce897.01.01, Commission: 1.003692, Currency: USD, RealizedPnL: -1.813692, Yield: , YieldRedemptionDate: 0}
+CommissionReport. ExecId: 00012ec5.631ce897.01.01, Commission: 1.003692, Currency: USD, RealizedPnL: -1.813692, Yield: , YieldRedemptionDate: 0
+
+
+[Posicion] - AAPL, Qty: 1, AvgCost: 156.37, Price (BUY/SELL/LAST): 155.62/155.6/155.61
+
+        layout = html.Div(
+            id="parent",
+            children=[
+                html.H1(
+                    children="Prueba Front-End IB",
+                    style={"textAlign": "center"}
+                ),
+                html.Div(children='Prueba'),
+                html.Div(children=response),
+            ]
+        )
