@@ -193,9 +193,12 @@ def layout_strategies_tab():
         zonasFilaLower.append(dbc.Col('LimitDwn'))
         itemZ = 1
         for zone in estrategia['zones']:
+            val1 = zone['limitUp']
+            val2 = zone['limitDown']
+            
             zonasFilaHeader.append(dbc.Col('Z' + str(itemZ)))
-            zonasFilaUpper.append(dbc.Col(zone['limitUp']))
-            zonasFilaLower.append(dbc.Col(zone['limitDown']))
+            zonasFilaUpper.append(dbc.Col(dbc.Input(id="input", placeholder=val1, type="text")))
+            zonasFilaLower.append(dbc.Col(dbc.Input(id="input", placeholder=val2, type="text")))
             itemZ += 1 
         
         insideDetailsZonas = []
