@@ -3,11 +3,12 @@ from ibapi.client import *
 from ibapi.contract import *
 from ibapi.order import *
 from ibapi.order_condition import Create, OrderCondition
-from ibapi.utils import longMaxString
+from ibapi.utils import longToStr
 from ibapi.utils import iswrapper
 from ibapi import utils
 from ibapi.account_summary_tags import *
 
+from decimal import Decimal
 import time
 import queue
 import logging

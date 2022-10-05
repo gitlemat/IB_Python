@@ -80,7 +80,7 @@ def main():
     # Init de IB_API_Client
     
     client_id = 0
-    app = IB_API_Client.IBI_App("127.0.0.1", 7497, client_id, globales.G_RTlocalData_)
+    app = IB_API_Client.IBI_App("127.0.0.1", 4002, client_id, globales.G_RTlocalData_)
     t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)
     t_api_thread.start()
 

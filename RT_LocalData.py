@@ -1,4 +1,4 @@
-from typing_extensions import Self
+#from typing_extensions import Self
 from ibapi.contract import *
 from ibapi.order import *
 import strategies
