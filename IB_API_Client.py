@@ -158,7 +158,7 @@ class IBI_App(EWrapper, EClient):
         ## overriden method
 
         ## value is a string, make it a float, and then in the parent class will be resolved to int if size
-        logging.info ('[TICK] - The string tick (%d) for reqid %d is: %d', tickType, reqId, value) 
+        logging.info ('[TICK] - The string tick (%d) for reqid %d is: %s', tickType, reqId, value) 
         data = {'reqId': reqId, 'tickType': tickType, 'value': value}
         queueEntry = {'type':'tick', 'data': data}
         self.CallbacksQueue_.put(queueEntry)

@@ -34,10 +34,10 @@ def SetupLogger():
     #                    format=recfmt, datefmt=timefmt)
     logging.basicConfig(filename=time.strftime("log/ibapi_sic.%y%m%d.log"),
                         filemode="w",
-                        level=logging.DEBUG,
+                        level=logging.INFO,
                         format=recfmt, datefmt=timefmt)
     logger = logging.getLogger()              # El root looger afecta a todos los demas
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     console_handler = logging.StreamHandler() # Esto sirve para que los INFO o más altos salgan por consola
     console_handler.setLevel(logging.INFO)
     logger.addHandler(console_handler)

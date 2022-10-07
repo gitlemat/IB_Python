@@ -186,25 +186,26 @@ def layout_strategies_tab():
         insideDetailsOrdenes.append(html.Div(children = "Orden Inferior Actual (OrderId/PermId): " + str(estrategia['LowerOrderId']) + '/' + str(estrategia['LowerOrderPermId'])))
 
         zonasFilaHeader = []
-        zonasFilaUpper = []
-        zonasFilaLower = []
+        zonasFilaBorder = []
         zonasFilaHeader.append(dbc.Col(''))
-        zonasFilaUpper.append(dbc.Col('LimitUp'))
-        zonasFilaLower.append(dbc.Col('LimitDwn'))
+        zonasFilaBorder.append(dbc.Col('Fronteras', align="center"))
+        #zonasFilaLower.append(dbc.Col('LimitDwn'))
         itemZ = 1
         for zone in estrategia['zones']:
             val1 = zone['limitUp']
             val2 = zone['limitDown']
             
-            zonasFilaHeader.append(dbc.Col('Z' + str(itemZ)))
-            zonasFilaUpper.append(dbc.Col(dbc.Input(id="input", placeholder=val1, type="text")))
-            zonasFilaLower.append(dbc.Col(dbc.Input(id="input", placeholder=val2, type="text")))
+            zonasFilaHeader.append(dbc.Col('L' + str(itemZ), className="text-center"))
+            zonasFilaBorder.append(dbc.Col(dbc.Input(id="input", placeholder=val1, type="text", className="text-end")))
+            if itemZ == len(estrategia['zones']):
+                zonasFilaHeader.append(dbc.Col('L' + str(itemZ+1), className="text-center"))
+                zonasFilaBorder.append(dbc.Col(dbc.Input(id="input", placeholder=val2, type="text", className="text-end")))
             itemZ += 1 
         
         insideDetailsZonas = []
         insideDetailsZonas.append(dbc.Row(zonasFilaHeader))
-        insideDetailsZonas.append(dbc.Row(zonasFilaUpper))
-        insideDetailsZonas.append(dbc.Row(zonasFilaLower))
+        insideDetailsZonas.append(dbc.Row(zonasFilaBorder))
+        #insideDetailsZonas.append(dbc.Row(zonasFilaLower))
         
         insideDetails = []
         insideDetails.append(dbc.Col(insideDetailsOrdenes))
