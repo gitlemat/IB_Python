@@ -245,22 +245,29 @@ class DataLocalRT():
                 prices['OPEN'] = price
             if tickType == 9 or tickType == 75:
                 prices['CLOSE'] = price
+            self.tickPrices_[reqId] = prices
         if size != None:
+            bChange = False
             if tickType == 0 or tickType == 69:
+                bChange = True
                 prices['BID_SIZE'] = size
             if tickType == 3 or tickType == 70:
+                bChange = True
                 prices['ASK_SIZE'] = size  
             if tickType == 5 or tickType == 71:
-                prices['LAST_SIZE'] = size
+                if size != 0 or prices['LAST'] != 0:  # Debería ser un and?
+                    bChange = True
+                    prices['LAST_SIZE'] = size
             if tickType == 8 or tickType == 74:
+                bChange = True
                 prices['VOLUME'] = size
         
-        self.tickPrices_[reqId] = prices
-
-        self.contractUpdateTicks(reqId)
-      
-
+            self.tickPrices_[reqId] = prices
         
+            if bChange:  # Solo con size
+                logging.info("Deberia actualizar valor")
+                self.contractUpdateTicks(reqId)
+
 
     ########################################
     # contracts
@@ -294,6 +301,7 @@ class DataLocalRT():
         contrato['currentPrices']['BUY_SIZE'] = None
         contrato['currentPrices']['SELL_SIZE'] = None
         contrato['currentPrices']['LAST_SIZE'] = None
+        contrato['currentPrices']['updated'] = False # Para saber si hay que actualizar alguna presentacion de precios (web)
         contrato['hasContractSymbols'] = False
                         
         self.contractList_.append(contrato)
@@ -388,7 +396,7 @@ class DataLocalRT():
         # contrato['contractReqIdLegs'] --> [{'conId': , 'reqId': None, 'ratio': , 'action': , 'lSymbol': },...]
         if len(contrato['contractReqIdLegs']) > 0:
             contrato['hasContractSymbols'] = True
-            lSymbol = self.contractSummaryBrief (contrato['gConId'])   
+            lSymbol = self.contractSummaryBrief (contrato['gConId'])               
             contrato['dbPandas'] = pandasDB.dbPandas (lSymbol)           # No se puede hasta que no tenga todos los simbolos
 
     def contractUpdateTicks(self, reqId):
@@ -457,17 +465,28 @@ class DataLocalRT():
                     size2sell = None
                     size2last = None
 
-                contrato['currentPrices']['BUY'] = price2buy
-                contrato['currentPrices']['SELL'] = price2sell
-                contrato['currentPrices']['LAST'] = price2last
-                contrato['currentPrices']['BUY_SIZE'] = size2buy
-                contrato['currentPrices']['SELL_SIZE'] = size2sell
-                contrato['currentPrices']['LAST_SIZE'] = size2last
+                if contrato['currentPrices']['BUY'] != price2buy:
+                    contrato['currentPrices']['BUY'] = price2buy
+                    contrato['currentPrices']['updated'] = True
+                if contrato['currentPrices']['SELL'] != price2sell:
+                    contrato['currentPrices']['SELL'] = price2sell
+                    contrato['currentPrices']['updated'] = True
+                if contrato['currentPrices']['LAST'] != price2last:
+                    contrato['currentPrices']['LAST'] = price2last
+                    contrato['currentPrices']['updated'] = True
+                if contrato['currentPrices']['BUY_SIZE'] != size2buy:
+                    contrato['currentPrices']['BUY_SIZE'] = size2buy
+                    contrato['currentPrices']['updated'] = True
+                if contrato['currentPrices']['SELL_SIZE'] != size2sell:
+                    contrato['currentPrices']['SELL_SIZE'] = size2sell
+                    contrato['currentPrices']['updated'] = True
+                if contrato['currentPrices']['LAST_SIZE'] != size2last:
+                    contrato['currentPrices']['LAST_SIZE'] = size2last
+                    contrato['currentPrices']['updated'] = True
 
                 if allReady != False:
-                    # Aquí habría que actualizar la DB para el contrato['gConId'] con estos datos:
+                    # Se actualiza la DB para el contrato['gConId'] con estos datos:
                     gConId = contrato['gConId']
-                    #lSymbol = contrato['contract'].localSymbol
                     lSymbol = self.contractSummaryBrief (gConId)
                     timestamp = datetime.datetime.now()
                     data_args = {'gConId': gConId, 'Symbol':lSymbol, 'timestamp':timestamp, 
@@ -518,21 +537,29 @@ class DataLocalRT():
         return None
 
     def contractSubscribeTickPrice(self, contractReqIdLeg): 
+        # contrato['contractReqIdLegs'] --> [{'conId': , 'reqId': None, 'ratio': , 'action': , 'lSymbol': },...]
+        # El contractReqIdLeg es un leg de un contrato. Puede que coincida con el de otro, por ejemplo:
+        #   Contrato HEV2-HEZ2 tiene dos legs, y cada una de ellas va a coindir con el del contrato HEV2 y HEZ2
 
-        if contractReqIdLeg['reqId'] != None:
-            return contractReqIdLeg['reqId']
-        else: # Para el reqMktData el Contract tiene que ser virgen sin conid
-            contrato = self.contractGetContractbyGconId(contractReqIdLeg['conId'])
-            if contrato['contract'].secType == 'FUT':
-                code = contrato['contract'].symbol + 'Z2' # Me invento lo de Z2 y reescribo despues el lasttrade...
-                contrato1 = self.appObj_.contractSimpleFUTcreate(code)
-                contrato1.lastTradeDateOrContractMonth = contrato['contract'].lastTradeDateOrContractMonth
-            else: # Asumo STK
-                code = contrato['contract'].symbol
-                contrato1 = self.appObj_.contractSTKcreate(code)
-            reqId = self.appObj_.reqMktDataGen (contrato1)  # A la API no se le puede mandar contrato, sino uno nuevo sin conId
-            contractReqIdLeg['reqId'] = reqId
-            return reqId
+        # Busco a ver si hay un contrato con un leg igual que ya tenga reqId:
+
+        for contratoTemp in self.contractList_:
+            for contractReqIdLegTemp in contratoTemp['contractReqIdLegs']:
+                if (contractReqIdLegTemp['conId'] == contractReqIdLeg['conId']) and contractReqIdLegTemp['reqId'] != None:
+                    return contractReqIdLegTemp['reqId']
+        # Si no hay ninguno, tengo que crear la subscripcion
+        # Para el reqMktData el Contract tiene que ser virgen sin conid
+        contrato = self.contractGetContractbyGconId(contractReqIdLeg['conId'])
+        if contrato['contract'].secType == 'FUT':
+            code = contrato['contract'].symbol + 'Z2' # Me invento lo de Z2 y reescribo despues el lasttrade...
+            contrato1 = self.appObj_.contractSimpleFUTcreate(code)
+            contrato1.lastTradeDateOrContractMonth = contrato['contract'].lastTradeDateOrContractMonth
+        else: # Asumo STK
+            code = contrato['contract'].symbol
+            contrato1 = self.appObj_.contractSTKcreate(code)
+        reqId = self.appObj_.reqMktDataGen (contrato1)  # A la API no se le puede mandar contrato, sino uno nuevo sin conId
+        contractReqIdLeg['reqId'] = reqId
+        return reqId
 
     def contractGetSymbolsIfFullLegsDataByGconId (self, gConId):
         simbolos = []

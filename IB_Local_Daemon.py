@@ -14,9 +14,11 @@ import datetime
 import RT_LocalData
 import IB_API_Client
 import wsServer
-import asyncio
 import strategies
 import webFE
+
+loop_timer = 0.1
+refreshFE_timer = 1
 
 
 def SetupLogger():
@@ -33,7 +35,7 @@ def SetupLogger():
     # logging.basicConfig( level=logging.DEBUG,
     #                    format=recfmt, datefmt=timefmt)
     logging.basicConfig(filename=time.strftime("log/ibapi_sic.%y%m%d.log"),
-                        filemode="w",
+                        filemode="a",
                         level=logging.INFO,
                         format=recfmt, datefmt=timefmt)
     logger = logging.getLogger()              # El root looger afecta a todos los demas
@@ -145,9 +147,10 @@ def main():
     
     ###########################################
     # Loop Principal
+    last_refresh_FE_time = datetime.datetime.now()
     try:
         while True:
-            time.sleep(0.1)
+            time.sleep(loop_timer)
             if app.initConnected_== False:
                 app.initReady_ = False
                 continue
@@ -193,6 +196,9 @@ def main():
                     globales.G_RTlocalData_.positionUpdate (callbackIten['data'])
                 if callbackIten['type'] == 'account':
                     globales.G_RTlocalData_.accountTagUpdate(callbackIten['data'])
+
+            #if (datetime.datetime.now() - last_refresh_FE_time) > datetime.timedelta(seconds=3):
+            #    webFE
 
     except KeyboardInterrupt:
         pass

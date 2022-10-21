@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 import os.path
 import time
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 # data_args = {'gConId': gConId, 'BID': price2buy, 'ASK':price2sell, 'LAST':price2last, 'Symbol':lSymbol, 'timestamp':timestamp}
 
@@ -26,6 +30,7 @@ class dbPandas():
     def __init__(self, symbol):
         self.file_path_csv_ = None
         self.df_ = None
+        self.dfcomp_ = None
         self.symbol_ = symbol
         self.dbInitFile ()
 
@@ -36,31 +41,80 @@ class dbPandas():
 
     def dbReadAllFiles(self):
         path = 'market/'
-        for i in os.listdir(path):
+        self.df_ = None
+        self.dfcomp_ = None
+        logging.info  ('-----------------------')
+        logging.info  ('Leer todos los ficheros')
+        for i in sorted(os.listdir(path), reverse=True):
             filename = os.path.join(path,i)
             if os.path.isfile(filename) and i.startswith(self.symbol_+'_'):
-                df_new = pd.read_csv (filename, parse_dates=['timestamp'])
-                self.df_ = pd.concat([self.df_, df_new], ignore_index=True)
+                logging.info  ('Analizamos %s', filename)
+                if i.endswith ('_comp.csv'): # Los comprimidos los cargo todos
+                    logging.info  ('     .. es comprimido')
+                    df_new = pd.read_csv (filename, parse_dates=['timestamp'], index_col=0)
+                    self.dfcomp_ = pd.concat([self.dfcomp_, df_new])
+                else:  # Los no comprimidos, solo hoy, por si estamos a mitad del dia
+                    datefile = i[-10:-4]
+                    todaystr = time.strftime("%y%m%d")
+                    if datefile == todaystr:
+                        logging.info  ('     .. es el no comprimido de hoy')
+                        self.df_ = pd.read_csv (filename, parse_dates=['timestamp'])
         self.df_ = self.df_.sort_values(by=['timestamp'], ignore_index=True)
-        print ('--------------------')
-        print (self.symbol_)
-        print (self.df_)
+        self.dfcomp_ = self.dfcomp_.sort_values(by=['timestamp']) # El comp si tiene index
 
-    def dbGetDataframe(self):
+        logging.info  ('--------------------')
+        logging.info  (self.symbol_)
+        logging.info  (self.df_)
+
+    def dbGetDataframeToday(self):
         return self.df_
 
+    def dbGetDataframeComp(self):
+        return self.dfcomp_
 
     def dbGetFileName(self):
         return 'market/' + self.symbol_ + time.strftime("_%y%m%d") + '.csv'
 
+    def dbCompressClosedFiles (self):
+        path = 'market/'
+        dirlist = os.listdir(path)
+        logging.info  ("Mirando si hay que comprimir")
+        for i in dirlist:
+            filename = os.path.join(path,i)
+            i_comp = i[:-4] + '_comp.csv'
+            filename_comp = os.path.join(path,i_comp)
+            if os.path.isfile(filename) and filename != self.file_path_csv_ and i.startswith(self.symbol_+'_') and (not i.endswith ('_comp.csv')) and (not i_comp in dirlist): # Fichero de este simbolo que no esta comprimido
+                #logging.info  ("Comprimiendo el siguiente fichero: %s", filename)
+                df = pd.read_csv (filename, parse_dates=['timestamp'])
+                df = df.set_index ('timestamp')
+                try:
+                    df = df['LAST'].resample('5min').ohlc()
+                except:
+                    logging.info  ("Error comprimiendo %s. Esta vacio, creo uno igual", self.file_path_csv_)
+                    with open(filename_comp, 'w') as f:
+                        f.write('timestamp,open,high,low,close')
+                else:
+                    df.to_csv (filename_comp)
+        logging.info  ("Salgo de mirar si hay que comprimir")
+
+
     def dbFileCheck (self):
+
         self.file_path_csv_ = self.dbGetFileName()
-        if not os.path.isfile(self.file_path_csv_):
-            self.df_ = pd.DataFrame(columns = ['gConId', 'Symbol' ,'timestamp', 'BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE'])
-            try:
+        #logging.info  ("Creando o buscando fichero : %s", self.file_path_csv_)
+        if not os.path.isfile(self.file_path_csv_):            
+            try:   # Si el fichero no existe se crea
+                self.df_ = pd.DataFrame(columns = ['gConId', 'Symbol' ,'timestamp', 'BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE'])
                 self.df_.to_csv (self.file_path_csv_, index = False)
             except:
+                logging.error  ("Problema creando fichero de market data: %s", self.file_path_csv_)
                 return False
+            self.dbCompressClosedFiles()
+            try:   # Si no existe, tambien es probable que haya que comprimir
+                pass
+            except:
+                logging.error  ("Problema comprimiendo ficheros")
+        #logging.info  ("Salgo de  fichero : %s", self.file_path_csv_)
         
         return True
         
@@ -72,10 +126,12 @@ class dbPandas():
         if not self.dbFileCheck ():  # por si cambiamos de día. Pero hay que mejorar para que no lea todo el fichero si es houy
             return False
 
-        print ("Pandas Data:", data)
+        #print ("Pandas Data:", data)
+        logging.info ('[Pandas] - Pandas data: %s', data) 
         try:
             lastone = self.df_.iloc[-1].to_dict()
-            print ("Pandas Last:", lastone)
+            #print ("Pandas Last:", lastone)
+            logging.info ('[Pandas] - Pandas last: %s', lastone)
         except:
             different = True
         else:

@@ -224,12 +224,12 @@ class IBI_App(EWrapper, EClient):
         # Un execution queue
         queueEntry = {'type':'execution', 'data': execution}
         self.CallbacksQueue_.put(queueEntry)
-        print ('Order Executed (reqId: ', reqId, ')')
-        print ('  Symbol:', contract.symbol,' (', contract.secType, ')')
-        print ('  ExecId:', execution.execId)
-        print ('  OrderId/PermId:', execution.orderId, '/', execution.permId)
-        print ('  Number/Price:', execution.shares, 'at', execution.price)
-        print ('  Liquidity:',execution.lastLiquidity)
+        logging.info ('Order Executed (reqId: %d )',  reqId)
+        logging.info ('  Symbol: %s (%s)', contract.symbol, contract.secType)
+        logging.info ('  ExecId: %s', execution.execId)
+        logging.info ('  OrderId/PermId: %s/%s', execution.orderId, execution.permId)
+        logging.info ('  Number/Price: %s at %s', execution.shares, execution.price)
+        logging.info ('  Liquidity: %s',execution.lastLiquidity)
    
     @iswrapper
     def execDetailsEnd(self, reqId: int):
@@ -239,7 +239,7 @@ class IBI_App(EWrapper, EClient):
     @iswrapper 
     def commissionReport(self, commissionReport: CommissionReport):
         super().commissionReport(commissionReport)
-        print("CommissionReport.", commissionReport)
+        logging.info("CommissionReport: %s", commissionReport)
 
     @iswrapper
     def position(self, account: str, contract: Contract, position: Decimal, avgCost: float):
