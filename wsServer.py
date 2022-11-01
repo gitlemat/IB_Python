@@ -103,8 +103,9 @@ class wsServer:
                     else:
                         response = '202 Cancelacion de todas las ordenes Lanzada'
                 else:
+                    result = self.LocalRT_.orderCancelByOrderId (orderId)
                     try:
-                        result = self.appObj_.cancelOrderByOrderId (orderId)
+                        pass
                     except:
                         response = '503 Error al cancelar'
                     else:
@@ -135,9 +136,12 @@ class wsServer:
                 return
             response = self.LocalRT_.orderSummaryFullByOrderId(int(cmd_list[2]))
             await self.ws[len(self.ws)-1].send(response)
+
         elif cmd_list[1] == 'POSICIONES':
-            response = self.LocalRT_.positionSummaryAllBrief()
+            #response = self.LocalRT_.positionSummaryAllBrief()
+            response = 'Metodo por hacer'
             await self.ws[len(self.ws)-1].send(response)
+
         elif cmd_list[1] == 'CONTRATOS':
             response = self.LocalRT_.contractSummaryAllBriefWithPrice()
             await self.ws[len(self.ws)-1].send(response)

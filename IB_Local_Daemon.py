@@ -11,7 +11,6 @@ import logging, os
 import argparse
 import time
 import datetime
-import RT_LocalData
 import IB_API_Client
 import wsServer
 import strategies
@@ -40,9 +39,11 @@ def SetupLogger():
                         format=recfmt, datefmt=timefmt)
     logger = logging.getLogger()              # El root looger afecta a todos los demas
     logger.setLevel(logging.INFO)
+    '''
     console_handler = logging.StreamHandler() # Esto sirve para que los INFO o más altos salgan por consola
     console_handler.setLevel(logging.INFO)
     logger.addHandler(console_handler)
+    '''
 
 def wsServer_loop(wsServer1):
 
@@ -58,9 +59,14 @@ def run_loop(app):
 	app.run()
 
 def main():
-    print("Iniciando demonio...")
+    
+    
     SetupLogger()
-    logging.debug("now is %s", datetime.datetime.now())
+    logging.info ("###########################################")
+    logging.info ('# IB RODSIC (c) 2022  ')
+    logging.info ('#')
+    logging.info ("# Hora actual: %s", datetime.datetime.now())
+    logging.info ('#')
 
     #globales.G_RTlocalData_ = None
     app = None
@@ -181,24 +187,22 @@ def main():
                 globales.G_RTlocalData_.contractLoadFixedWatchlist()
 
             while app.CallbacksQueue_.empty() == False:
-                callbackIten = app.CallbacksQueue_.get()
-                if callbackIten['type'] == 'execution':
-                    globales.G_RTlocalData_.executionAnalisys (callbackIten['data'])
-                if callbackIten['type'] == 'tick':
-                    globales.G_RTlocalData_.tickUpdatePrice (callbackIten['data'])
-                if callbackIten['type'] == 'order':
-                    order = callbackIten['data']['orderObj']
-                    globales.G_RTlocalData_.orderUpdate(callbackIten['data'])
+                callbackItem = app.CallbacksQueue_.get()
+                if callbackItem['type'] == 'execution':
+                    globales.G_RTlocalData_.executionAnalisys (callbackItem['data'])
+                if callbackItem['type'] == 'tick':
+                    globales.G_RTlocalData_.tickUpdatePrice (callbackItem['data'])
+                if callbackItem['type'] == 'order':
+                    order = callbackItem['data']['orderObj']
+                    globales.G_RTlocalData_.orderUpdate(callbackItem['data'])
                     # Añadir algo que actualizar ordenes en Strategy
                     if not order=="":
-                        strategyIns.strategyIndexOrderUpdate (order) # Se hace desde RTData que tiene el objeto
-                if callbackIten['type'] == 'position':
-                    globales.G_RTlocalData_.positionUpdate (callbackIten['data'])
-                if callbackIten['type'] == 'account':
-                    globales.G_RTlocalData_.accountTagUpdate(callbackIten['data'])
+                        strategyIns.strategyIndexOrderUpdate (order)
+                if callbackItem['type'] == 'position':
+                    globales.G_RTlocalData_.positionUpdate (callbackItem['data'])
+                if callbackItem['type'] == 'account':
+                    globales.G_RTlocalData_.accountTagUpdate(callbackItem['data'])
 
-            #if (datetime.datetime.now() - last_refresh_FE_time) > datetime.timedelta(seconds=3):
-            #    webFE
 
     except KeyboardInterrupt:
         pass

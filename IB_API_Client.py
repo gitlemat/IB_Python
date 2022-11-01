@@ -222,7 +222,8 @@ class IBI_App(EWrapper, EClient):
         ## Overriden method EWrapper
         # Aqui hay que mandar a una funcion de strategy que busque en strategyTracker y lo mande al correcto (async?).
         # Un execution queue
-        queueEntry = {'type':'execution', 'data': execution}
+        data = {'executionObj': execution, 'contractObj': contract}
+        queueEntry = {'type':'execution', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
         logging.info ('Order Executed (reqId: %d )',  reqId)
         logging.info ('  Symbol: %s (%s)', contract.symbol, contract.secType)
@@ -503,37 +504,61 @@ class IBI_App(EWrapper, EClient):
         order = Order()
         order.action = action
         order.totalQuantity = Qty
-        order.orderType = oType
-        if oType == 'LMT':
+        order.eTradeOnly = False
+        order.firmQuoteOnly = False
+        if oType == 'LMTGTC':
+            order.orderType = 'LMT'
+            order.tif = 'GTC'
+        else:
+            order.orderType = oType
+        if order.orderType == 'LMT':
             order.lmtPrice = lmtPrice
         
         return order  
         
     def placeOrderBrief (self, contract_symbol, secType, action, oType, lmtPrice, qty):
-        if secType != 'FUT' and secType != 'STK':
-            return False
+        logging.info ("Vamos a crear una orden con:")
+        logging.info ("    secType: %s", secType)
+        logging.info ("    Symbol: %s", contract_symbol)
+        logging.info ("    Action: %s", action)
+        logging.info ("    oType: %s", oType)
+        logging.info ("    lmtPrice: %s", lmtPrice)
+        logging.info ("    qty: %s", qty)
+        newReq = None
+        if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
+            return None
         try:
             example_order = self.orderCreate (action, oType, lmtPrice, qty)
         except:
-            return False
+            logging.error ("Error creando la orden para emplazar la orden")
+            return None
 
         if secType == 'FUT':
             try:
+                example_contract = self.contractSimpleFUTcreate(contract_symbol)
+            except:
+                logging.error ("Error creando el contrato para la orden")
+                return None
+        elif secType == 'BAG':
+            try:
                 example_contract = self.contractFUTcreate(contract_symbol)
             except:
-                return False
+                logging.error ("Error creando el contrato para la orden")
+                return None
         elif secType == 'STK':
             try:
                 example_contract = self.contractSTKcreate(contract_symbol)
             except:
-                return False
+                logging.error ("Error creando el contrato para la orden")
+                return None
 
         try:
-            self.placeOrder (example_contract, example_order)
+            newReq = self.placeOrder (example_contract, example_order)
         except:
-            return False
+            logging.error ("Error emplazando la orden")
+            return None
         else:
-            return True
+            return newReq
 
     @iswrapper    
     def placeOrder (self, contract:Contract, order:Order):
@@ -542,9 +567,7 @@ class IBI_App(EWrapper, EClient):
         return (self.nextorderId - 1)
 
     def cancelOrderByOrderId (self, orderId):
-        if not self.RTLocalData_.orderCheckIfExistsByOrderId (orderId):
-            return False
-        super().cancelOrder (orderId, '')
+        super().cancelOrder (orderId)
         return True
 
     def cancelOrderAll (self):

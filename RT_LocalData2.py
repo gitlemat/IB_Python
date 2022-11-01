@@ -27,7 +27,7 @@ class DataLocalRT():
     #    contract: contrackObj de Ib
     #    dbPandas: puntero a la dbPandas
     #    fullLegData: Si tenemos los contratos de cada leg (solo si es BAG). 
-    #    contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'ratio': , 'action':, 'lsymbol':  },...]
+    #    contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'ratio': , 'action':, 'lSymbol':  },...]
     #    currentPrices: Precios actuales ({'BUY': 10, 'SELL': 10.2, 'LAST': 10.1})
     #    hasContractSymbols: Si ya tengo los HEJ3 para seguir los ticks. Necesito quer fulllegdata= True para poder pedirlos y tener esto a True.
     #
@@ -51,9 +51,8 @@ class DataLocalRT():
 
         self.accountData_ = {}
         self.orderList_ = []  # includes orders and contracts (hay que sacar los contracts a puntero externo, y los usan las posiciones)
-        self.positionList_ = []  # INcluyen enlace an contracts
         self.contractList_ = []  # Directamente lista de contracts
-        self.contractDict_ = []  # Directamente dict de contracts
+        self.contractDict_ = {}  # Directamente dict de contracts
 
         self.tickPrices_ = {}    # Key: reqId ['12'] ---> {12: {'price': 10, 'symbol': 'AAPL'}}
 
@@ -95,28 +94,12 @@ class DataLocalRT():
     # Positions
 
 
-    def positionAdd (self, gConId, nPosition, avgCost):
-        
-        posicion = {}
-        posicion['gConId'] = gConId
-        posicion['pos_n'] = nPosition
-        posicion['avgCost'] = avgCost
-        
-        self.positionList_.append(posicion)
-
-        posicion['toPrint'] = False   # Porque lo voy a imprimir justo en la siguiente linea
-        str_o = self.positionSummary (posicion)
-        logging.info (str_o)
-        self.wsServerInt_.print_string(str_o)
-        
-        return (True)
-        
+      
     def positionUpdate (self, data):
         contractObj = data['contract']
         nPosition = data['position']
         avgCost = data['avgCost']
         result = True
-        exists = False
 
         if not contractObj == "":
             #print ('Actualizo cont')
@@ -124,94 +107,85 @@ class DataLocalRT():
 
         gConId = self.contractGetGconId(contractObj)
 
-        for posicion in self.positionList_: 
-            if posicion['gConId'] == gConId:
-                exists = True
-                posicion['pos_n'] = nPosition
-                posicion['avgCost'] = avgCost
-                #posicion['toPrint'] = True
-                str_o = self.positionSummary (posicion)
-                logging.info (str_o)
-                self.wsServerInt_.print_string(str_o)
-                break
-                
-        if not exists:
-            result = self.positionAdd (gConId, nPosition, avgCost)
-            
+        logging.info("[Posicion] Actualizada %s: %d", contractObj.localSymbol, nPosition)
+
+        self.contractDict_[gConId]['pos'] = nPosition  # Solo haría falta esto cuando lo pase todo.
+        self.contractDict_[gConId]['posAvgPrice'] = avgCost
+
+        self.postionFixSpreads()
+         
                         
         return (result)
 
+    def postionFixSpreads (self):
+        for gConId, contrato in self.contractDict_.items():
+            #Repaso todas la bags para ver si cada contrato individual tiene posiciones
+            if contrato['contract'].secType == "BAG":
+                pos_min = None
+                # Busco las posiciones mínimas que tienen todos los legs.
+                # Hay que comprobar que son todas en el mismo sentodo (con la correcccion del ratio)
+                # contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'ratio': , 'action':, 'lSymbol':  },...]
+                logging.info("Compruebo BAG %s", contrato['fullSymbol'])
+
+                for contractLegInfo in contrato['contractReqIdLegs']:
+                    conId = contractLegInfo['conId']
+                    ratio = contractLegInfo['ratio']
+                    if contractLegInfo['action'] == 'SELL':
+                        ratio = (-1) * ratio # Normalizando a siempre positivo (BUY) o siempre negativo (SELL)
+                    
+                    currPosLeg = self.contractDict_[conId]['pos'] 
+                    if not currPosLeg:
+                        currPosLeg = 0
+                    pos_corrected = int(currPosLeg / ratio)
+
+                    if pos_min == None:  # Para el primero. Seguro que hay mejores maneras de hacerlo.
+                        pos_min = pos_corrected
+                    elif pos_corrected * pos_min >= 0:  # Esto es para comprobar que son del mismo signo. Si no no nos vale, hayq que respetar el SELL/BUY de cada leg
+                        pos_min = min ([pos_corrected, pos_min], key = abs)  # key=abs por si son negativol (BAG en SELL)
+                    else: 
+                        pos_min = 0 # No son del mismo signo, no nos vale
+                    logging.info("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
+                # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
+                if pos_min != 0: # Hay algo
+                    logging.info("Actualizo BAG %s con esta variacion de positiones: %d", contrato['fullSymbol'], pos_min)
+                    avgPrice = 0
+                    for contractLegInfo in contrato['contractReqIdLegs']:
+                        conId = contractLegInfo['conId']
+                        ratio = contractLegInfo['ratio']
+                    
+                        if contractLegInfo['action'] == 'SELL':
+                            ratio = (-1) * ratio # Normalizando a siempre positivo (BUY) o siempre negativo (SELL)
+
+                        avgPrice += self.contractDict_[conId]['posAvgPrice'] * ratio
+
+                        deltaPos = pos_min * ratio
+                        self.contractDict_[conId]['pos'] -= int(deltaPos)
+                        if self.contractDict_[conId]['pos'] == 0:
+                            self.contractDict_[conId]['posAvgPrice'] = 0
+
+                        logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
+                    #Finalmente, añado pos_min al BAG
+                    if contrato['pos'] == None: # Inicializamos
+                        contrato['pos'] = 0
+                    contrato['pos'] += int(pos_min)
+                    contrato['posAvgPrice'] = avgPrice
+
     def positionDeleteAll (self):
-        for posicion in self.positionList_:
-            self.positionList_.remove(posicion)
-        self.positionList_ = []
+        # Pasar por contracts y borrar posiciones
+        for gConId, contrato in self.contractDict_.items():
+            contrato['pos'] = None
+            contrato['posAvgPrice'] = None
 
-    def positionGetByGconId(self, gConId):
-        for posicion in self.positionList_:
-            if posicion['gConId'] == gConId:
-                return posicion
-        return None
-  
-    def positionSummaryAllFull (self):
-        summaryStr = ''
-        for posicion in self.positionList_:
-            summaryStr += self.positionSummaryFull (posicion)
-
-        return summaryStr
-
-    def positionSummaryAllBrief (self):
-        summaryStr = ''
-        for posicion in self.positionList_:
-            summaryStr += self.positionSummaryBrief (posicion)
-
-        return summaryStr
-
-    def positionSummaryAllUpdated (self):
+    def positionSummaryBrief (self, gConId):
         summaryStr = ''
         
-        for posicion in self.positionList_:
-            if posicion['toPrint'] == True:
-                summaryStr += self.positionSummary (posicion)
+        summaryStr = '[Posicion] - ' + self.contractDict_[gConId]['fullSymbol']
+        summaryStr += ', Qty: ' +  longToStr(self.contractDict_[gConId]['pos']) + ', AvgCost: ' + floatToStr(self.contractDict_[gConId]['posAvgPrice'])
 
-        return summaryStr
-        
-    def positionSummary (self, posicion):        
-        if self.verboseBrief == True:
-            return (self.positionSummaryBrief (posicion))
-        else:
-            return (self.positionSummaryFull (posicion))
+        summaryStr += ', ' + self.contractSummaryPricesOnly(gConId)
 
-        
-    def positionSummaryFull (self, posicion):
-        summaryStr = ''
-
-        summaryStr  = '--------------------------------------\n'
-        summaryStr += 'Posicion detalles\n'
-        summaryStr += '     Posicion:\n'
-        summaryStr += '         nPos:' + decimalMaxString(posicion['pos_n']) + '\n'
-        summaryStr += '         Avg Cost:' + floatToStr(posicion['avgCost']) + '\n'
-        
-        summaryStr += '         ' + self.contractSummaryPricesOnly(posicion['gConId']) + '\n'
-
-        summaryStr += self.contractSummaryFull(posicion['gConId'])
-
-        posicion['toPrint'] = False
-        #self.positionSetSymbolsIfNeeded (posicion)
-      
-        return summaryStr
-        
-    def positionSummaryBrief (self, posicion):
-        summaryStr = ''
-        
-        summaryStr = '[Posicion] - ' + self.contractSummaryBrief(posicion['gConId'])
-        summaryStr += ', Qty: ' +  longToStr(posicion['pos_n']) + ', AvgCost: ' + floatToStr(posicion['avgCost'])
-
-        summaryStr += ', ' + self.contractSummaryPricesOnly(posicion['gConId'])
-
-        posicion['toPrint'] = False  
         #self.positionSetSymbolsIfNeeded (posicion)  
-        
-        return summaryStr
+
 
     ########################################
     # tickPrice
@@ -275,45 +249,7 @@ class DataLocalRT():
     ########################################
     # contracts
        
-    def contractAdd (self, contractObj):        
-        if contractObj == "" or contractObj == None:
-            return
-        #contractDict_
-        gConId = self.contractGetGconId(contractObj)
-        
-        for contract in self.contractList_:     
-            if contract['gConId'] == gConId:
-                if contract['contract'].conId == 0:
-                    contract['contract'].conId = contractObj.conId
-                return
-
-        contrato = {}
-        contrato['gConId'] = gConId
-        contrato['contract'] = contractObj
-        contrato['pos'] = None
-        contrato['posAvgPrice'] = None
-        if contractObj.secType == "BAG":
-            contrato['fullLegData'] = False
-        else:
-            contrato['fullLegData'] = True
-        contrato['dbPandas'] = None # se inicisaliza cuando tenganos los ContractSymbols (si es BAG)
-        contrato['contractReqIdLegs'] = []
-        contrato['currentPrices'] = {}
-        contrato['currentPrices']['BUY'] = None
-        contrato['currentPrices']['SELL'] = None
-        contrato['currentPrices']['LAST'] = None
-        contrato['currentPrices']['BUY_SIZE'] = None
-        contrato['currentPrices']['SELL_SIZE'] = None
-        contrato['currentPrices']['LAST_SIZE'] = None
-        contrato['currentPrices']['updated'] = False # Para saber si hay que actualizar alguna presentacion de precios (web)
-        contrato['hasContractSymbols'] = False
-                        
-        self.contractList_.append(contrato)
-        
-        
-        return True
-
-    def contractAdd2 (self, contractObj):
+    def contractAdd (self, contractObj):
         if contractObj == "" or contractObj == None:
             return
         #contractDict_
@@ -326,6 +262,8 @@ class DataLocalRT():
             return
 
         contrato = {}
+        contrato['gConId'] = gConId
+        contrato['fullSymbol'] = None
         contrato['contract'] = contractObj
         contrato['pos'] = None
         contrato['posAvgPrice'] = None
@@ -348,15 +286,13 @@ class DataLocalRT():
         self.contractDict_[gConId] = contrato    
 
 
-    def contratoReturnListAll(self):
-        return self.contractList_
-
     def contratoReturnDictAll(self):
         return self.contractDict_
 
     def contractCheckStatus (self):
         missing = False
-        for contrato in self.contractList_:
+
+        for gConId, contrato in self.contractDict_.items():
             if self.contractCheckIfIncompleteSingle(contrato):    # Si no tiene los legs, upstream lo tiene que arreglar
                 missing = True
             elif contrato['hasContractSymbols']:                  # Si tiene los symbols, asegurar que estan subscritos a tick
@@ -365,6 +301,8 @@ class DataLocalRT():
                 self.contractSetSymbolsIfNeeded(contrato)
         self.contractInconplete_ = missing            
         return missing
+
+
 
     # Los legs tienen que completarse y se hace así:
     #   1.- Al hacer la orden pedimos y añadimos los contracts de los legs
@@ -376,7 +314,8 @@ class DataLocalRT():
     def contractReqDetailsAllMissing (self):
         if self.contractInconplete_ == False:
             return
-        for contrato in self.contractList_:
+
+        for gConId, contrato in self.contractDict_.items():
             if contrato['fullLegData'] == False:
                 for leg in contrato['contract'].comboLegs:          # Podria leer el fullLegData del contract, pero mejor asi
                     if self.contractCheckIfExists(leg.conId) == False:
@@ -395,7 +334,7 @@ class DataLocalRT():
 
     def contractCheckIfIncompleteGlobal (self):
         missing = False
-        for contrato in self.contractList_:
+        for gConId, contrato in self.contractDict_.items():
             if self.contractCheckIfIncompleteSingle(contrato):
                 missing = True
         self.contractInconplete_ = missing
@@ -422,7 +361,7 @@ class DataLocalRT():
             self.contractAdd(contractN)
 
     def contractUnsubscribeAll (self):
-        for contrato in self.contractList_:
+        for gConId, contrato in self.contractDict_.items():
             for contractReqIdLeg in contrato['contractReqIdLegs']:
                 contractReqIdLeg['reqId'] = None
         for reqId in self.tickPrices_:
@@ -438,14 +377,15 @@ class DataLocalRT():
         # contrato['contractReqIdLegs'] --> [{'conId': , 'reqId': None, 'ratio': , 'action': , 'lSymbol': },...]
         if len(contrato['contractReqIdLegs']) > 0:
             contrato['hasContractSymbols'] = True
-            lSymbol = self.contractSummaryBrief (contrato['gConId'])               
+            lSymbol = self.contractSummaryBrief (contrato['gConId'])     
+            contrato['fullSymbol'] = lSymbol      
             contrato['dbPandas'] = pandasDB.dbPandas (lSymbol)           # No se puede hasta que no tenga todos los simbolos
 
     def contractUpdateTicks(self, reqId):
         # Tenemos por un lado los contratos BAG
         #  y luego hay que actualizar los legs por si alguno tiene este reqId
         # Los que no son BAG tambien tienren el contractReqIdLegs con 1 solo entry, por lo que se buscan los dos igual
-        for contrato in self.contractList_:
+        for gConId, contrato in self.contractDict_.items():
             updated = False
             for conReqLeg in contrato['contractReqIdLegs']:
                 if conReqLeg['reqId'] == reqId:
@@ -528,8 +468,7 @@ class DataLocalRT():
 
                 if allReady != False:
                     # Se actualiza la DB para el contrato['gConId'] con estos datos:
-                    gConId = contrato['gConId']
-                    lSymbol = self.contractSummaryBrief (gConId)
+                    lSymbol = contrato['fullSymbol']
                     timestamp = datetime.datetime.now()
                     data_args = {'gConId': gConId, 'Symbol':lSymbol, 'timestamp':timestamp, 
                                  'BID': price2sell, 'ASK':price2buy, 'LAST':price2last,
@@ -538,24 +477,20 @@ class DataLocalRT():
                     contrato['dbPandas'].dbUpdateAdd(data_args)
 
     def contractGetCurrentPricesPerGconId (self, gConId):
-        for contrato in self.contractList_:
-            if contrato['gConId'] == gConId:
-                return contrato['currentPrices']
-        return None
-
+        if gConId in self.contractDict_:
+            return self.contractDict_[gConId]['currentPrices']
+        else:
+            return None
 
     def contractCheckIfExists (self, gConId):
-        for contrato in self.contractList_:
-            if contrato['gConId'] == gConId:
-                return True
-        return False
+        return gConId in self.contractDict_
 
     def contractGetContractbyGconId (self, gConId):
-        for contrato in self.contractList_:
-            if contrato['gConId'] == gConId:
-                return contrato
-        
-        return None
+        if gConId in self.contractDict_:
+            return self.contractDict_[gConId]
+        else:
+            return None
+
 
     def contractGetGconId(self, contractObj):
         if contractObj == "" or contractObj == None:
@@ -572,9 +507,8 @@ class DataLocalRT():
         return int(gConId)
 
     def contractGetBySymbol(self, symbol):
-        for contrato in self.contractList_:
-            conSymbol = self.contractSummaryBrief(contrato['gConId'])
-            if conSymbol == symbol:
+        for gConId, contrato in self.contractDict_.items():
+            if contrato['fullSymbol'] == symbol:
                 return contrato
         return None
 
@@ -584,8 +518,7 @@ class DataLocalRT():
         #   Contrato HEV2-HEZ2 tiene dos legs, y cada una de ellas va a coindir con el del contrato HEV2 y HEZ2
 
         # Busco a ver si hay un contrato con un leg igual que ya tenga reqId:
-
-        for contratoTemp in self.contractList_:
+        for gConId, contratoTemp in self.contractDict_.items():
             for contractReqIdLegTemp in contratoTemp['contractReqIdLegs']:
                 if (contractReqIdLegTemp['conId'] == contractReqIdLeg['conId']) and contractReqIdLegTemp['reqId'] != None:
                     return contractReqIdLegTemp['reqId']
@@ -607,62 +540,43 @@ class DataLocalRT():
         simbolos = []
         simbolo = {}
 
-        for contrato in self.contractList_:
-            if contrato['gConId'] == gConId and contrato['fullLegData']:
-                if contrato['contract'].secType == "BAG":
-                    for leg in contrato['contract'].comboLegs:
-                        exists = False
-                        for contratoLeg in self.contractList_:
-                            if contratoLeg['contract'].conId == leg.conId:  
-                                simbolo = {'conId': contratoLeg['contract'].conId, 'reqId': None, 'ratio': leg.ratio, 'action': leg.action, 'lSymbol': contratoLeg['contract'].localSymbol}
-                                simbolos.append(simbolo)
-                                exists = True
-                                break
-                        if not exists:  # Si alguno no existe, devolvemos lista vacia
-                            simbolos = []
-                            return simbolos
-                else:
-                    simbolo = {'conId': contrato['contract'].conId, 'reqId': None, 'ratio': 1, 'action': 'BUY', 'lSymbol': contrato['contract'].localSymbol}
-                    simbolos.append(simbolo)
-                break
-        return simbolos
-
-    def contractListAll (self):
-        # Esto igual no hace falta y devuelvo toda la lista
-        lista = []
-        contratoDict = {}
-        for contrato in self.contractList_:
-            contratoDict['conId'] = contrato['contract'].conId
-            contratoDict['symbol'] = contrato['contract'].localSymbol
-            contratoDict['secType'] = contrato['contract'].secType
+        if (gConId in self.contractDict_) and self.contractDict_[gConId]['fullLegData']:
+            contrato = self.contractDict_[gConId]
             if contrato['contract'].secType == "BAG":
-                contratoDict['symbolBag'] = self.contractSummaryBrief (contrato['gConId'])
+                for leg in contrato['contract'].comboLegs:
+                    if leg.conId in self.contractDict_:
+                        contratoLeg = self.contractDict_[leg.conId]
+                        simbolo = {'conId': contratoLeg['contract'].conId, 'reqId': None, 'ratio': leg.ratio, 'action': leg.action, 'lSymbol': contratoLeg['contract'].localSymbol}
+                        simbolos.append(simbolo)
+                        exists = True
+                    else:  # Si alguno no existe, devolvemos lista vacia
+                        simbolos = []
+                        return simbolos
             else:
-                contratoDict['symbolBag'] = ''
-            contratoDict['legs'] = []
-
+                simbolo = {'conId': contrato['contract'].conId, 'reqId': None, 'ratio': 1, 'action': 'BUY', 'lSymbol': contrato['contract'].localSymbol}
+                simbolos.append(simbolo)
+        return simbolos
 
 
     def contractSummaryAllFull (self):
         summaryStr = ''
-        for contrato in self.contractList_:
-            summaryStr += self.contractSummaryFull (contrato['gConId'])
-
+        for gConId in self.contractDict_:
+            summaryStr += self.contractSummaryFull (gConId)
         return summaryStr
 
     def contractSummaryAllBrief (self):
         summaryStr = ''
-        for contrato in self.contractList_:
-            summaryStr += self.contractSummaryBrief (contrato['gConId'])
+        for gConId in self.contractDict_:
+            summaryStr += self.contractSummaryBrief (gConId)
 
         return summaryStr
 
     def contractSummaryAllBriefWithPrice (self):
         summaryStr = ''
-        for contrato in self.contractList_:
-            logging.debug ('gConID: %s',  str(contrato['gConId']))
-            summaryStr += '[' + str(contrato['gConId']) + '] - '
-            summaryStr += self.contractSummaryBriefWithPrice (contrato['gConId'])
+        for gConId in self.contractDict_:
+            logging.debug ('gConID: %s',  str(gConId))
+            summaryStr += '[' + str(gConId) + '] - '
+            summaryStr += self.contractSummaryBriefWithPrice (gConId)
             summaryStr += '\n'
 
         return summaryStr
@@ -711,45 +625,49 @@ class DataLocalRT():
     def contractSummaryFull (self, gConId):
         result = True
         summaryStr = ''
-            
-        for contrato in self.contractList_:
-            if contrato['gConId'] == gConId:
-                summaryStr += '     Contrato:\n'
-                summaryStr += '         gConId:' + str(contrato['gConId']) + '\n'
-                summaryStr += '         ConId: ' + str(contrato['contract'].conId) + '\n'
-                summaryStr += '         Symbol: ' + str(contrato['contract'].localSymbol) + '\n'
-                summaryStr += '         SecType: ' + str(contrato['contract'].secType) + '\n'
-                if contrato['contract'].secType == "BAG":
-                    summaryStr += ''
-                    for leg in contrato['contract'].comboLegs:
-                        sstr = self.legSummary(leg, contrato['contract'].symbol)
-                        summaryStr += sstr
+        
+        if gConId in self.contractDict_:
+            contrato = self.contractDict_[gConId]
+        else:
+            return summaryStr
 
-                elif contrato['contract'].secType == "FUT":
-                    summaryStr += '         Date: ' + str(contrato['contract'].lastTradeDateOrContractMonth) + '\n'
-                break
+        summaryStr += '     Contrato:\n'
+        summaryStr += '         gConId:' + str(contrato['gConId']) + '\n'
+        summaryStr += '         ConId: ' + str(contrato['contract'].conId) + '\n'
+        summaryStr += '         Symbol: ' + str(contrato['contract'].localSymbol) + '\n'
+        summaryStr += '         SecType: ' + str(contrato['contract'].secType) + '\n'
+        if contrato['contract'].secType == "BAG":
+            summaryStr += ''
+            for leg in contrato['contract'].comboLegs:
+                sstr = self.legSummary(leg, contrato['contract'].symbol)
+                summaryStr += sstr
+
+        elif contrato['contract'].secType == "FUT":
+            summaryStr += '         Date: ' + str(contrato['contract'].lastTradeDateOrContractMonth) + '\n'
         return summaryStr
                 
     def contractSummaryBrief (self, gConId):
         result = True
         summaryStr = ''
-        for contrato in self.contractList_:
-            if contrato['gConId'] == gConId:
-                if contrato['contract'].secType == "BAG":
-                    spreadInfoList = [] 
-                    # No me fio del orden de los combolegs. Lo meto en una lista volatil, se ordena e imprime
-                    for leg in contrato['contract'].comboLegs:
-                        spreadLocalSymbol, spreadDate = self.legSummaryBriefExtract(leg, contrato['contract'].symbol)
-                        spreadAction = leg.action
-                        spreadRatio = leg.ratio
-                        spreadInfoList.append({"localSymbol":spreadLocalSymbol, "Action":spreadAction, "Ratio": spreadRatio, "Date":spreadDate})
+        if gConId in self.contractDict_:
+            contrato = self.contractDict_[gConId]
+        else:
+            return summaryStr
 
-                    summaryStr = self.legSummaryBriefSort (spreadInfoList)
-                        
-                else:
-                    summaryStr = contrato['contract'].localSymbol
-                break
+        if contrato['contract'].secType == "BAG":
+            spreadInfoList = [] 
+            # No me fio del orden de los combolegs. Lo meto en una lista volatil, se ordena e imprime
+            for leg in contrato['contract'].comboLegs:
+                spreadLocalSymbol, spreadDate = self.legSummaryBriefExtract(leg, contrato['contract'].symbol)
+                spreadAction = leg.action
+                spreadRatio = leg.ratio
+                spreadInfoList.append({"localSymbol":spreadLocalSymbol, "Action":spreadAction, "Ratio": spreadRatio, "Date":spreadDate})
+
+            summaryStr = self.legSummaryBriefSort (spreadInfoList)
                 
+        else:
+            summaryStr = contrato['contract'].localSymbol
+        
         return summaryStr
         
     def legSummary (self, leg, symbol):
@@ -759,12 +677,10 @@ class DataLocalRT():
         
         
         contrato1 = Contract() 
-        for contrato in self.contractList_:
-            if contrato['contract'].conId == leg.conId:
-                contrato1 = contrato['contract']
-                exists = True
-                break
-        
+        if leg.conId in self.contractDict_:
+            contrato1 = self.contractDict_[leg.conId]['contract']
+            exists = True
+    
         summaryStr += '         Leg:\n'
         summaryStr += '             ConId: ' + str(leg.conId) + '\n'
         summaryStr += '             Action: ' + str(leg.action) + '\n'
@@ -779,11 +695,9 @@ class DataLocalRT():
     def legSummaryBriefExtract (self, leg, symbol):   
         exists = False
         contrato1 = Contract()
-        for contrato in self.contractList_:
-            if contrato['contract'].conId == leg.conId:  
-                contrato1 = contrato['contract']
-                exists = True
-                break
+        if leg.conId in self.contractDict_:
+            contrato1 = self.contractDict_[leg.conId]['contract']
+            exists = True
 
         lsymbol = None
         LTD = None
@@ -818,7 +732,6 @@ class DataLocalRT():
         return summaryStr
         
     def legSummaryBriefString (self, spreadInfoList):   
-        spreadSize = len(spreadInfoList)
         summaryStr = ''
         nItem = 0
         for parte in spreadInfoList:

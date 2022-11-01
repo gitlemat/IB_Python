@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os.path
 import time
+import datetime
 
 import logging
 
@@ -33,6 +34,7 @@ class dbPandas():
         self.dfcomp_ = None
         self.symbol_ = symbol
         self.dbInitFile ()
+        self.toPrint = True
 
     def dbInitFile (self):
 
@@ -43,28 +45,31 @@ class dbPandas():
         path = 'market/'
         self.df_ = None
         self.dfcomp_ = None
-        logging.info  ('-----------------------')
         logging.info  ('Leer todos los ficheros')
         for i in sorted(os.listdir(path), reverse=True):
             filename = os.path.join(path,i)
             if os.path.isfile(filename) and i.startswith(self.symbol_+'_'):
-                logging.info  ('Analizamos %s', filename)
+                logging.debug  ('Analizamos %s', filename)
                 if i.endswith ('_comp.csv'): # Los comprimidos los cargo todos
-                    logging.info  ('     .. es comprimido')
+                    logging.debug  ('     .. es comprimido')
                     df_new = pd.read_csv (filename, parse_dates=['timestamp'], index_col=0)
                     self.dfcomp_ = pd.concat([self.dfcomp_, df_new])
                 else:  # Los no comprimidos, solo hoy, por si estamos a mitad del dia
                     datefile = i[-10:-4]
                     todaystr = time.strftime("%y%m%d")
                     if datefile == todaystr:
-                        logging.info  ('     .. es el no comprimido de hoy')
+                        logging.debug  ('     .. es el no comprimido de hoy')
                         self.df_ = pd.read_csv (filename, parse_dates=['timestamp'])
         self.df_ = self.df_.sort_values(by=['timestamp'], ignore_index=True)
         self.dfcomp_ = self.dfcomp_.sort_values(by=['timestamp']) # El comp si tiene index
 
-        logging.info  ('--------------------')
-        logging.info  (self.symbol_)
-        logging.info  (self.df_)
+        logging.debug  ('--------------------')
+        logging.debug  (self.symbol_)
+        logging.debug  (self.df_)
+
+    def dbGetPrevDay(self):
+        hoy = datetime.date.today()
+
 
     def dbGetDataframeToday(self):
         return self.df_
@@ -127,11 +132,11 @@ class dbPandas():
             return False
 
         #print ("Pandas Data:", data)
-        logging.info ('[Pandas] - Pandas data: %s', data) 
+        #logging.info ('[Pandas] - Pandas data: %s', data) 
         try:
             lastone = self.df_.iloc[-1].to_dict()
             #print ("Pandas Last:", lastone)
-            logging.info ('[Pandas] - Pandas last: %s', lastone)
+            #logging.info ('[Pandas] - Pandas last: %s', lastone)
         except:
             different = True
         else:
@@ -147,6 +152,7 @@ class dbPandas():
         if different:
             dfDelta = pd.DataFrame.from_records(newlineL)
             self.df_ = pd.concat([self.df_, dfDelta], ignore_index=True)
+            self.toPrint = True
 
             # Para asegurar que se graban bien (con todos los fields en orden), hay que crear un dataframe del ultimo del self.df
             lastone = self.df_.iloc[-1:]

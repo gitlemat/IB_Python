@@ -1,8 +1,9 @@
-import RT_LocalData
 import logging
+import datetime
 
 
 logger = logging.getLogger(__name__)
+Error_orders_timer_dt = datetime.timedelta(seconds=90)
 
 class Strategies():
 
@@ -103,6 +104,7 @@ class Strategies():
 #         'reqPos'
 #         'limitUp'
 #         'limitDown'
+#     'timelasterror'
 # Si UpperOrderId = 'KO', el LowerOrderId es el orderId
 
 # File:
@@ -154,6 +156,13 @@ class strategyPentagrama():
     def strategyPentagramaGetAll(self):
         return self.strategyList_
 
+    def strategyPentagramaEnableDisable (self, symbol, state):
+        for symbolStrategy in self.strategyList_:
+            if symbolStrategy['symbol'] == symbol:
+                symbolStrategy['stratEnabled'] = state
+                self.strategyPentagramaUpdate (symbolStrategy)
+                break
+
     def strategyPentagramaCheckEnabled (self, symbol):
         # Devolver si está habilidata o no 
         enabled = False
@@ -171,6 +180,9 @@ class strategyPentagrama():
             if symbolStrategy['symbol'] == symbol:
                 currentSymbolStrategy = symbolStrategy
                 break
+        if currentSymbolStrategy == None:
+            logging.info ("La estrategia no esta definida de manera local")
+            return
 
         if currentSymbolStrategy['stratEnabled'] == False:
             # MISSING: habria que comprobar que no hay border orders y borrarlas.
@@ -194,17 +206,23 @@ class strategyPentagrama():
             error += 1000 
 
         # HAY QUE COMPROBAR SI DENTRO DE LA ZONA
-    
         # Se resuelve aqui
         if 0 < error < 1000:
+            if (datetime.datetime.now() - currentSymbolStrategy['timelasterror']) < Error_orders_timer_dt:
+                return
             contract = self.RTLocalData_.contractGetBySymbol(symbol)
             new_currentSymbolStrategy = self.strategyPentagramaCreateBorderOrders (contract, currentSymbolStrategy, True)
             if new_currentSymbolStrategy != None:
                 self.strategyPentagramaUpdate (new_currentSymbolStrategy)  # Actualizo con los datos de ordenes borde que acabo de obtener
             else:
-                pass # deberiamos mirar que no haya posiciones, y pausar la estrategia
+                # deberiamos mirar que no haya posiciones, y pausar la estrategia
+                logging.error ('Fallo en loopcheck: Error al general las border orders directamente')
+                currentSymbolStrategy['timelasterror'] = datetime.datetime.now()
+                self.strategyPentagramaUpdate (currentSymbolStrategy)
             error = 0
         if error >= 1000:
+            if (datetime.datetime.now() - currentSymbolStrategy['timelasterror']) < Error_orders_timer_dt:
+                return
             self.strategyPentagramaKickOff(symbol)
 
         return 0
@@ -215,7 +233,7 @@ class strategyPentagrama():
 
         lstrategyList = []        
         
-        logging.info ('Estrategias Pentagrama cargadas')
+        logging.info ('Cargando Estrategias Pentagrama')
 
         for line in lines[1:]: # La primera linea es el header
             fields = line.split(',')
@@ -226,28 +244,28 @@ class strategyPentagrama():
             else:
                 lineStratEnabled = True
 
-            if fields[2].strip() == '':
+            if fields[2].strip() == '' or fields[2].strip() == 'None':
                 lineUpperOrderId = None
             else:
                 lineUpperOrderId = int (fields[2].strip())
 
-            if fields[3].strip() == '':
+            if fields[3].strip() == ''  or fields[3].strip() == 'None':
                 lineUpperOrderPermId = None
             else:
                 lineUpperOrderPermId = int (fields[3].strip())
 
-            if fields[4].strip() == '':
+            if fields[4].strip() == ''  or fields[4].strip() == 'None':
                 lineLowerOrderId = None
             else:
                 lineLowerOrderId = int (fields[4].strip())
 
-            if fields[5].strip() == '':
+            if fields[5].strip() == ''  or fields[5].strip() == 'None':
                 lineLowerOrderPermId = None
             else:
                 lineLowerOrderPermId = int (fields[5].strip())
 
             if fields[6].strip() == '':
-                lineCurrentPos = 0
+                lineCurrentPos = None   
             else:
                 lineCurrentPos = int (fields[6].strip())
 
@@ -263,71 +281,118 @@ class strategyPentagrama():
                 nField+=3
                 zones.append(zone)
             zones = sorted(zones, key=lambda d: d['limitUp'], reverse=True)
-            lineFields = {'symbol': lineSymbol, 'stratEnabled': lineStratEnabled, 'currentPos': lineCurrentPos, 'UpperOrderId': lineUpperOrderId, 'UpperOrderPermId': lineUpperOrderPermId, 'LowerOrderId': lineLowerOrderId, 'LowerOrderPermId': lineLowerOrderPermId, 'OverlapMargin': lineOverlapMargin, 'zones': zones}
+            ahora = datetime.datetime.now() - datetime.timedelta(seconds=15)
+
+            lineFields = {'symbol': lineSymbol, 'stratEnabled': lineStratEnabled, 'currentPos': lineCurrentPos, 'UpperOrderId': lineUpperOrderId, 'UpperOrderPermId': lineUpperOrderPermId, 'LowerOrderId': lineLowerOrderId, 'LowerOrderPermId': lineLowerOrderPermId, 'OverlapMargin': lineOverlapMargin, 'zones': zones, 'timelasterror': ahora}
             lstrategyList.append(lineFields)
+
+        logging.info ('Estrategias Pentagrama cargadas')
 
         return lstrategyList
 
     def strategyPentagramaUpdate (self, currentSymbolStrategy):  
         lines = []
+        header = '#Symbol        , En, UpOrdId, UpOrdPermId, LoOrdId, LoOrdPermId, CurrPos, Overlap, [reqPos, limUp, limDo, reqPos, limUp, limDo, reqPos, limUp, limDo, reqPos, limUp, limDo, reqPos, limUp, limDo]\n'
+        lines.append(header)
         for strategyItem in self.strategyList_:
         #for i in range(len(self.strategyList_)):
+            # EL currentPos hay que cuidarlo:
+            strategyItem['currentPos'] = int(strategyItem['currentPos'])
+
             if strategyItem['symbol'] == currentSymbolStrategy['symbol']:
                 strategyItem = currentSymbolStrategy
             line = str(strategyItem['symbol']) + ','
-            if strategyItem['stratEnabled'] == True:
-                line += 'True,'
-            else:
-                line += 'False,'
-            line += str(strategyItem['UpperOrderId']) + ','
-            line += str(strategyItem['UpperOrderPermId']) + ','
-            line += str(strategyItem['LowerOrderId']) + ','
-            line += str(strategyItem['LowerOrderPermId']) + ','
-            line += str(strategyItem['currentPos']) + ','
+            line += 'True,' if strategyItem['stratEnabled'] == True else 'False,'
+            line += ' ,' if strategyItem['UpperOrderId'] == None else str(strategyItem['UpperOrderId']) + ','
+            line += ' ,' if strategyItem['UpperOrderPermId'] == None else str(strategyItem['UpperOrderPermId']) + ','
+            line += ' ,' if strategyItem['LowerOrderId'] == None else str(strategyItem['LowerOrderId']) + ','
+            line += ' ,' if strategyItem['LowerOrderPermId'] == None else str(strategyItem['LowerOrderPermId']) + ','
+            line += ' ,' if strategyItem['currentPos'] == None else str(strategyItem['currentPos']) + ','
             line += str(strategyItem['OverlapMargin']) + ','
             for zone in strategyItem['zones']:
                 line += str(zone['reqPos']) + ',' + str(zone['limitUp']) + ',' + str(zone['limitDown']) + ','
-            line += '\n'
+            line = line [:-1] + '\n'
             lines.append(line)
         with open('strategies/HE_Mariposa_Verano.conf', 'w') as f:
-            f.writelines(self.strategyList_)
+            for line in lines:
+                f.writelines(line)
  
+    def strategyPentagramaUpdateZones (self, symbol, zones):
+        for strategyItem in self.strategyList_:
+            if strategyItem['symbol'] == symbol:
+                strategyItem['zones'] = zones
+                self.strategyPentagramaUpdate (strategyItem)
+
     def strategyPentagramaKickOff (self, symbol):
+        
         # No tenemos las ordenes de arriba y abajo, y quizá 
         contract = self.RTLocalData_.contractGetBySymbol(symbol)
         current_prices_last = contract['currentPrices']['LAST']  
 
+        if not current_prices_last:
+            return False
+
         # buscamos los datos de este contrato en concreto    
-        currentSymbolStrategy = None
-        for symbolStrategy in self.strategyList_:
-            if symbolStrategy['symbol'] == symbol:
-                currentSymbolStrategy = symbolStrategy
-                break
-    
-        if not currentSymbolStrategy:  # El contrato de esta Orden ejecutada no tiene esta estrategia
-            return False               # Segun la logica esto no debería pasar nunca
-
-        # Sacamos las zonas de esta estrategia para este contrato
-        # Detectamos en qué zona estamos, y si es la primera o ultima         
-        current_zone = None
-        for zone_n in range(len(currentSymbolStrategy['zones'])):
-            if currentSymbolStrategy['zones'][zone_n]['limitDown'] < current_prices_last <= currentSymbolStrategy['zones'][zone_n]['limitUp']:  
-                current_zone = currentSymbolStrategy['zones'][zone_n]
-                break
+        for currentSymbolStrategy in self.strategyList_:
+            if currentSymbolStrategy['symbol'] == symbol:
+                logging.info ('Estrategia en kickoff: %s', symbol)
+                if not currentSymbolStrategy:
+                    logging.error ('Fallo en kickoff: Estrategia no encontraga')
+                    return False               # Segun la logica esto no debería pasar nunca
         
-        if not current_zone:
-            return False# Precio fuera de rango de zones
+                # Sacamos las zonas de esta estrategia para este contrato
+                # Detectamos en qué zona estamos, y si es la primera o ultima         
+                current_zone = None
+                for zone_n in range(len(currentSymbolStrategy['zones'])):
+                    if currentSymbolStrategy['zones'][zone_n]['limitDown'] < current_prices_last <= currentSymbolStrategy['zones'][zone_n]['limitUp']:  
+                        current_zone = currentSymbolStrategy['zones'][zone_n]
+                        break
+                
+                if not current_zone:
+                    return False# Precio fuera de rango de zones
+        
+                # Aquí hay que ordenar comprar o vender (depende de si es posiv o neg) y con un bracket. No sé hacerlo.
+                needed_pos = current_zone['reqPos']
+        
+                newreqId = None
+                secType = contract['contract'].secType
+                oType = 'MKT'
+                mktPrice = 0
+        
+                if needed_pos > 0: # La Upper sería cerrar todo
+                    action = 'BUY'
+                    qty = needed_pos
+                if needed_pos < 0:
+                    action = 'SELL'
+                    qty = abs(needed_pos)
+        
+                if needed_pos != 0:
+                    logging.info ('Vamos a generar orden con esto:')
+                    logging.info ('    Action: %s', action)
+                    logging.info ('    Qty: %s', str(qty))
+        
+                    newreqId = self.appObj_.placeOrderBrief (symbol, secType, action, oType, mktPrice, qty) #Orden de Upper limit
+                    if newreqId == None:
+                        logging.error ('Fallo en kickoff: Error al generar orden inicial')
+                        currentSymbolStrategy['timelasterror'] = datetime.datetime.now()
+                        return False
+                    # Marco con un flag(KO) en el fichero para que cuando llegue el evento lo reconozca y sepa que estamos en KickOff
+                    currentSymbolStrategy['UpperOrderId'] = 'KO'
+                    currentSymbolStrategy['LowerOrderId'] = newreqId 
+                    currentSymbolStrategy['currentPos'] = 0
+                else: # Si es cero creo directamente las borders y quitamos el KO ya que no esperamos orden de KickOff
+                    newSymbolStrategy = self.strategyPentagramaCreateBorderOrders (contract, currentSymbolStrategy)
+                    if newSymbolStrategy == None:
+                        logging.error ('Fallo en kickoff: Error al general las border orders directamente')
+                        currentSymbolStrategy['timelasterror'] = datetime.datetime.now()
+                        self.strategyPentagramaUpdate (currentSymbolStrategy)
+                        return False
+                    currentSymbolStrategy = newSymbolStrategy
+                    currentSymbolStrategy['currentPos'] = 0
+        
+                self.strategyPentagramaUpdate (currentSymbolStrategy)
 
-        # Aquí hay que ordenar comprar o vender (depende de si es posiv o neg) y con un bracket. No sé hacerlo.
-        needed_pos = current_zone['reqPos']
-        # AYUDA RuBEEEENNNNNNN
-
-        # Marco con un flag(KO) en el fichero para que cuando llegue el evento lo reconozca y sepa que estamos en KickOff
-        currentSymbolStrategy['UpperOrderId'] = 'KO'
-        currentSymbolStrategy['LowerOrderId'] = 'orderId que recibo de la orden que he mandado justo encima. Cuando lo haga termino esto' 
-        currentSymbolStrategy['currentPos'] = 0
-
-        self.strategyPentagramaUpdate (currentSymbolStrategy)
+                return
 
     # Al principio las border orders solo tienen el ordenId, con esto se pone el permId en cuanto llega de IB
     # Pero tambien sirve para actualizar la orderId usandp la permId
@@ -335,20 +400,27 @@ class strategyPentagrama():
         for symbolStrategy in self.strategyList_:
             if symbolStrategy['symbol'] == symbol:
                 if symbolStrategy['UpperOrderPermId'] == None and symbolStrategy['UpperOrderId'] == ordenObj.orderId:
+                    logging.info ('Orden actualizada en estrategia %s. Nueva UpperOrderPermId: %s', symbol, ordenObj.permId)
                     symbolStrategy['UpperOrderPermId'] = ordenObj.permId
                 if symbolStrategy['LowerOrderPermId'] == None and symbolStrategy['LowerOrderId'] == ordenObj.orderId:
+                    logging.info ('Orden actualizada en estrategia %s. Nueva LowerOrderPermId: %s', symbol, ordenObj.permId)
                     symbolStrategy['LowerOrderPermId'] = ordenObj.permId
 
                 if symbolStrategy['UpperOrderPermId'] == ordenObj.permId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
+                    logging.info ('Orden actualizada en estrategia %s. Nueva UpperOrderId: %s', symbol, ordenObj.orderId)
                     symbolStrategy['UpperOrderId'] = ordenObj.orderId
                 if symbolStrategy['LowerOrderPermId'] == ordenObj.permId:
+                    logging.info ('Orden actualizada en estrategia %s. Nueva LowerOrderId: %s', symbol, ordenObj.orderId)
                     symbolStrategy['LowerOrderId'] = ordenObj.orderId
-                
                 break
 
 
-    def strategyPentagramaOrderExecuted (self, executionObj):
-            # Obtenemos datos relativos a la orden.
+    def strategyPentagramaOrderExecuted (self, data):
+        # Obtenemos datos relativos a la orden.
+        executionObj = data['executionObj']
+        exec_contract = data['contractObj']
+        
+        # La exec trae el order_id que use para cargar el contrato asociado
         orderId = executionObj.orderId
         order = self.RTLocalData_.orderGetByOrderId(orderId) # Nos va a dar su permId que usaremos para los datos guardados
         orderPermId = order['order'].permId    
@@ -373,35 +445,60 @@ class strategyPentagrama():
         if currentSymbolStrategy['UpperOrderId'] == 'KO':
             kickOff = True
 
+        logging.info ('Orden ejecutada en estrategia %s. OrderId: %s', symbol, orderId)
+
         if kickOff and orderId != currentSymbolStrategy['LowerOrderId']:
             return False
 
         if (not kickOff) and (orderPermId != currentSymbolStrategy['LowerOrderPermId']) and (orderPermId != currentSymbolStrategy['UpperOrderPermId']):
             return False # No es ninguna orden de nuestra estrategia
+        
+        # Llega siempre una Exec global de la mariposa(BAG), y una por cada leg. Compruebo esto para solo considear la bag
+        secType = contract['contract'].secType
+        exec_secType = exec_contract.secType
+        if secType != exec_secType:
+            return False
 
+        lAccion = ''
         # Llevo un tracking de las posiciones de la estrategia. Solo considero las que meto yo.
         if executionObj.side == 'BOT':                  #delta_pos es el impacto de la orden que se acaba de ejecutar
+            lAccion = 'comprado'
             delta_pos = executionObj.shares
         else:
+            lAccion = 'vendido'
             delta_pos = (-1) * executionObj.shares
         currentSymbolStrategy['currentPos'] += delta_pos  # La posición va a ser la que tenía más el cambio
+        logging.info ('Orden ejecutada en estrategia %s. Hemos %s %d posiciones. Ahora tenemos %d', symbol, lAccion, delta_pos, currentSymbolStrategy['currentPos'])
+
+
+        # Si no es Kickoff, cancelo la otra vieja que queda
+
+        if not kickOff:
+            if orderPermId == currentSymbolStrategy['UpperOrderPermId']:
+                logging.info ('Orden ejecutada en estrategia %s. Cancelamos la LowerOrderId %s', symbol, currentSymbolStrategy['LowerOrderId'])
+                self.RTLocalData_.orderCancelByOrderId (currentSymbolStrategy['LowerOrderId'])                 #Cancelo anterior lower limit
+                currentSymbolStrategy['LowerOrderPermId'] = None
+                currentSymbolStrategy['LowerOrderId'] = None
+            if orderPermId == currentSymbolStrategy['LowerOrderPermId']:
+                logging.info ('Orden ejecutada en estrategia %s. Cancelamos la UpperOrderId %s', symbol, currentSymbolStrategy['UpperOrderId'])
+                self.RTLocalData_.orderCancelByOrderId (currentSymbolStrategy['UpperOrderId'])                    #Cancelo anterior Upper limit
+                currentSymbolStrategy['UpperOrderPermId'] = None
+                currentSymbolStrategy['UpperOrderId'] = None
 
         # Qué hacemos si la LMT de borde no ha ejecutado todas las ordenes??
         # Podemos esperar a que se finalice y dejar los bordes actuales. Pero no creo que sea buiena idea
         # Lo mejor es seguir por si nos vamos de madre poder salirnos
 
+
+        logging.info ('Orden ejecutada en estrategia %s. Generamos los bordes', symbol )
         new_currentSymbolStrategy = self.strategyPentagramaCreateBorderOrders (contract, currentSymbolStrategy)
 
         if new_currentSymbolStrategy != None:  # El None me viene si estamos fuera de rango. 
             self.strategyPentagramaUpdate (new_currentSymbolStrategy)
         else:
-            pass # aquí deberiamos comprobar que las posiciones son zero y que pausamos la estrategia
-
-        if not kickOff:
-            if orderPermId == currentSymbolStrategy['UpperOrderPermId']:
-                self.appObj_.cancelOrderByOrderId (currentSymbolStrategy['LowerOrderPermId'])                 #Cancelo anterior lower limit
-            if orderPermId == currentSymbolStrategy['LowerOrderPermId']:
-                self.appObj_.cancelOrderByOrderId (currentSymbolStrategy['UpperOrderPermId'])                    #Cancelo anterior Upper limit
+            currentSymbolStrategy['timelasterror'] = datetime.datetime.now()
+            self.strategyPentagramaUpdate (currentSymbolStrategy)  # dejamos el antiguo con las borders a None y nueva posicion
+                                                                   # debería volver a intentarlo despues
         
 
     def strategyPentagramaCreateBorderOrders (self, contract, currentSymbolStrategy, ifNotExists=False):
@@ -410,15 +507,23 @@ class strategyPentagrama():
         updateUpper = True
         updateLower = True
         if ifNotExists and self.RTLocalData_.orderCheckIfExistsByOrderPermId(currentSymbolStrategy['UpperOrderPermId']):
+            logging.info ('   Generando borders. No se actualiza la upper' )
             updateUpper = False
         if ifNotExists and self.RTLocalData_.orderCheckIfExistsByOrderPermId(currentSymbolStrategy['LowerOrderPermId']):
+            logging.info ('   Generando borders. No se actualiza la upper' )
             updateLower = False
 
         symbol = currentSymbolStrategy['symbol']       
         current_prices_last = contract['currentPrices']['LAST'] 
+
+        if current_prices_last == None:
+            return None
     
         # Llevo un tracking de las posiciones de la estrategia. Solo considero las que meto yo.
-        current_pos = currentSymbolStrategy['currentPos']
+        if not currentSymbolStrategy['currentPos']:
+            current_pos = 0
+        else:
+            current_pos = currentSymbolStrategy['currentPos']
 
         # Sacamos las zonas de esta estrategia para este contrato
         # Detectamos en qué zona estamos, y si es la primera o ultima
@@ -441,8 +546,13 @@ class strategyPentagrama():
 
         if current_zone_n == 0:
             zoneFirst = True
-        if current_zone_n == (len(currentSymbolStrategy['zones']) - 1):
+            logging.info ('   Estamos en la zona %d (Primera)',  current_zone_n)
+        elif current_zone_n == (len(currentSymbolStrategy['zones']) - 1):
             zoneLast = True
+            logging.info ('   Estamos en la zona %d (Ultima)',  current_zone_n)
+        else:
+            logging.info ('   Estamos en la zona %d',  current_zone_n)
+
         
         # Identificamos las posiciones que necesitamos para ir a la zona superior o inferior
         # Solo considero las posiciones a las que hago tracking. (current_pos) Si hay más se supone que son manuales y no las considero
@@ -458,20 +568,18 @@ class strategyPentagrama():
         # Ahora sacamos los precios del limite superior e inferior
         if not zoneFirst:
             prevZoneUpperLimit = currentSymbolStrategy['zones'][current_zone_n-1]['limitUp']
-            price_Upper = current_zone['limitUp'] + abs(prevZoneUpperLimit - current_zone['limitUp']) * current_zone['OverlapMargin']
+            price_Upper = current_zone['limitUp'] + abs(prevZoneUpperLimit - current_zone['limitUp']) * currentSymbolStrategy['OverlapMargin']
         else:
             price_Upper = current_zone['limitUp']
         if not zoneLast:
             nextZoneLowerLimit = currentSymbolStrategy['zones'][current_zone_n+1]['limitDown']
-            price_Lower = current_zone['limitDown'] - abs(nextZoneLowerLimit - current_zone['limitUp']) * current_zone['OverlapMargin']
+            price_Lower = current_zone['limitDown'] - abs(nextZoneLowerLimit - current_zone['limitDown']) * currentSymbolStrategy['OverlapMargin']
         else:
             price_Lower = current_zone['limitDown']
-        
-        current_zone['limitDown']
-        
+                
         # Definimos las ordenes límite de la zona actual
         secType = contract['contract'].secType
-        oType = 'LMT'
+        oType = 'LMTGTC'
         if updateUpper:
             lmtPrice = price_Upper
             if zoneFirst: # La Upper sería cerrar todo
@@ -480,9 +588,14 @@ class strategyPentagrama():
             else:
                 action = 'SELL'
                 qty = abs(pos_n_Upper - current_pos)
+            
+            logging.info ("Vamos a abrir una order de limite up para %s", symbol)
             newreqUpId = self.appObj_.placeOrderBrief (symbol, secType, action, oType, lmtPrice, qty) #Orden de Upper limit
-            currentSymbolStrategy['UpperOrderId'] = newreqUpId
-            currentSymbolStrategy['UpperOrderPermId'] = ''
+            if newreqUpId == None:
+                currentSymbolStrategy['UpperOrderId'] = None
+            else:
+                currentSymbolStrategy['UpperOrderId'] = newreqUpId
+            currentSymbolStrategy['UpperOrderPermId'] = None
         
         if updateLower:
             lmtPrice = price_Lower
@@ -492,94 +605,18 @@ class strategyPentagrama():
             else:
                 action = 'BUY'
                 qty = abs(pos_n_Lower - current_pos)
+            logging.info ("Vamos a abrir una order de limite down para %s", symbol)
             newreqDownId = self.appObj_.placeOrderBrief (symbol, secType, action, oType, lmtPrice, qty)  #Orden de Lower
-            currentSymbolStrategy['LowerOrderId'] = newreqDownId
-            currentSymbolStrategy['LowerOrderPermId'] = ''
+            if newreqUpId == None:
+                currentSymbolStrategy['LowerOrderId'] = None   # En el loop saltara que falta un leg y volverá aquí.
+            else:
+                currentSymbolStrategy['LowerOrderId'] = newreqDownId
+            currentSymbolStrategy['LowerOrderPermId'] = None
     
         # Actualizar fichero con nuevas ordenes limite
         return currentSymbolStrategy
     
     
-
-
-
-
-
-
-    # Este es el modelo sin LMTs. A Ruben le daría un infarto
-    def strategyRunHEverano (RTlocalData):
-    
-        with open('strategies/HE_Mariposa_Verano.conf') as f:
-            lines = f.readlines()
-        
-        line = lines[0]
-        
-        fields = line.split(',')
-        
-        symbol = fields[0].strip()
-        zones = []
-        
-        nField = 1
-        while nField < len(fields):
-            zone = {'reqPos':int(fields[nField].strip()), 'limitUp': int(fields[nField+1].strip()), 'limitDown': int(fields[nField+2].strip())}
-            nField+=3
-            zones.append(zone)
-    
-        zones = sorted(zones, key=lambda d: d['reqPos'])
-    
-        contract = RTlocalData.contractGetBySymbol(symbol)
-        gConId = contract['gConId']
-        posicion = RTlocalData.positionGetByGconId(gConId)
-        ordenes = RTlocalData.orderGetByGconId(gConId)
-    
-        ###############################
-        # Cuantas posiciones tengp
-        # Posiciones exec y ordenes remaining
-    
-        pos_n = posicion['pos_n']
-        
-        for orden in ordenes:
-            if orden['order'].action == 'SELL':
-                ratio = -1
-            else:
-                ratio = 1
-            if 'remaining' in orden['params']:
-                pos_rem = ratio * orden['order']['remaining']
-            else:
-                pos_rem = ratio * orden['order'].totalQuantity
-    
-        pos_tot = pos_n + pos_rem  # Las ya ejecutadas (posiciones) mas las ordenes remaining
-    
-        ###############################
-        # En que zona estoy segun posiciones (+ordenes)
-        # Asumo que está en orden
-    
-        current_zone = None
-        for zone in zones:
-            if pos_tot <= zone['reqPos']:
-                current_zone = zone
-                break
-    
-        ###########################
-        # Cuanto vale en el mercado:
-    
-        marketSell = contract['currentPrices']['SELL']
-        marketBuy = contract['currentPrices']['BUY']
-        marketlast = contract['currentPrices']['LAST']
-    
-        ###########################
-        # Decision Compra/Venta:
-    
-        shouldSell = False
-        shouldBuy = False
-    
-        if marketSell > zone['limitUp']:
-            shouldSell = True
-        if marketBuy < zone['limitDown']:
-            shouldBuy = True
-    
-        ############################
-        # Decidimos si crear y/o modificar ordenes
 
 
 
