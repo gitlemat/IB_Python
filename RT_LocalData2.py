@@ -1,15 +1,14 @@
 #from typing_extensions import Self
 from ibapi.contract import *
 from ibapi.order import *
-from ibapi.utils import floatToStr, longToStr
+from ibapi.utils import floatMaxString, longMaxString
 import strategies
 import pandasDB
 import logging
 import datetime
+import influxAPI
 
 logger = logging.getLogger(__name__)
-
-
 
 class DataLocalRT():
     # accountData_:
@@ -27,7 +26,7 @@ class DataLocalRT():
     #    contract: contrackObj de Ib
     #    dbPandas: puntero a la dbPandas
     #    fullLegData: Si tenemos los contratos de cada leg (solo si es BAG). 
-    #    contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'ratio': , 'action':, 'lSymbol':  },...]
+    #    contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'reqIdPnL': None, 'ratio': , 'action':, 'lSymbol':  },...]
     #    currentPrices: Precios actuales ({'BUY': 10, 'SELL': 10.2, 'LAST': 10.1})
     #    hasContractSymbols: Si ya tengo los HEJ3 para seguir los ticks. Necesito quer fulllegdata= True para poder pedirlos y tener esto a True.
     #
@@ -36,17 +35,21 @@ class DataLocalRT():
     #    contractId: gConId
     #    order: orderObj de IB
     #    params: Dict de params que se reciben como paramateros 
-    #    toPrint: Algo ha cambiado y hay que imprimir
+    #    toPrint: Algo ha cambiado y hay que imprimir o webFE
     #    toCancel: Orden que hay que cancelar
     # 
     # tickPrices_:
     #    Key: reqId ['12'] ---> {12: {'BID': 10, 'ASK': 10.1, 'LAST': 10.1, 'HIGH': 11, 'LOW': 9, 'OPEN':10.5, 'CLOSE': 10.2}}
-    
+    #
+    # pnl_:
+    #    Key: reqIdPnL ['11'] ---> {11: {'dailyPnL':dailyPnL, 'unrealizedPnL':unrealizedPnL, 'realizedPnL':realizedPnL}}
+    #
     def __init__(self):
         self.verboseBrief = False
         self.appObj_ = None
         self.wsServerInt_ = None
         self.strategies_ = None
+        self.influxIC_ = influxAPI.InfluxClient()
         #self.strategies_ = strategies.Strategies(self)
 
         self.accountData_ = {}
@@ -54,7 +57,8 @@ class DataLocalRT():
         self.contractList_ = []  # Directamente lista de contracts
         self.contractDict_ = {}  # Directamente dict de contracts
 
-        self.tickPrices_ = {}    # Key: reqId ['12'] ---> {12: {'price': 10, 'symbol': 'AAPL'}}
+        self.tickPrices_ = {}    # Key: reqId ['12'] ---> {12: {'BID': 10, 'ASK': 10.1, 'LAST': 10.1, 'HIGH': 11, 'LOW': 9, 'OPEN':10.5, 'CLOSE': 10.2}}
+        self.pnl_ = {}
 
         self.contractInconplete_ = False
 
@@ -66,8 +70,16 @@ class DataLocalRT():
 
     def executionAnalisys (self, data):
         #Podemos hacer más cosas, de momento solo informamos a las estrategias
-        self.strategies_.strategyIndexOrderExecuted(data)
-
+        contract = data['contractObj']
+        execution = data['executionObj']
+        logging.info ('Order Executed:')
+        logging.info ('  Symbol: %s (%s)', contract.symbol, contract.secType)
+        logging.info ('  ExecId: %s', execution.execId)
+        logging.info ('  OrderId/PermId: %s/%s', execution.orderId, execution.permId)
+        logging.info ('  Number/Price: %s at %s', execution.shares, execution.price)
+        logging.info ('  Cumulative: %s', execution.cumQty)
+        logging.info ('  Liquidity: %s',execution.lastLiquidity)
+        #self.strategies_.strategyIndexOrderExecuted(data)   # Esto entra a traves de la orden
 
         
     ########################################
@@ -83,6 +95,10 @@ class DataLocalRT():
         dictLocal = {}
         dictLocal[tag] = value
         self.accountData_.update (dictLocal)
+        dictLocal['accountId'] = account
+        self.accountData_.update (dictLocal)
+
+
 
     def accountSummary (self):
         summaryStr = ''
@@ -124,8 +140,8 @@ class DataLocalRT():
                 pos_min = None
                 # Busco las posiciones mínimas que tienen todos los legs.
                 # Hay que comprobar que son todas en el mismo sentodo (con la correcccion del ratio)
-                # contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'ratio': , 'action':, 'lSymbol':  },...]
-                logging.info("Compruebo BAG %s", contrato['fullSymbol'])
+                # contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'reqIdPnL': None, 'ratio': , 'action':, 'lSymbol':  },...]
+                logging.debug("Compruebo BAG %s", contrato['fullSymbol'])
 
                 for contractLegInfo in contrato['contractReqIdLegs']:
                     conId = contractLegInfo['conId']
@@ -144,10 +160,10 @@ class DataLocalRT():
                         pos_min = min ([pos_corrected, pos_min], key = abs)  # key=abs por si son negativol (BAG en SELL)
                     else: 
                         pos_min = 0 # No son del mismo signo, no nos vale
-                    logging.info("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
+                    logging.debug("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
                 # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
                 if pos_min != 0: # Hay algo
-                    logging.info("Actualizo BAG %s con esta variacion de positiones: %d", contrato['fullSymbol'], pos_min)
+                    logging.info("Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
                     avgPrice = 0
                     for contractLegInfo in contrato['contractReqIdLegs']:
                         conId = contractLegInfo['conId']
@@ -164,10 +180,10 @@ class DataLocalRT():
                             self.contractDict_[conId]['posAvgPrice'] = 0
 
                         logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
-                    #Finalmente, añado pos_min al BAG
+                    #Finalmente, pongo pos_min al BAG
                     if contrato['pos'] == None: # Inicializamos
                         contrato['pos'] = 0
-                    contrato['pos'] += int(pos_min)
+                    contrato['pos'] = int(pos_min)
                     contrato['posAvgPrice'] = avgPrice
 
     def positionDeleteAll (self):
@@ -180,7 +196,7 @@ class DataLocalRT():
         summaryStr = ''
         
         summaryStr = '[Posicion] - ' + self.contractDict_[gConId]['fullSymbol']
-        summaryStr += ', Qty: ' +  longToStr(self.contractDict_[gConId]['pos']) + ', AvgCost: ' + floatToStr(self.contractDict_[gConId]['posAvgPrice'])
+        summaryStr += ', Qty: ' +  longMaxString(self.contractDict_[gConId]['pos']) + ', AvgCost: ' + floatMaxString(self.contractDict_[gConId]['posAvgPrice'])
 
         summaryStr += ', ' + self.contractSummaryPricesOnly(gConId)
 
@@ -242,9 +258,50 @@ class DataLocalRT():
             self.tickPrices_[reqId] = prices
         
             if bChange:  # Solo con size
-                logging.info("Deberia actualizar valor")
+                logging.debug("Deberia actualizar valor")
                 self.contractUpdateTicks(reqId)
 
+    ########################################
+    # PnL Update
+    #   Key: reqIdPnL ['11'] ---> {11: {'dailyPnL':dailyPnL, 'unrealizedPnL':unrealizedPnL, 'realizedPnL':realizedPnL, 'pos': pos, 'value':value}}
+        
+    def pnlUpdate (self, data):
+        # data = {'reqId': reqId, 'pos': pos, 'dailyPnL':dailyPnL, 'unrealizedPnL':unrealizedPnL, 'realizedPnL':realizedPnL, 'value':value}
+        reqIdPnL = data['reqId']        
+        pnlType = data['pnlType']
+
+        logging.info ('PnL actualizado (req: %d):', reqIdPnL)
+        logging.info ('    dailyPnL: %d', data['dailyPnL'])
+        logging.info ('    realizedPnL: %d', data['realizedPnL'])
+        logging.info ('    unrealizedPnL: %d', data['unrealizedPnL'])
+        if pnlType == 'single':
+            logging.info ('    Pos: %d', data['pos'])
+            logging.info ('    Value: %d', data['value'])
+
+
+        pnl = {}
+        if reqIdPnL in self.pnl_:
+            pnl = self.pnl_[reqIdPnL]
+
+        pnl['pnlType'] = pnlType
+
+        bChange = False
+
+        for k,v in data.items():
+            if k not in ['reqId']: # no quiero usar este key
+                if k not in pnl:
+                    bChange = True
+                    pnl[k] = v
+                elif v != pnl[k]:
+                    bChange = True
+                    pnl[k] = v
+
+        self.pnl_[reqIdPnL] = pnl
+
+        if bChange:  # Solo con size
+            logging.debug("Deberia actualizar los PnL")
+            if pnlType == 'single':
+                self.contractUpdatePnL(reqIdPnL)
 
     ########################################
     # contracts
@@ -281,10 +338,15 @@ class DataLocalRT():
         contrato['currentPrices']['SELL_SIZE'] = None
         contrato['currentPrices']['LAST_SIZE'] = None
         contrato['currentPrices']['updated'] = False # Para saber si hay que actualizar alguna presentacion de precios (web)
+        contrato['pnl'] = {}
+        contrato['pnl']['dailyPnL'] = None
+        contrato['pnl']['unrealizedPnL'] = None
+        contrato['pnl']['realizedPnL'] = None
+        contrato['pnl']['value'] = None
+        contrato['pnl']['updated'] = None
         contrato['hasContractSymbols'] = False
 
         self.contractDict_[gConId] = contrato    
-
 
     def contratoReturnDictAll(self):
         return self.contractDict_
@@ -293,12 +355,12 @@ class DataLocalRT():
         missing = False
 
         for gConId, contrato in self.contractDict_.items():
-            if self.contractCheckIfIncompleteSingle(contrato):    # Si no tiene los legs, upstream lo tiene que arreglar
+            if self.contractCheckIfIncompleteSingle(contrato):    # 1.- Si no tiene los legs, upstream lo tiene que arreglar
                 missing = True
-            elif contrato['hasContractSymbols']:                  # Si tiene los symbols, asegurar que estan subscritos a tick
-                self.contractSubscribeIfNeeded(contrato)  
-            else:                                                 # Si no tiene symbols, se buscan
+            elif not contrato['hasContractSymbols']:              # 2.- Si no tiene symbols, se buscan
                 self.contractSetSymbolsIfNeeded(contrato)
+            else:                                                 # 3.- Si tiene los symbols, asegurar que estan subscritos a tick
+                self.contractSubscribeIfNeeded(contrato)
         self.contractInconplete_ = missing            
         return missing
 
@@ -364,22 +426,38 @@ class DataLocalRT():
         for gConId, contrato in self.contractDict_.items():
             for contractReqIdLeg in contrato['contractReqIdLegs']:
                 contractReqIdLeg['reqId'] = None
+                contractReqIdLeg['reqIdPnL'] = None  
         for reqId in self.tickPrices_:
             self.appObj_.cancelMktDataGen (reqId)
         self.tickPrices_ = {}
+        for reqId in self.pnl_:
+            self.appObj_.cancelPnLSingle (reqId)
+        self.pnl_ = {}
 
     def contractSubscribeIfNeeded (self, contrato):
         for contractReqIdLeg in contrato['contractReqIdLegs']:
             contractReqIdLeg['reqId'] = self.contractSubscribeTickPrice (contractReqIdLeg)
+            contractReqIdLeg['reqIdPnL'] = self.contractSubscribePnL (contractReqIdLeg)
 
     def contractSetSymbolsIfNeeded(self, contrato):
         contrato['contractReqIdLegs'] = self.contractGetSymbolsIfFullLegsDataByGconId(contrato['gConId'])
-        # contrato['contractReqIdLegs'] --> [{'conId': , 'reqId': None, 'ratio': , 'action': , 'lSymbol': },...]
+        # contrato['contractReqIdLegs'] --> [{'conId': , 'reqId': None, 'reqIdPnL':None, 'ratio': , 'action': , 'lSymbol': },...]
         if len(contrato['contractReqIdLegs']) > 0:
             contrato['hasContractSymbols'] = True
             lSymbol = self.contractSummaryBrief (contrato['gConId'])     
             contrato['fullSymbol'] = lSymbol      
-            contrato['dbPandas'] = pandasDB.dbPandas (lSymbol)           # No se puede hasta que no tenga todos los simbolos
+            contrato['dbPandas'] = pandasDB.dbPandas (lSymbol, self.influxIC_)           # No se puede hasta que no tenga todos los simbolos
+            # Pillo los ultimos precios guardados en DB
+            logging.info ('Pido precios de BD para %s', lSymbol)
+            lastPrices = contrato['dbPandas'].dbGetLastPrices()
+            logging.info ('    LAST: %s', lastPrices['LAST'])
+            contrato['currentPrices']['BUY'] = lastPrices['ASK']
+            contrato['currentPrices']['SELL'] = lastPrices['BID']
+            contrato['currentPrices']['LAST'] = lastPrices['LAST']
+            contrato['currentPrices']['BUY_SIZE'] = lastPrices['ASK_SIZE']
+            contrato['currentPrices']['SELL_SIZE'] = lastPrices['BID_SIZE']
+            contrato['currentPrices']['LAST_SIZE'] = lastPrices['LAST_SIZE']
+
 
     def contractUpdateTicks(self, reqId):
         # Tenemos por un lado los contratos BAG
@@ -418,27 +496,33 @@ class DataLocalRT():
                     if conReqLeg['action'] == 'BUY':
                         price2sell = price2sell + self.tickPrices_[legReqId]['BID'] * conReqLeg['ratio']
                         price2buy = price2buy + self.tickPrices_[legReqId]['ASK'] * conReqLeg['ratio']
-                        if 'LAST' in self.tickPrices_[legReqId]:
-                            price2last = price2last + self.tickPrices_[legReqId]['LAST'] * conReqLeg['ratio']
+                        price2last = price2last + self.tickPrices_[legReqId]['LAST'] * conReqLeg['ratio']
+                        if size2sell == None:
+                            self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio']
+                        else:
+                            size2sell = min(size2sell, self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio'])
+                        if size2buy == None:
+                            self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio']
+                        else:
+                            size2buy = min(size2buy, self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio'])
                     if conReqLeg['action'] == 'SELL':
                         price2sell = price2sell - self.tickPrices_[legReqId]['ASK'] * conReqLeg['ratio']
                         price2buy = price2buy - self.tickPrices_[legReqId]['BID'] * conReqLeg['ratio']
-                        if 'LAST' in self.tickPrices_[legReqId]:
-                            price2last = price2last - self.tickPrices_[legReqId]['LAST'] * conReqLeg['ratio']
-                    if size2sell == None:
-                        size2sell = self.tickPrices_[legReqId]['BID_SIZE']
-                    else:
-                        size2sell = min(size2sell, self.tickPrices_[legReqId]['BID_SIZE'])
-                    if size2buy == None:
-                        size2buy = self.tickPrices_[legReqId]['ASK_SIZE']
-                    else:
-                        size2buy = min(size2buy, self.tickPrices_[legReqId]['ASK_SIZE'])
-
-                    if 'LAST_SIZE' in self.tickPrices_[legReqId]:
-                        if size2last == None:
-                            size2last = self.tickPrices_[legReqId]['LAST_SIZE']
+                        price2last = price2last - self.tickPrices_[legReqId]['LAST'] * conReqLeg['ratio']
+                        if size2sell == None:
+                            self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio']
                         else:
-                            size2last = min(size2last, self.tickPrices_[legReqId]['LAST_SIZE'])
+                            size2sell = min(size2sell, self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio'])
+                        if size2buy == None:
+                            self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio']
+                        else:
+                            size2buy = min(size2buy, self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio'])
+                
+                    if size2last == None:
+                        size2last = self.tickPrices_[legReqId]['LAST_SIZE']
+                    else:
+                        size2last = min(size2last, self.tickPrices_[legReqId]['LAST_SIZE'])
+                '''
                 if allReady == False:
                     price2sell = None
                     price2buy = None
@@ -446,27 +530,28 @@ class DataLocalRT():
                     size2buy = None
                     size2sell = None
                     size2last = None
-
-                if contrato['currentPrices']['BUY'] != price2buy:
-                    contrato['currentPrices']['BUY'] = price2buy
-                    contrato['currentPrices']['updated'] = True
-                if contrato['currentPrices']['SELL'] != price2sell:
-                    contrato['currentPrices']['SELL'] = price2sell
-                    contrato['currentPrices']['updated'] = True
-                if contrato['currentPrices']['LAST'] != price2last:
-                    contrato['currentPrices']['LAST'] = price2last
-                    contrato['currentPrices']['updated'] = True
-                if contrato['currentPrices']['BUY_SIZE'] != size2buy:
-                    contrato['currentPrices']['BUY_SIZE'] = size2buy
-                    contrato['currentPrices']['updated'] = True
-                if contrato['currentPrices']['SELL_SIZE'] != size2sell:
-                    contrato['currentPrices']['SELL_SIZE'] = size2sell
-                    contrato['currentPrices']['updated'] = True
-                if contrato['currentPrices']['LAST_SIZE'] != size2last:
-                    contrato['currentPrices']['LAST_SIZE'] = size2last
-                    contrato['currentPrices']['updated'] = True
-
+                '''
                 if allReady != False:
+                    if contrato['currentPrices']['BUY'] != price2buy:
+                        contrato['currentPrices']['BUY'] = price2buy
+                        contrato['currentPrices']['updated'] = True
+                    if contrato['currentPrices']['SELL'] != price2sell:
+                        contrato['currentPrices']['SELL'] = price2sell
+                        contrato['currentPrices']['updated'] = True
+                    if contrato['currentPrices']['LAST'] != price2last:
+                        contrato['currentPrices']['LAST'] = price2last
+                        contrato['currentPrices']['updated'] = True
+                    if contrato['currentPrices']['BUY_SIZE'] != size2buy:
+                        contrato['currentPrices']['BUY_SIZE'] = size2buy
+                        contrato['currentPrices']['updated'] = True
+                    if contrato['currentPrices']['SELL_SIZE'] != size2sell:
+                        contrato['currentPrices']['SELL_SIZE'] = size2sell
+                        contrato['currentPrices']['updated'] = True
+                    if contrato['currentPrices']['LAST_SIZE'] != size2last:
+                        contrato['currentPrices']['LAST_SIZE'] = size2last
+                        contrato['currentPrices']['updated'] = True
+
+                
                     # Se actualiza la DB para el contrato['gConId'] con estos datos:
                     lSymbol = contrato['fullSymbol']
                     timestamp = datetime.datetime.now()
@@ -475,6 +560,86 @@ class DataLocalRT():
                                  'BID_SIZE': size2sell, 'ASK_SIZE':size2buy, 'LAST_SIZE':size2last
                                  }
                     contrato['dbPandas'].dbUpdateAdd(data_args)
+
+    def contractUpdatePnL(self, reqIdPnL):
+        # Tenemos por un lado los contratos BAG
+        #  y luego hay que actualizar los legs por si alguno tiene este reqId
+        # Los que no son BAG tambien tienren el contractReqIdLegs con 1 solo entry, por lo que se buscan los dos igual
+        # reqIdPnL ['11'] ---> {11: {'dailyPnL':dailyPnL, 'unrealizedPnL':unrealizedPnL, 'realizedPnL':realizedPnL, 'pos': pos, 'value':value}}
+
+        for gConId, contrato in self.contractDict_.items():
+            updated = False
+            for conReqLeg in contrato['contractReqIdLegs']:
+                if conReqLeg['reqIdPnL'] == reqIdPnL:
+                    updated = True
+            if updated:
+                dailyPnL = 0
+                unrealizedPnL = 0
+                realizedPnL =  0
+                value = 0
+
+                allReady = True
+
+                for conReqLeg in contrato['contractReqIdLegs']:       
+                    if conReqLeg['reqIdPnL'] == None:
+                        allReady = False            # No todos los legs estan subscritos
+                        break
+                    legReqId = conReqLeg['reqIdPnL']
+                    if not legReqId in self.pnl_:   # Está subscrito pero no hemos recibido el PnL de este leg aun
+                        allReady = False
+                        break
+                    '''
+                    if conReqLeg['action'] == 'BUY':
+                        ratio = conReqLeg['ratio']
+                    else:
+                        ratio = (-1) * conReqLeg['ratio']  # Esto hay que revisarlo cuando salga. A saber si hace falta
+                    '''
+                    if dailyPnL != None:   # Si es None es que no están todos
+                        if not 'dailyPnL' in self.pnl_[legReqId]:  
+                            dailyPnL = None   
+                        else:
+                            dailyPnL += self.pnl_[legReqId]['dailyPnL']
+
+                    if realizedPnL != None:   # Si es None es que no están todos
+                        if not 'realizedPnL' in self.pnl_[legReqId]:  
+                            realizedPnL = None   
+                        else:
+                            realizedPnL += self.pnl_[legReqId]['realizedPnL']
+
+                    if unrealizedPnL != None:   # Si es None es que no están todos
+                        if not 'unrealizedPnL' in self.pnl_[legReqId]:  
+                            unrealizedPnL = None   
+                        else:
+                            unrealizedPnL += self.pnl_[legReqId]['unrealizedPnL']
+
+                    if value != None:   # Si es None es que no están todos
+                        if not 'value' in self.pnl_[legReqId]:  
+                            value = None   
+                        else:
+                            value += self.pnl_[legReqId]['value']
+
+                if allReady != False:
+                    if contrato['pnl']['dailyPnL'] != dailyPnL:
+                        contrato['pnl']['dailyPnL'] = dailyPnL
+                        contrato['pnl']['updated'] = True
+                    if contrato['pnl']['realizedPnL'] != realizedPnL:
+                        contrato['pnl']['realizedPnL'] = realizedPnL
+                        contrato['pnl']['updated'] = True
+                    if contrato['pnl']['unrealizedPnL'] != unrealizedPnL:
+                        contrato['pnl']['unrealizedPnL'] = unrealizedPnL
+                        contrato['pnl']['updated'] = True
+                    if contrato['pnl']['value'] != value:
+                        contrato['pnl']['value'] = value
+                        contrato['pnl']['updated'] = True
+
+                    # Se actualiza la DB para el contrato['gConId'] con estos datos:
+                    lSymbol = contrato['fullSymbol']
+                    timestamp = datetime.datetime.now()
+                    data_args = {'gConId': gConId, 'Symbol':lSymbol, 'timestamp':timestamp, 
+                                 'dailyPnL': dailyPnL, 'realizedPnL':realizedPnL, 'unrealizedPnL':unrealizedPnL
+                                 }
+                    contrato['dbPandas'].dbUpdateAdd(data_args)
+                   
 
     def contractGetCurrentPricesPerGconId (self, gConId):
         if gConId in self.contractDict_:
@@ -534,6 +699,25 @@ class DataLocalRT():
             contrato1 = self.appObj_.contractSTKcreate(code)
         reqId = self.appObj_.reqMktDataGen (contrato1)  # A la API no se le puede mandar contrato, sino uno nuevo sin conId
         contractReqIdLeg['reqId'] = reqId
+        return reqId
+
+    def contractSubscribePnL(self, contractReqIdLeg): 
+        # contrato['contractReqIdLegs'] --> [{'conId': , 'reqId': None, 'reqIdPnL': None, 'ratio': , 'action': , 'lSymbol': },...]
+        # El contractReqIdLeg es un leg de un contrato. Puede que coincida con el de otro, por ejemplo:
+        #   Contrato HEV2-HEZ2 tiene dos legs, y cada una de ellas va a coindir con el del contrato HEV2 y HEZ2
+
+        # Busco a ver si hay un contrato con un leg igual que ya tenga reqId:
+        for gConId, contratoTemp in self.contractDict_.items():
+            for contractReqIdLegTemp in contratoTemp['contractReqIdLegs']:
+                if (contractReqIdLegTemp['conId'] == contractReqIdLeg['conId']):
+                    if 'reqIdPnL' in contractReqIdLegTemp and contractReqIdLegTemp['reqIdPnL'] != None:
+                        return contractReqIdLegTemp['reqIdPnL']
+        # Si no hay ninguno, tengo que crear la subscripcion
+
+        accountId = self.accountData_['accountId']
+
+        reqId = self.appObj_.reqPnLSingle (accountId, contractReqIdLeg['conId'])
+        contractReqIdLeg['reqIdPnL'] = reqId
         return reqId
 
     def contractGetSymbolsIfFullLegsDataByGconId (self, gConId):
@@ -605,11 +789,11 @@ class DataLocalRT():
         priceSell = 'Na'
         priceLast = 'Na'
         if not prices['BUY'] is None:
-            priceBuy = floatToStr(prices['BUY'])
+            priceBuy = floatMaxString(prices['BUY'])
         if not prices['SELL'] is None:
-            priceSell = floatToStr(prices['SELL'])
+            priceSell = floatMaxString(prices['SELL'])
         if not prices['LAST'] is None:
-            priceLast = floatToStr(prices['LAST'])
+            priceLast = floatMaxString(prices['LAST'])
         
         summaryStr = 'Price (BUY/SELL/LAST): ' + priceBuy + '/' + priceSell + '/' + priceLast
 
@@ -798,19 +982,32 @@ class DataLocalRT():
         for orden in self.orderList_:
             if orden['permId'] == localPermId:
                 exists = True
-                try:
-                    if not contractObj=="":
-                        orden['contractId'] = self.contractGetGconId(contractObj)
-                    if not orderObj=="":
-                        orden['order'] = orderObj
-                    if not paramsDict=="":
-                        orden['params'].update(paramsDict)
-                    #orden['toPrint'] = True
-                    str_o = self.orderSummary(orden)
+                bChanged = False
+                if not contractObj=="" and contractObj != None:
+                    orden['contractId'] = self.contractGetGconId(contractObj)
+                if not orderObj=="" and orderObj != None:
+                    orden['order'] = orderObj
+                if not paramsDict=="" and paramsDict != None:
+                    #Comprobar si ha cambiado algo
+                    if orden['params'] != None:
+                        if 'status' in orden['params'] and 'status' in paramsDict and orden['params']['status'] != paramsDict['status']:
+                            bChanged = True
+                        if 'filled' in orden['params'] and 'filled' in paramsDict and orden['params']['filled'] != paramsDict['filled']:
+                            bChanged = True
+                        if 'remaining' in orden['params'] and 'remaining' in paramsDict and orden['params']['remaining'] != paramsDict['remaining']:
+                            bChanged = True
+                        if 'lastFillPrice' in orden['params'] and 'lastFillPrice' in paramsDict and orden['params']['lastFillPrice'] != paramsDict['lastFillPrice']:
+                            bChanged = True
+                    orden['params'].update(paramsDict)
+                orden['toPrint'] = True
+                str_o = self.orderSummary(orden)
+                if bChanged:
                     logging.info (str_o)
-                    self.orderCheckIfRemove(orden)
-                except:
-                    logging.error ('Error actualizando orden')
+                else:
+                    logging.debug (str_o)
+
+                self.orderCheckIfRemove(orden)
+
                 break
                 
         if not exists:
@@ -823,11 +1020,30 @@ class DataLocalRT():
     
     def orderCheckIfRemove (self, orden):
         # Despues de un update, mirar si hay que borrarla
+        return
         if 'status' in orden['params']:
             if orden['params']['status'] == 'Cancelled':
                 self.orderList_.remove(orden)
             if orden['params']['status'] == 'Filled':
                 self.orderList_.remove(orden)
+
+    def orderGetStatusbyOrderId (self, orderId):
+        for orden in self.orderList_: 
+            if orden['order'].orderId == orderId:
+                if 'status' in orden['params']:
+                    return orden['params']['status']
+                break
+        return None
+
+    def orderGetStatusbyOrderPermId (self, orderPermId):
+        if orderPermId == None:
+            return None
+        for orden in self.orderList_: 
+            if int(orden['permId']) == int(orderPermId):
+                if 'status' in orden['params']:
+                    return orden['params']['status']
+                break
+        return None
 
     def orderGetPermId (self, tempId, orderObj, paramsDict):
         
@@ -849,6 +1065,7 @@ class DataLocalRT():
         for orden in self.orderList_: 
             if orden['order'].orderId == orderId:
                 return orden
+        return None
 
     def orderGetByGconId (self, gConId):
         ordenes = []
@@ -864,6 +1081,8 @@ class DataLocalRT():
         self.orderList_ = []
 
     def orderCheckIfExistsByOrderPermId (self, orderPermId):
+        if orderPermId == None:
+            return False
         for order in self.orderList_: 
             if int(order['permId']) == int(orderPermId):
                 return True
@@ -939,7 +1158,7 @@ class DataLocalRT():
         summaryStr += self.contractSummaryFull(orden['contractId'])
         summaryStr += '--------------------------------------\n'
 
-        orden['toPrint'] = False
+        #orden['toPrint'] = False
 
         return summaryStr
         
@@ -968,7 +1187,7 @@ class DataLocalRT():
         summaryStr += ', ' + self.contractSummaryPricesOnly(orden['contractId'])
 
         summaryStr += '\n'
-        orden['toPrint'] = False
+        #orden['toPrint'] = False
                 
         return summaryStr
                 

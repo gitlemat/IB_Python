@@ -3,7 +3,6 @@ from ibapi.client import *
 from ibapi.contract import *
 from ibapi.order import *
 from ibapi.order_condition import Create, OrderCondition
-from ibapi.utils import longToStr
 from ibapi.utils import iswrapper
 from ibapi import utils
 from ibapi.account_summary_tags import *
@@ -139,7 +138,7 @@ class IBI_App(EWrapper, EClient):
     def tickPrice(self, reqId, tickType, price, attrib):
         ## Overriden method EWrapper
         #print('The current ask price (',tickType,') for reqid', reqId, 'is: ', price)
-        logging.info ('[TICK] - The current ask price (%d) for reqid %d is: %.4f', tickType, reqId, price)  
+        #logging.info ('[TICK] - The current ask price (%d) for reqid %d is: %.4f', tickType, reqId, price)  
         data = {'reqId': reqId, 'tickType': tickType, 'price': price, 'attrib':attrib }
         queueEntry = {'type':'tick', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
@@ -147,7 +146,7 @@ class IBI_App(EWrapper, EClient):
 
     @iswrapper
     def tickSize(self, reqId: TickerId, tickType: TickType, size: Decimal):
-        logging.info ('[TICK] - The current size (%d) for reqid %d is: %d', tickType, reqId, size) 
+        #logging.info ('[TICK] - The current size (%d) for reqid %d is: %d', tickType, reqId, size) 
         #super().tickSize(reqId, tickType, size)
         data = {'reqId': reqId, 'tickType': tickType, 'size': size}
         queueEntry = {'type':'tick', 'data': data}
@@ -158,7 +157,7 @@ class IBI_App(EWrapper, EClient):
         ## overriden method
 
         ## value is a string, make it a float, and then in the parent class will be resolved to int if size
-        logging.info ('[TICK] - The string tick (%d) for reqid %d is: %s', tickType, reqId, value) 
+        #logging.info ('[TICK] - The string tick (%d) for reqid %d is: %s', tickType, reqId, value) 
         data = {'reqId': reqId, 'tickType': tickType, 'value': value}
         queueEntry = {'type':'tick', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
@@ -166,7 +165,7 @@ class IBI_App(EWrapper, EClient):
     @iswrapper
     def tickGeneric(self, reqId, tickType, value):
         ## overriden method
-        logging.info ('[TICK] - The generic tick (%d) for reqid %d is: %d', tickType, reqId, value) 
+        #logging.info ('[TICK] - The generic tick (%d) for reqid %d is: %d', tickType, reqId, value) 
         data = {'reqId': reqId, 'tickType': tickType, 'valueGen': value}
         queueEntry = {'type':'tick', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
@@ -225,12 +224,6 @@ class IBI_App(EWrapper, EClient):
         data = {'executionObj': execution, 'contractObj': contract}
         queueEntry = {'type':'execution', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
-        logging.info ('Order Executed (reqId: %d )',  reqId)
-        logging.info ('  Symbol: %s (%s)', contract.symbol, contract.secType)
-        logging.info ('  ExecId: %s', execution.execId)
-        logging.info ('  OrderId/PermId: %s/%s', execution.orderId, execution.permId)
-        logging.info ('  Number/Price: %s at %s', execution.shares, execution.price)
-        logging.info ('  Liquidity: %s',execution.lastLiquidity)
    
     @iswrapper
     def execDetailsEnd(self, reqId: int):
@@ -240,7 +233,7 @@ class IBI_App(EWrapper, EClient):
     @iswrapper 
     def commissionReport(self, commissionReport: CommissionReport):
         super().commissionReport(commissionReport)
-        logging.info("CommissionReport: %s", commissionReport)
+        #logging.info("CommissionReport: %s", commissionReport) Ya lo escribe wrapper.py
 
     @iswrapper
     def position(self, account: str, contract: Contract, position: Decimal, avgCost: float):
@@ -325,12 +318,45 @@ class IBI_App(EWrapper, EClient):
             self.semaforo_requestingAccount = True
             super().reqAccountSummary(reqId, group, tags)
         return True
+
+    @iswrapper 
+    def pnlSingle	(self, reqId, pos, dailyPnL, unrealizedPnL, realizedPnL, value ):
+        data = {'reqId': reqId, 'pnlType': 'single', 'pos': pos, 'dailyPnL':dailyPnL, 'unrealizedPnL':unrealizedPnL, 'realizedPnL':realizedPnL, 'value':value}
+        queueEntry = {'type':'pnl', 'data': data}
+        self.CallbacksQueue_.put(queueEntry)	
+
+    @iswrapper 
+    def pnl	(self, reqId, dailyPnL, unrealizedPnL, realizedPnL ):
+        data = {'reqId': reqId, 'pnlType': 'account', 'dailyPnL':dailyPnL, 'unrealizedPnL':unrealizedPnL, 'realizedPnL':realizedPnL}
+        queueEntry = {'type':'pnl', 'data': data}
+        self.CallbacksQueue_.put(queueEntry)
+
+    @iswrapper 
+    def reqPnL (self, accountId):
+        reqId = self.reqIdNew()
+        modelCode = ""
+        super().reqPnL(reqId, accountId, modelCode)
+        return reqId
+
+    @iswrapper 
+    def reqPnLSingle (self, accountId, conId):
+        reqId = self.reqIdNew()
+        modelCode = ""
+        super().reqPnLSingle(reqId, accountId, modelCode, conId)
+        return reqId
+
+    @iswrapper
+    def cancelPnLSingle (self, reqId):
+        super().cancelPnLSingle(reqId)
+        self.reqIdDelete(self, reqId)   # Aqué o hay callback?
         
     def get_contract_details(self, contract):
         reqId = self.reqIdNew()
         self.contract_details[reqId] = None
         self.contract_details_end_flag[reqId] = False
         resp = None
+
+        logging.info ('Details de este contrato: %s', contract)
         self.reqContractDetails(reqId, contract)
         #Error checking loop - breaks from loop once contract details are obtained
         
@@ -354,7 +380,18 @@ class IBI_App(EWrapper, EClient):
         
         #Return contract details otherwise
         return resp
-        
+
+    #Identificar el exchange
+    def getFUTExchangeBySymbol(self, symbol):
+        exchange = ''    
+        if symbol == 'NG':
+            exchange = 'NYMEX'    
+        elif symbol == 'LE':
+            exchange = 'CME'   
+        else:
+            exchange = 'CME'   
+        return exchange
+
     #Function to create a Future Spread in GLOBEX by symbol 
     def letter2Month (self, letter):
         letterDict = {}
@@ -435,7 +472,7 @@ class IBI_App(EWrapper, EClient):
         contract1.symbol = symbol
         contract1.secType = 'FUT'
         contract1.currency = 'USD'
-        contract1.exchange = "GLOBEX"
+        contract1.exchange = self.getFUTExchangeBySymbol(symbol)
         contract1.lastTradeDateOrContractMonth = date1
         
         return contract1
@@ -443,6 +480,8 @@ class IBI_App(EWrapper, EClient):
     def contractFUTcreate (self, spreadCode):
         # El codigo de contrato/spread/butterfly se convierte a lista de dict que tiene codigo y action
         contractcodeList = self.contractCode2list(spreadCode)
+
+        logging.info ('Creando contrato con %s', contractcodeList)
 
         if len (contractcodeList) < 1:
             return None
@@ -453,7 +492,6 @@ class IBI_App(EWrapper, EClient):
         contract = Contract()
         contract.secType = 'BAG'
         contract.currency = 'USD'
-        contract.exchange = "GLOBEX"
         contract.comboLegs = []
 
         tLocalSymbol = ''
@@ -481,7 +519,7 @@ class IBI_App(EWrapper, EClient):
             leg1 = ComboLeg()
             leg1.conId = contractN.conId
             leg1.ratio = contratoDict['ratio']
-            leg1.exchange = "GLOBEX"
+            leg1.exchange = self.getFUTExchangeBySymbol(contractN.symbol)
             leg1.action = contratoDict['action']
             contract.comboLegs.append(leg1)
 
@@ -491,6 +529,10 @@ class IBI_App(EWrapper, EClient):
             contract.symbol = tLocalSymbol[1:]   # el primero es un '.'
         else:
             contract.symbol = prevSymbol
+
+        contract.exchange = self.getFUTExchangeBySymbol(contract.symbol)
+
+        logging.info ('Creado contrato: %s', contract)
 
         #self.RTLocalData_.contractUpdate(contract)   No lo mando porque aun no tengo el conID. Cuando IB me de el printado de la orden se añlade
 
@@ -509,10 +551,15 @@ class IBI_App(EWrapper, EClient):
         if oType == 'LMTGTC':
             order.orderType = 'LMT'
             order.tif = 'GTC'
+        elif oType == 'STPGTC':
+            order.orderType = 'STP'
+            order.tif = 'GTC'
         else:
             order.orderType = oType
         if order.orderType == 'LMT':
             order.lmtPrice = lmtPrice
+        if order.orderType == 'STP':
+            order.auxPrice = lmtPrice
         
         return order  
         
@@ -522,7 +569,7 @@ class IBI_App(EWrapper, EClient):
         logging.info ("    Symbol: %s", contract_symbol)
         logging.info ("    Action: %s", action)
         logging.info ("    oType: %s", oType)
-        logging.info ("    lmtPrice: %s", lmtPrice)
+        logging.info ("    auxPrice/lmtPrice: %s", lmtPrice)
         logging.info ("    qty: %s", qty)
         newReq = None
         if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
@@ -552,8 +599,17 @@ class IBI_App(EWrapper, EClient):
                 logging.error ("Error creando el contrato para la orden")
                 return None
 
+        if example_contract == None:
+            logging.error ("Error creando el contrato para la orden. Contrato vacio")
+            return None
+
         try:
             newReq = self.placeOrder (example_contract, example_order)
+            #newReq = None
+            #Aqui es mejor crear la orden en Local_RT por si me llega la ejecución antes que la confirmacion (cosas de IB)
+            data = {'orderId': newReq, 'contractObj': example_contract, 'orderObj': example_order, 'paramsDict':'' }
+            queueEntry = {'type':'order', 'data': data}
+            self.CallbacksQueue_.put(queueEntry)
         except:
             logging.error ("Error emplazando la orden")
             return None
@@ -567,7 +623,8 @@ class IBI_App(EWrapper, EClient):
         return (self.nextorderId - 1)
 
     def cancelOrderByOrderId (self, orderId):
-        super().cancelOrder (orderId)
+        manualOrderCancelTime = ''
+        super().cancelOrder (orderId, manualOrderCancelTime)
         return True
 
     def cancelOrderAll (self):

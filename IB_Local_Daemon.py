@@ -16,6 +16,7 @@ import wsServer
 import strategies
 import webFE
 
+
 loop_timer = 0.1
 refreshFE_timer = 1
 
@@ -33,7 +34,8 @@ def SetupLogger():
 
     # logging.basicConfig( level=logging.DEBUG,
     #                    format=recfmt, datefmt=timefmt)
-    logging.basicConfig(filename=time.strftime("log/ibapi_sic.%y%m%d.log"),
+    filenameToday = "log/ibapi_sic.%y%m%d.log"
+    logging.basicConfig(filename=time.strftime(filenameToday),
                         filemode="a",
                         level=logging.INFO,
                         format=recfmt, datefmt=timefmt)
@@ -62,6 +64,10 @@ def main():
     
     
     SetupLogger()
+    logging.info ('')
+    logging.info ('')
+    logging.info ('')
+    logging.info ('')
     logging.info ("###########################################")
     logging.info ('# IB RODSIC (c) 2022  ')
     logging.info ('#')
@@ -163,13 +169,13 @@ def main():
             if app.initOrders_ == False:  # Conectado pero sin ordenes
                 app.initReady_ = False
                 # Primero hay que borrar la lista actual por si se han cerrado o cancelado ordenes
-                globales.G_RTlocalData_.orderDeleteAll()
+                #globales.G_RTlocalData_.orderDeleteAll()
                 app.reqAllOpenOrders()
                 continue # Que no continue si initOrders_ == False
             if app.initPositions_ == False:
                 app.initReady_ = False
                 # Primero hay que borrar la lista actual por si se han cerrado o cancelado ordenes
-                globales.G_RTlocalData_.positionDeleteAll()
+                #globales.G_RTlocalData_.positionDeleteAll()
                 app.reqPositions()
                 continue # Que no continue si initPositions_ == False
     
@@ -179,8 +185,6 @@ def main():
                 app.initReady_ = False
                 globales.G_RTlocalData_.contractReqDetailsAllMissing()
                 continue
-
-            strategyIns.strategyIndexCheckAll() # Compruebo las strategias
 
             if app.initReady_ == False:         # Si aqui está False, es que hemos recuperado
                 app.initReady_ = True             # Si llegamos aquí es que todo bien
@@ -192,16 +196,18 @@ def main():
                     globales.G_RTlocalData_.executionAnalisys (callbackItem['data'])
                 if callbackItem['type'] == 'tick':
                     globales.G_RTlocalData_.tickUpdatePrice (callbackItem['data'])
+                if callbackItem['type'] == 'pnl':
+                    globales.G_RTlocalData_.pnlUpdate (callbackItem['data'])
                 if callbackItem['type'] == 'order':
-                    order = callbackItem['data']['orderObj']
                     globales.G_RTlocalData_.orderUpdate(callbackItem['data'])
                     # Añadir algo que actualizar ordenes en Strategy
-                    if not order=="":
-                        strategyIns.strategyIndexOrderUpdate (order)
+                    strategyIns.strategyIndexOrderUpdate (callbackItem['data'])
                 if callbackItem['type'] == 'position':
                     globales.G_RTlocalData_.positionUpdate (callbackItem['data'])
                 if callbackItem['type'] == 'account':
                     globales.G_RTlocalData_.accountTagUpdate(callbackItem['data'])
+
+            strategyIns.strategyIndexCheckAll() # Compruebo las strategias
 
 
     except KeyboardInterrupt:

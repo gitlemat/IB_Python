@@ -52,8 +52,8 @@ class wsServer:
         secType = cmd.split(' ')[1]
         errorcmd = False
 
-        if secType == 'FUT' or secType == 'STK' :
-            print (cmd)
+        if secType == 'FUT' or secType == 'STK' or secType == 'BAG' :
+            #print (cmd)
             response = ''
             # orden secType action symb type min_val qty
             # orden FUT     SELL   APPL LMT  1.23    2
@@ -103,9 +103,9 @@ class wsServer:
                     else:
                         response = '202 Cancelacion de todas las ordenes Lanzada'
                 else:
-                    result = self.LocalRT_.orderCancelByOrderId (orderId)
+                    
                     try:
-                        pass
+                        result = self.LocalRT_.orderCancelByOrderId (orderId)
                     except:
                         response = '503 Error al cancelar'
                     else:

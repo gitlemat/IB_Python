@@ -92,3 +92,38 @@ CommissionReport. ExecId: 00012ec5.631ce897.01.01, Commission: 1.003692, Currenc
                 html.Div(children=response),
             ]
         )
+
+
+IB_API_Client.py:227 Order Executed (reqId: -1 )
+IB_API_Client.py:228   Symbol: HE (BAG)
+IB_API_Client.py:229   ExecId: 000130e8.6359d975.01.01
+IB_API_Client.py:230   OrderId/PermId: 339/1589234227
+IB_API_Client.py:231   Number/Price: 1.0 at -1.575
+IB_API_Client.py:232   Liquidity: 1
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529845056: 556236475,HE,FUT,20230814,0.0,,40000,,,USD,HEQ3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41170.0}
+IB_API_Client.py:227 Order Executed (reqId: -1 )
+IB_API_Client.py:228   Symbol: HE (FUT)
+IB_API_Client.py:229   ExecId: 000130e8.6359d975.02.01
+IB_API_Client.py:230   OrderId/PermId: 339/1589234227
+IB_API_Client.py:231   Number/Price: 1.0 at 102.925
+IB_API_Client.py:232   Liquidity: 1
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658515177040: 544436082,HE,FUT,20230717,0.0,,40000,,,USD,HEN3,HE,False,,combo:, 'position': -2.0, 'avgCost': 41550.0}
+IB_API_Client.py:227 Order Executed (reqId: -1 )
+IB_API_Client.py:228   Symbol: HE (FUT)
+IB_API_Client.py:229   ExecId: 000130e8.6359d975.03.01
+IB_API_Client.py:230   OrderId/PermId: 339/1589234227
+IB_API_Client.py:231   Number/Price: 2.0 at 103.875
+IB_API_Client.py:232   Liquidity: 1
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658531971024: 532513468,HE,FUT,20230614,0.0,,40000,,,USD,HEM3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41300.0}
+IB_API_Client.py:227 Order Executed (reqId: -1 )
+IB_API_Client.py:228   Symbol: HE (FUT)
+IB_API_Client.py:229   ExecId: 000130e8.6359d975.04.01
+IB_API_Client.py:230   OrderId/PermId: 339/1589234227
+IB_API_Client.py:231   Number/Price: 1.0 at 103.25
+IB_API_Client.py:232   Liquidity: 1
+wrapper.py:48 ANSWER commissionReport {'commissionReport': 139658526277008: ExecId: 000130e8.6359d975.02.01, Commission: 2.900000, Currency: USD, RealizedPnL: , Yield: , YieldRedemptionDate: 0}
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529166192: 556236475,HE,FUT,20230814,0.0,,40000,,,USD,HEQ3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41172.9}
+wrapper.py:48 ANSWER commissionReport {'commissionReport': 139658526276864: ExecId: 000130e8.6359d975.03.01, Commission: 5.800000, Currency: USD, RealizedPnL: , Yield: , YieldRedemptionDate: 0}
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529166000: 544436082,HE,FUT,20230717,0.0,,40000,,,USD,HEN3,HE,False,,combo:, 'position': -2.0, 'avgCost': 41547.1}
+wrapper.py:48 ANSWER commissionReport {'commissionReport': 139658526276816: ExecId: 000130e8.6359d975.04.01, Commission: 2.900000, Currency: USD, RealizedPnL: , Yield: , YieldRedemptionDate: 0}
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529466832: 532513468,HE,FUT,20230614,0.0,,40000,,,USD,HEM3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41302.9}

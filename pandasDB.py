@@ -28,13 +28,15 @@ plt.show()
 
 class dbPandas():
 
-    def __init__(self, symbol):
+    def __init__(self, symbol, influxIC):
         self.file_path_csv_ = None
         self.df_ = None
         self.dfcomp_ = None
         self.symbol_ = symbol
+        self.influxIC_ = influxIC
         self.dbInitFile ()
         self.toPrint = True
+        self.toPrintPnL = True
 
     def dbInitFile (self):
 
@@ -44,8 +46,11 @@ class dbPandas():
     def dbReadAllFiles(self):
         path = 'market/'
         self.df_ = None
-        self.dfcomp_ = None
-        logging.info  ('Leer todos los ficheros')
+        self.dfcomp_ = pd.DataFrame(columns = ['timestamp','open','high','low','close'])
+        logging.debug  ('Leer todos los ficheros')
+
+        bSegundoLeido = False
+        nReadLength = 0
         for i in sorted(os.listdir(path), reverse=True):
             filename = os.path.join(path,i)
             if os.path.isfile(filename) and i.startswith(self.symbol_+'_'):
@@ -54,21 +59,24 @@ class dbPandas():
                     logging.debug  ('     .. es comprimido')
                     df_new = pd.read_csv (filename, parse_dates=['timestamp'], index_col=0)
                     self.dfcomp_ = pd.concat([self.dfcomp_, df_new])
-                else:  # Los no comprimidos, solo hoy, por si estamos a mitad del dia
+                else:  # Los no comprimidos, solo hoy y el antyerior no vacio, por si estamos a mitad del dia
                     datefile = i[-10:-4]
                     todaystr = time.strftime("%y%m%d")
-                    if datefile == todaystr:
-                        logging.debug  ('     .. es el no comprimido de hoy')
-                        self.df_ = pd.read_csv (filename, parse_dates=['timestamp'])
+                    if datefile == todaystr or bSegundoLeido == False:
+                        logging.debug  ('     .. es el no comprimido de hoy, o de undia anteriro para tener un minimo')
+                        df_new = pd.read_csv (filename, parse_dates=['timestamp'])
+                        self.df_ = pd.concat([self.df_, df_new])
+                        nReadLength += len(df_new.index)
+                        if nReadLength > 2000:
+                            bSegundoLeido = True
+        
+
         self.df_ = self.df_.sort_values(by=['timestamp'], ignore_index=True)
         self.dfcomp_ = self.dfcomp_.sort_values(by=['timestamp']) # El comp si tiene index
 
         logging.debug  ('--------------------')
         logging.debug  (self.symbol_)
         logging.debug  (self.df_)
-
-    def dbGetPrevDay(self):
-        hoy = datetime.date.today()
 
 
     def dbGetDataframeToday(self):
@@ -79,6 +87,41 @@ class dbPandas():
 
     def dbGetFileName(self):
         return 'market/' + self.symbol_ + time.strftime("_%y%m%d") + '.csv'
+
+    def dbGetLastPrices(self):
+        lastPrices = {}
+        lastPrices['ASK'] = None
+        lastPrices['BID'] = None
+        lastPrices['LAST'] = None
+        lastPrices['ASK_SIZE'] = None
+        lastPrices['BID_SIZE'] = None
+        lastPrices['LAST_SIZE'] = None
+        try:
+            lastPrices = self.df_.iloc[-1]
+        except:
+            logging.error ('El df_ está vacio para %s', self.symbol_)
+        return (lastPrices)
+
+    def dbGetLastPnL(self):
+        lastPnL = {}
+        lastPnL['dailyPnL'] = None
+        lastPnL['realizedPnL'] = None
+        lastPnL['unrealizedPnL'] = None
+
+        try:
+            lastRecord = self.df_.iloc[-1]
+        except:
+            logging.error ('El df_ está vacio para %s', self.symbol_)
+        else:
+            if 'dailyPnL' in lastRecord:
+                lastPnL['dailyPnL'] = lastRecord['dailyPnL']
+            if 'realizedPnL' in lastRecord:
+                lastPnL['realizedPnL'] = lastRecord['realizedPnL']
+            if 'unrealizedPnL' in lastRecord:
+                lastPnL['unrealizedPnL'] = lastRecord['unrealizedPnL']
+
+        return (lastPnL)
+
 
     def dbCompressClosedFiles (self):
         path = 'market/'
@@ -109,14 +152,14 @@ class dbPandas():
         #logging.info  ("Creando o buscando fichero : %s", self.file_path_csv_)
         if not os.path.isfile(self.file_path_csv_):            
             try:   # Si el fichero no existe se crea
-                self.df_ = pd.DataFrame(columns = ['gConId', 'Symbol' ,'timestamp', 'BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE'])
-                self.df_.to_csv (self.file_path_csv_, index = False)
+                df_temp = pd.DataFrame(columns = ['gConId', 'Symbol' ,'timestamp', 'BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE','dailyPnL','realizedPnL','unrealizedPnL'])
+                df_temp.to_csv (self.file_path_csv_, index = False)
             except:
                 logging.error  ("Problema creando fichero de market data: %s", self.file_path_csv_)
                 return False
-            self.dbCompressClosedFiles()
+            
             try:   # Si no existe, tambien es probable que haya que comprimir
-                pass
+                self.dbCompressClosedFiles()
             except:
                 logging.error  ("Problema comprimiendo ficheros")
         #logging.info  ("Salgo de  fichero : %s", self.file_path_csv_)
@@ -124,37 +167,134 @@ class dbPandas():
         return True
         
     def dbUpdateAdd (self, data):
+        
+        keys = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE','dailyPnL','realizedPnL','unrealizedPnL']
+        keys_prices = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE']
+        keys_pnl = ['dailyPnL','realizedPnL','unrealizedPnL']
+        logging.debug ('Actulizamos con %s', data)
         if data['Symbol'] != self.symbol_:
             return
-        newlineL = []
-        newlineL.append (data)
+
+        self.dbUpdateInflux (data)
+        
         if not self.dbFileCheck ():  # por si cambiamos de día. Pero hay que mejorar para que no lea todo el fichero si es houy
             return False
 
         #print ("Pandas Data:", data)
         #logging.info ('[Pandas] - Pandas data: %s', data) 
+        incomplete = False
         try:
             lastone = self.df_.iloc[-1].to_dict()
-            #print ("Pandas Last:", lastone)
-            #logging.info ('[Pandas] - Pandas last: %s', lastone)
-        except:
+        except:     # self.df_ es vacio
             different = True
+            differentPnL = True
+            for key in keys:
+                if key not in data:
+                    data[key] = None
+                    incomplete = True
         else:
-            different = lastone['ASK'] != data['ASK']
-            different += lastone['BID'] != data['BID']
-            different += lastone['LAST'] != data['LAST']
-            different += lastone['ASK_SIZE'] != data['ASK_SIZE']
-            different += lastone['BID_SIZE'] != data['BID_SIZE']
-            different += lastone['LAST_SIZE'] != data['LAST_SIZE']
+            for key in keys:
+                if key not in data:
+                    if key in lastone:
+                        data[key] = lastone[key]
+                    else:
+                        data[key] = None
+                        incomplete = True
 
-        print ("Pandas different:", different)
+            different = False
+            for key in keys_prices:
+                if key in lastone and (lastone[key] != data[key]):
+                    different = True
+                elif data[key] != None:
+                    different = True
+
+            differentPnL = False
+            for key in keys_pnl:
+                if key in lastone and (lastone[key] != data[key]):
+                    differentPnL = True
+                elif data[key] != None:
+                    differentPnL = True
+            
+        newlineL = []
+        newlineL.append (data)
+
+        if different or differentPnL:
+            dfDelta = pd.DataFrame.from_records(newlineL)
+            if incomplete:
+                self.df_ = dfDelta
+            else:
+                dfDelta = pd.DataFrame.from_records(newlineL)
+                self.df_ = pd.concat([self.df_, dfDelta], ignore_index=True)
+
+                lastone = self.df_.iloc[-1:]
+                lastone.to_csv(self.file_path_csv_, mode='a', index=False, header=False)
+                # Para asegurar que se graban bien (con todos los fields en orden), hay que crear un dataframe del ultimo del self.df
+
 
         if different:
-            dfDelta = pd.DataFrame.from_records(newlineL)
-            self.df_ = pd.concat([self.df_, dfDelta], ignore_index=True)
             self.toPrint = True
 
-            # Para asegurar que se graban bien (con todos los fields en orden), hay que crear un dataframe del ultimo del self.df
-            lastone = self.df_.iloc[-1:]
-            lastone.to_csv(self.file_path_csv_, mode='a', index=False, header=False)
+        if differentPnL:
+            self.toPrintPnL = True
+
+    def dbUpdateInflux (self, data):
+        keys_prices = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE']
+        keys_pnl = ['dailyPnL','realizedPnL','unrealizedPnL']
+
+        bPrices = False
+        bPnl = False
+        
+        '''
+        records = [
+            {
+                "measurement": "cpu",
+    	        "tags": {"core": "0"},
+    	        "fields": {"temp": 25.3},
+    	        "time": 1657729063
+            },
+        ]
+        '''
+
+        records = []
+        record = {}
+        tags = {'symbol': data['Symbol']}
+        time = ['timestamp']
+        
+        fields_prices = {}
+        fields_pnl = {}
+        
+        for key in keys_prices:
+            if key in data:
+                bPrices = True
+                fields_prices[key] = data[key]
+
+        for key in keys_pnl:
+            if key in data:
+                bPnl = True
+                fields_pnl[key] = data[key]
+
+
+        if bPrices:
+            record = {
+                "measurement": "precios", 
+                "tags": tags,
+                "fields": fields_prices,
+                "time": time,
+            }
+            records.append(record)
+
+        if bPnl:
+            record = {
+                "measurement": "pnl", 
+                "tags": tags,
+                "fields": fields_pnl,
+                "time": time,
+            }
+            records.append(record)
+
+        if bPnl or bPrices:
+            self.influxIC_.write_data(records)
+
+
+            
     
