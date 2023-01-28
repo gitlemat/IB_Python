@@ -1,41 +1,32 @@
-from datetime import datetime
+import datetime
 
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
+import pandas as pd
+
+
+import os
+from dotenv import load_dotenv
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 # You can generate an API token from the "API Tokens Tab" in the UI
-'''
-token = "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
-org = "rodsic.com"
-bucket = "ib_prices"
-'''
-
-
-
-'''
-
-with InfluxDBClient(url="http://192.168.2.131:8086", token=token, org=org) as client:
-
-    write_api = client.write_api(write_options=SYNCHRONOUS)
-    data = "mem,host=host1 used_percent=23.43234543"
-    write_api.write(bucket, org, data)
-
-query = 'from(bucket: "ib_prices") |> range(start: -1h)'
-tables = client.query_api().query(query, org=org)
-for table in tables:
-    for record in table.records:
-        print(record)
-
-
-client.close()
-
-'''
+# influx delete --bucket "ib_prices_1h_prod" --org "rodsic.com" --predicate '_measurement="precios"' --start "2020-12-23T21:37:00Z" --stop "2023-12-23T21:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 
 class InfluxClient:
     def __init__(self): 
+        load_dotenv()
         token = os.getenv('TOKEN')
-        self._org = os.getenv('ORG') 
-        self._bucket = os.getenv('BUCKET')
+        self._mode = os.getenv('MODE')
+        self._org = 'rodsic.com'
+        if self._mode == 'Lab':
+            self._bucket = 'ib_prices_lab'
+            self._bucket_ohcl = 'ib_prices_1h_lab'
+        else:
+            self._bucket = 'ib_prices_prod'
+            self._bucket_ohcl = 'ib_prices_1h_prod'
         self._client = InfluxDBClient(url="http://localhost:8086", token=token)
 
     def write_data(self,data,write_option=SYNCHRONOUS):
@@ -43,14 +34,228 @@ class InfluxClient:
         # There’s a space between the tagValue and the first fieldKey, and another space between the last fieldValue and timeStamp
         # timestamp is optional
         # IC.write_data(["MSFT,stock=MSFT Open=62.79,High=63.84,Low=62.13"])
-        write_api = self._client.write_api(write_option)
-        write_api.write(bucket=self._bucket, org=self._org, record=data, write_precision='s')
 
-    def query_data(self,query):
+        
+        write_api = self._client.write_api(write_option)
+        try:
+            write_api.write(bucket=self._bucket, org=self._org, record=data)
+            logging.debug ('Escribiendo en influx esto: %s', data)
+        except:
+            logging.error ('Error al escribir en Influx: %s', data)
+
+    def influxGetTodayDataFrame (self, symbol):
+        logging.info('Leyendo precios de hoy de Influx para: %s', symbol)
+        now  = datetime.datetime.now()
+        today = datetime.datetime.today()
+        todayStart = today.replace(hour = 15, minute = 0, second = 0, microsecond=0)
+        todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
+        
+        query = '''
+        from(bucket:_bucket)
+        |> range(start: _start)
+        |> filter(fn:(r) => r._measurement == "precios")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn:(r) => r._field == "ASK" or r._field == "BID" or r._field == "LAST" or r._field == "ASK_SIZE" or r._field == "LAST_SIZE" or r._field == "BID_SIZE")
+        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> keep(columns: ["_time", "ASK", "ASK_SIZE", "BID", "BID_SIZE", "LAST", "LAST_SIZE"])
+        |> sort(columns: ["_time"], desc: _desc)
+        '''
+
+        result = []
+        if now > todayStart:
+            result = self.query_data_frame(query, param)
+        if len(result) == 0:
+            result = self.influxGetLastPrice(symbol)
+            logging.debug ('Influx de Last: %s', result)
+
+        if len(result) == 0:
+            df_ = pd.DataFrame(columns = ['timestamp', 'BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE'])
+            return df_
+    
+        result.rename(columns = {'_time':'timestamp'}, inplace = True)
+        result.drop(columns=['result','table'], inplace=True)
+        result.set_index('timestamp', inplace=True)
+
+        logging.info('%s', result.iloc[-1])
+
+        result.index = result.index.tz_localize(None)
+        #result.index = result.index + pd.DateOffset(hours=1)
+        
+        logging.info('%s', result.iloc[-1])
+
+        return result
+
+    def influxGetLastPrice(self, symbol):
+        param = {"_bucket": self._bucket, "_symbol": symbol, "_desc": False}
+
+        query = '''
+        from(bucket: _bucket)
+        |> range(start: 0)
+        |> filter(fn:(r) => r._measurement == "precios")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn:(r) => r._field == "ASK" or r._field == "BID" or r._field == "LAST" or r._field == "ASK_SIZE" or r._field == "LAST_SIZE" or r._field == "BID_SIZE")
+        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> keep(columns: ["_time", "ASK", "ASK_SIZE", "BID", "BID_SIZE", "LAST", "LAST_SIZE"])
+        |> sort(columns: ["_time"], desc: _desc)
+        |> tail(n:1)
+        '''
+    
+        result = self.query_data_frame(query, param)
+        return result
+
+    def influxGetOchlDataFrame (self, symbol):
+        logging.info('Leyendo precios OCHL de Influx para: %s', symbol)
+        todayStart = datetime.datetime.today() - datetime.timedelta(days=180)
+        todayStop = datetime.datetime.today()
+        todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)
+        todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        param = {"_bucket": self._bucket_ohcl, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
+        
+        query = '''
+        from(bucket: _bucket)
+        |> range(start: _start)
+        |> filter(fn:(r) => r._measurement == "precios")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn:(r) => r._field == "open" or r._field == "close" or r._field == "high" or r._field == "low")
+        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> keep(columns: ["_time", "open", "close", "high", "low"])
+        |> sort(columns: ["_time"], desc: _desc)
+        '''
+
+        result = self.query_data_frame(query, param)
+
+        if len(result) == 0:
+            dfcomp_ = pd.DataFrame(columns = ['timestamp','open','high','low','close'])
+            return dfcomp_
+    
+        result.rename(columns = {'_time':'timestamp'}, inplace = True)
+        result.drop(columns=['result','table'], inplace=True)
+        result.set_index('timestamp', inplace=True)
+
+        result.index = result.index.tz_localize(None)
+        #result.index = result.index + pd.DateOffset(hours=1)
+
+        logging.debug('%s', result)
+
+        return result
+
+    def influxGetPnLDataFrame (self, symbol):
+        logging.info('Leyendo PnL de Influx para: %s', symbol)
+
+
+        today = datetime.datetime.today()
+        todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
+        todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
+        query = '''
+        from(bucket: _bucket)
+        |> range(start: _start, stop: _stop)
+        |> filter(fn:(r) => r._measurement == "pnl")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn:(r) => r._field == "dailyPnL" or r._field == "realizedPnL" or r._field == "unrealizedPnL")
+        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> keep(columns: ["_time", "dailyPnL", "realizedPnL", "unrealizedPnL"])
+        |> sort(columns: ["_time"], desc: _desc)
+        '''
+
+        result = self.query_data_frame(query, param)
+
+        if len(result) == 0:
+            df_temp = pd.DataFrame(columns = ['timestamp', 'dailyPnL','realizedPnL','unrealizedPnL'])
+            return df_temp
+    
+        result.rename(columns = {'_time':'timestamp'}, inplace = True)
+        result.drop(columns=['result','table'], inplace=True)
+        result.set_index('timestamp', inplace=True)
+
+        result.index = result.index.tz_localize(None)
+        #result.index = result.index + pd.DateOffset(hours=1)
+
+        logging.debug('%s', result)
+
+        return result
+
+    def influxGetExecDataFrame (self, symbol, strategy):
+        logging.info('Leyendo Execs de Influx para: %s', symbol)
+
+        today = datetime.datetime.today()
+        todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
+        todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategy": strategy, "_desc": False}
+        query = '''
+        from(bucket: _bucket)
+        |> range(start: _start, stop: _stop)
+        |> filter(fn:(r) => r._measurement == "executions")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn:(r) => r.strategy == _strategy)
+        |> filter(fn:(r) => r._field == "OrderId" or r._field == "Quantity" or r._field == "Side")
+        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> keep(columns: ["_time", "OrderId", "Quantity", "Side"])
+        |> sort(columns: ["_time"], desc: _desc)
+        '''
+
+        result = self.query_data_frame(query, param)
+
+        if len(result) == 0:
+            df_temp = pd.DataFrame(columns = ['timestamp', 'OrderId','Quantity','Side'])
+            return df_temp
+    
+        result.rename(columns = {'_time':'timestamp'}, inplace = True)
+        result.drop(columns=['result','table'], inplace=True)
+        result.set_index('timestamp', inplace=True)
+
+        result.index = result.index.tz_localize(None)
+        #result.index = result.index + pd.DateOffset(hours=1)
+
+        logging.debug('%s', result)
+
+        return result
+
+    def influxGetExecCountDataFrame (self, symbol, strategy):
+        logging.info('Leyendo Execs de Influx para: %s', symbol)
+
+        todayStart = datetime.datetime.today() - datetime.timedelta(days=180)
+        todayStop = datetime.datetime.today()
+        todayStart = todayStart.replace(hour = 0, minute = 0, second = 0, microsecond=0)
+        todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        print (todayStop)
+        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategy": strategy, "_desc": False}
+        query = '''
+        from(bucket: _bucket)
+        |> range(start: 0)
+        |> filter(fn:(r) => r._measurement == "executions")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn: (r) => r["strategy"] == _strategy)
+        |> filter(fn:(r) => r._field == "ExecId")
+        |> aggregateWindow(every: 24h, fn: count, createEmpty: false)
+        |> sort(columns: ["_time"], desc: _desc)
+        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> keep(columns: ["_time", "ExecId"])
+        '''
+
+        result = self.query_data_frame(query, param)
+
+        if len(result) == 0:
+            df_temp = pd.DataFrame(columns = ['timestamp', 'ExecCount'])
+            return df_temp
+    
+        result.rename(columns = {'_time':'timestamp', 'ExecId':'ExecCount'}, inplace = True)
+        result.drop(columns=['result','table'], inplace=True)
+        result.set_index('timestamp', inplace=True)
+
+        result.index = result.index.tz_localize(None)
+        #result.index = result.index + pd.DateOffset(hours=1)
+
+        logging.debug('%s', result)
+
+        return result
+
+    def query_data_frame(self,query, param):
+
         query_api = self._client.query_api()
-        result = query_api.query(org=self._org, query=query)
-        results = []
-        for table in result:
-            for record in table.records:
-                results.append((record.get_value(), record.get_field()))
-        return results
+        result = query_api.query_data_frame(org=self._org, query=query, params = param)
+        return result
+
+
+        

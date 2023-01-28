@@ -180,6 +180,12 @@ class IBI_App(EWrapper, EClient):
         ## Overriden method EWrapper
         #print('orderStatus - orderid:', orderId, 'status:', status, 'filled', filled, 'remaining', remaining, 'lastFillPrice', lastFillPrice)
         #print ('orderStatus')
+
+        if not self.nextorderId:
+            self.nextorderId = orderId + 1
+        elif self.nextorderId <= orderId:
+            self.nextorderId = orderId + 1
+
         paramsDict = {}
         paramsDict['status'] = status
         paramsDict['filled'] = filled
@@ -202,6 +208,11 @@ class IBI_App(EWrapper, EClient):
         ## Overriden method EWrapper
         #print ('openOrder')
         #print('openOrder id:', orderId, contract.symbol, contract.secType, '@', contract.exchange, ':', order.action, order.orderType, order.totalQuantity, orderState.status) 
+        if not self.nextorderId:
+            self.nextorderId = orderId + 1
+        elif self.nextorderId <= orderId:
+            self.nextorderId = orderId + 1
+        
         paramsDict = {}
         paramsDict['orderState'] = orderState
 
@@ -234,6 +245,9 @@ class IBI_App(EWrapper, EClient):
     def commissionReport(self, commissionReport: CommissionReport):
         super().commissionReport(commissionReport)
         #logging.info("CommissionReport: %s", commissionReport) Ya lo escribe wrapper.py
+        data = {'CommissionReport': commissionReport}
+        queueEntry = {'type':'commission', 'data': data}
+        self.CallbacksQueue_.put(queueEntry)
 
     @iswrapper
     def position(self, account: str, contract: Contract, position: Decimal, avgCost: float):
@@ -538,6 +552,31 @@ class IBI_App(EWrapper, EClient):
 
         return contract 
 
+    def contractFUTcreateGlobal (self, contract_symbol, secType):
+
+        example_contract = None
+        if secType == 'FUT':
+            try:
+                example_contract = self.contractSimpleFUTcreate(contract_symbol)
+            except:
+                logging.error ("Error creando el contrato para la orden")
+                return None
+        elif secType == 'BAG':
+            try:
+                example_contract = self.contractFUTcreate(contract_symbol)
+            except:
+                logging.error ("Error creando el contrato para la orden")
+                return None
+        elif secType == 'STK':
+            try:
+                example_contract = self.contractSTKcreate(contract_symbol)
+            except:
+                logging.error ("Error creando el contrato para la orden")
+                return None
+
+        return example_contract
+
+
     #Create order object
     def orderBuyMKTcreate(self, Qty):
         return self.orderCreate ('BUY', 'MKT', 0, Qty)
@@ -564,65 +603,108 @@ class IBI_App(EWrapper, EClient):
         return order  
         
     def placeOrderBrief (self, contract_symbol, secType, action, oType, lmtPrice, qty):
-        logging.info ("Vamos a crear una orden con:")
-        logging.info ("    secType: %s", secType)
-        logging.info ("    Symbol: %s", contract_symbol)
-        logging.info ("    Action: %s", action)
-        logging.info ("    oType: %s", oType)
-        logging.info ("    auxPrice/lmtPrice: %s", lmtPrice)
-        logging.info ("    qty: %s", qty)
+
         newReq = None
         if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
             return None
         try:
-            example_order = self.orderCreate (action, oType, lmtPrice, qty)
+            order = self.orderCreate (action, oType, lmtPrice, qty)
         except:
             logging.error ("Error creando la orden para emplazar la orden")
             return None
 
-        if secType == 'FUT':
-            try:
-                example_contract = self.contractSimpleFUTcreate(contract_symbol)
-            except:
-                logging.error ("Error creando el contrato para la orden")
-                return None
-        elif secType == 'BAG':
-            try:
-                example_contract = self.contractFUTcreate(contract_symbol)
-            except:
-                logging.error ("Error creando el contrato para la orden")
-                return None
-        elif secType == 'STK':
-            try:
-                example_contract = self.contractSTKcreate(contract_symbol)
-            except:
-                logging.error ("Error creando el contrato para la orden")
-                return None
+        contract = self.contractFUTcreateGlobal (contract_symbol, secType)
 
-        if example_contract == None:
+        if contract == None:
             logging.error ("Error creando el contrato para la orden. Contrato vacio")
             return None
 
         try:
-            newReq = self.placeOrder (example_contract, example_order)
-            #newReq = None
-            #Aqui es mejor crear la orden en Local_RT por si me llega la ejecución antes que la confirmacion (cosas de IB)
-            data = {'orderId': newReq, 'contractObj': example_contract, 'orderObj': example_order, 'paramsDict':'' }
-            queueEntry = {'type':'order', 'data': data}
-            self.CallbacksQueue_.put(queueEntry)
+            newReq = self.placeOrder (contract_symbol, contract, order) 
         except:
             logging.error ("Error emplazando la orden")
             return None
         else:
             return newReq
 
+    def placeBracketOrder(contract_symbol:str, secType:str, action:str, quantity:Decimal, 
+                     limitPrice:float, takeProfitLimitPrice:float, 
+                     stopLossPrice:float):
+
+        if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
+            return None
+        
+        contract = contractFUTcreateGlobal (contract_symbol, secType)
+        
+        if contract == None:
+            logging.error ("Error creando el contrato para la orden. Contrato vacio")
+            return None
+
+        #This will be our main or "parent" order
+
+        parentOrder = orderCreate(action, 'LMTGTC', limitPrice, quantity)
+        parentOrder.transmit = False
+
+        try:
+            parentOrderId = self.placeOrder (contract_symbol, contract, parentOrder) 
+        except:
+            logging.error ("Error emplazando la orden Parent")
+            return None
+
+        tfAction = "SELL" if action == "BUY" else "BUY"
+        tpOrder = orderCreate(tfAction, 'LMTGTC', takeProfitLimitPrice, quantity)
+        tpOrder.parentId = parentOrderId
+        tpOrder.transmit = False
+
+        try:
+            tpOrderId = self.placeOrder (contract_symbol, contract, tpOrder) 
+        except:
+            logging.error ("Error emplazando la orden TF. Cancelamos la Parent (%s)", parentOrderId)
+            self.cancelOrderByOrderId (parentOrderId)
+            return None
+ 
+        slAction = "SELL" if action == "BUY" else "BUY"
+        slOrder = orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
+        slOrder.parentId = parentOrderId
+        slOrder.transmit = True
+
+        try:
+            slOrderId = self.placeOrder (contract_symbol, contract, slOrder) 
+        except:
+            logging.error ("Error emplazando la orden SL. Cancelamos la Parent (%s), y la TP (%s)", parentOrderId, tpOrderId)
+            self.cancelOrderByOrderId (parentOrderId)
+            self.cancelOrderByOrderId (tpOrderId)
+            return None
+ 
+        bracketOrder = {'parentOrderId': parentOrderId, 'tpOrderId': tpOrderId, 'slOrderId': slOrderId}
+        return bracketOrder
+
     @iswrapper    
-    def placeOrder (self, contract:Contract, order:Order):
+    def placeOrder (self, contract_symbol: str, contract:Contract, order:Order):
+        logging.info ("Vamos a CREAR una orden con:")
+        logging.info ("    secType: %s", contract.secType)
+        logging.info ("    Symbol: %s", contract_symbol)
+        logging.info ("    Action: %s", order.action)
+        logging.info ("    oType: %s", order.orderType)
+        logging.info ("    oTif: %s", order.tif)
+        if order.orderType in ['LMT', 'MKT']:
+            logging.info ("    lmtPrice: %s", order.lmtPrice)
+        if order.orderType == 'STP':
+            logging.info ("    auxPrice: %s", order.auxPrice)
+        logging.info ("    qty: %s", order.totalQuantity)
+
         super().placeOrder (self.nextorderId, contract, order)
+
+        #Aqui es mejor crear la orden en Local_RT por si me llega la ejecución antes que la confirmacion (cosas de IB)
+        data = {'orderId': self.nextorderId, 'contractObj': contract, 'orderObj': order, 'paramsDict':'' }
+        queueEntry = {'type':'order', 'data': data}
+        self.CallbacksQueue_.put(queueEntry)
+        
         self.nextorderId += 1
         return (self.nextorderId - 1)
 
     def cancelOrderByOrderId (self, orderId):
+        logging.info ("Vamos a CANCELAR la orden %s", orderId)
         manualOrderCancelTime = ''
         super().cancelOrder (orderId, manualOrderCancelTime)
         return True

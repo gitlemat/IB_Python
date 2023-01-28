@@ -127,3 +127,8 @@ wrapper.py:48 ANSWER commissionReport {'commissionReport': 139658526276864: Exec
 wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529166000: 544436082,HE,FUT,20230717,0.0,,40000,,,USD,HEN3,HE,False,,combo:, 'position': -2.0, 'avgCost': 41547.1}
 wrapper.py:48 ANSWER commissionReport {'commissionReport': 139658526276816: ExecId: 000130e8.6359d975.04.01, Commission: 2.900000, Currency: USD, RealizedPnL: , Yield: , YieldRedemptionDate: 0}
 wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529466832: 532513468,HE,FUT,20230614,0.0,,40000,,,USD,HEM3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41302.9}
+
+
+commissionReport {'commissionReport': 140050319658912: ExecId: 000130e8.63acd031.02.01, Commission: 2.9, Currency: USD, RealizedPnL: 244.2, Yield: , YieldRedemptionDate: 0}
+commissionReport {'commissionReport': 140050319657616: ExecId: 000130e8.63acd031.03.01, Commission: 5.8, Currency: USD, RealizedPnL: -161.6, Yield: , YieldRedemptionDate: 0}
+commissionReport {'commissionReport': 140050323377408: ExecId: 000130e8.63acd031.04.01, Commission: 2.9, Currency: USD, RealizedPnL: -45.8, Yield: , YieldRedemptionDate: 0}

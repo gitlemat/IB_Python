@@ -16,6 +16,8 @@ appDashFE_ = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRA
 
 appDashFE_.title = "IB RODSIC"
 
+orderInactiveStatus = ['Cancelled', 'Filled', 'PendingCancel', 'Inactive', 'ApiCancelled']
+
 #####################################################################################################################
 #####################################################################################################################
 ## Utils
@@ -128,9 +130,9 @@ def layout_ordenes_tab ():
                     dbc.Col(html.Div("Symbol"), className = 'bg-primary mr-1', width = 3),
                     dbc.Col(html.Div("Action"), className = 'bg-primary', width = 1),
                     dbc.Col(html.Div("Status"), className = 'bg-success', width = 1),
-                    dbc.Col(html.Div("Fill Status"), className = 'bg-primary', width = 2),
+                    dbc.Col(html.Div("Fill Status"), className = 'bg-primary', width = 1),
                     dbc.Col(html.Div("LastFill"), className = 'bg-primary', width = 1),
-                    dbc.Col(html.Div("Comment"), className = 'bg-primary', width = 2),
+                    dbc.Col(html.Div("Estrategia"), className = 'bg-primary', width = 3),
                     dbc.Col(html.Div("Cancel"), className = 'bg-primary', width = 1),
                 ], className = 'mb-3 text-white'
                 ),
@@ -163,7 +165,7 @@ def layout_contratos_tab ():
             posQty = 0
             posavgCost = 0
         else:
-            posQty = formatCurrency(posicion) 
+            posQty = posicion 
             posavgCost = formatCurrency(contrato['posAvgPrice'])
         priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
         priceSell = formatCurrency(contrato['currentPrices']['SELL'])
@@ -212,7 +214,7 @@ def layout_contratos_tab ():
         df_today = contrato['dbPandas'].dbGetDataframeToday()
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df_today['timestamp'], y=df_today["LAST"], mode="lines", connectgaps = True))
+        fig.add_trace(go.Scatter(x=df_today.index, y=df_today["LAST"], mode="lines", connectgaps = True))
         fig.update_xaxes(
             rangebreaks=[
                 dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
@@ -273,10 +275,14 @@ def layout_contratos_tab ():
 #####################################################################################################################
 ## Estrategias
 
+#####################################################################################################################
+## Estrategia Pentagrama
+
 def layout_strategies_tab():
     #contracts_ = globales.G_RTlocalData_.contratoReturnListAll()
     #strategiesIndex_ = globales.G_RTlocalData_.strategies_.strategyIndexGetAll()
-    strategyMariposaVerano_ = globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaGetAll()
+    strategyPentagrama_ = globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaGetAll()
+    strategyPentagramaRu_ = globales.G_RTlocalData_.strategies_.strategyPentagramaRuObj_.strategyPentagramaRuGetAll()
     #{'symbol': lineSymbol, 'currentPos': lineCurrentPos, 'UpperOrderId': lineUpperOrderId, 'UpperOrderPermId': lineUpperOrderPermId, 'LowerOrderId': lineLowerOrderId, 'LowerOrderPermId': lineLowerOrderPermId, 'zones': zones}
 
     item = 0
@@ -284,19 +290,20 @@ def layout_strategies_tab():
     ContentItems = []
     ####################################
     # Preparacion de Tab de Estratgias
-    for estrategia in strategyMariposaVerano_:
+    for estrategia in strategyPentagrama_:
         symbol = estrategia['symbol']
+        stratId = 'Pen' + symbol
         
         random_wait = random.randint(0,2000) + 4000
-        headerRowInn = layout_getStrategyHeader (estrategia, False)
+        headerRowInn = layout_getStrategyHeader (estrategia, 'Pentagrama', False)
         
         headerRow = html.Div(
             [
                 html.Div(
-                    headerRowInn, id ={'role':'estrategia_header', 'symbol': symbol}
+                    headerRowInn, id ={'role':'estrategia_header', 'strategy':'Pentagrama', 'symbol': symbol}
                 ),
                 dcc.Interval(
-                    id={'role': 'IntervalHeaderStrategy', 'symbol': symbol},
+                    id={'role': 'IntervalHeaderStrategy', 'strategy':'Pentagrama', 'symbol': symbol},
                     interval= random_wait, # in milliseconds
                     n_intervals=0
                 )
@@ -309,22 +316,22 @@ def layout_strategies_tab():
         fig1 = layout_getFigureHistorico(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
         graphColumn1 = html.Div(
             dcc.Graph(
-                    id={'role': 'graphDetailsComp', 'strategySymbol': symbol},
+                    id={'role': 'graphDetailsComp', 'strategy':'Pentagrama', 'strategySymbol': symbol},
                     animate = False,
                     figure = fig1
             )
         )
         
         random_wait = random.randint(0,1000) + 10000
-        fig2 = layout_getFigureToday(estrategia, False)   # Lo tengo en una funcion para que sea facil actualizar
+        fig2 = layout_getFigureToday(estrategia, 'HE', False)   # Lo tengo en una funcion para que sea facil actualizar
         graphColumn2 = html.Div([
             dcc.Graph(
-                    id={'role': 'graphDetailsToday', 'strategySymbol': symbol},
+                    id={'role': 'graphDetailsToday', 'strategy':'Pentagrama', 'strategySymbol': symbol},
                     animate = False,
                     figure = fig2
             ),
             dcc.Interval(
-                id={'role': 'IntervalgraphToday', 'strategySymbol': symbol},
+                id={'role': 'IntervalgraphToday', 'strategy':'Pentagrama', 'strategySymbol': symbol},
                 interval= random_wait, # in milliseconds
                 n_intervals=0
             )
@@ -349,26 +356,26 @@ def layout_strategies_tab():
             val3 = zone['reqPos']
             
             zonasFilaHeader.append(dbc.Col('Zona ' + str(itemZ), className="text-center"))
-            zonasFilaBorderUp.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputUp', 'strategySymbol': symbol, 'index': itemZG}, value=val1, type="text", debounce=True, className="text-end")))
+            zonasFilaBorderUp.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'strategySymbol': symbol, 'index': itemZG}, value=val1, type="text", debounce=True, className="text-end")))
             if itemZ < len(estrategia['zonesNOP']):
-                zonasFilaBorderDown.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputDown', 'strategySymbol': symbol, 'index': itemZG}, value=val2, type="text", debounce=True, readonly= True, className="text-end")))
+                zonasFilaBorderDown.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'strategySymbol': symbol, 'index': itemZG}, value=val2, type="text", debounce=True, readonly= True, className="text-end")))
             else:
-                zonasFilaBorderDown.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputDown', 'strategySymbol': symbol, 'index': itemZG}, value=val2, type="text", debounce=True, readonly= False, className="text-end")))
-            zonasFilaPosiciones.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputPos', 'strategySymbol': symbol, 'index': itemZG}, value=val3, type="text", debounce=True, className="text-end")))
+                zonasFilaBorderDown.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'strategySymbol': symbol, 'index': itemZG}, value=val2, type="text", debounce=True, readonly= False, className="text-end")))
+            zonasFilaPosiciones.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'strategySymbol': symbol, 'index': itemZG}, value=val3, type="text", debounce=True, className="text-end")))
             itemZ += 1
             itemZG += 1
 
         insideDetailsZonas = []
         insideDetailsZonas.append(dbc.Row(zonasFilaHeader))
         insideDetailsZonas.append(dbc.Row(zonasFilaBorderUp))
-        insideDetailsZonas.append(dbc.Row(zonasFilaBorderDown, id={'role': 'filaZoneDown', 'strategySymbol': symbol}))
+        insideDetailsZonas.append(dbc.Row(zonasFilaBorderDown, id={'role': 'filaZoneDown', 'strategy':'Pentagrama', 'strategySymbol': symbol}))
         insideDetailsZonas.append(dbc.Row(zonasFilaPosiciones))
 
         # Ahora los botones de Actualizar/Reset
 
         insideDetailsBotonesZonas = []
-        insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar", id={'role': 'ZoneButtonSave', 'strategySymbol': symbol}, className="me-2", n_clicks=0)))
-        insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Reset", id={'role': 'ZoneButtonReset', 'strategySymbol': symbol}, className="me-2", n_clicks=0)))
+        insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar", id={'role': 'ZoneButtonSave', 'strategy':'Pentagrama', 'strategySymbol': symbol}, className="me-2", n_clicks=0)))
+        insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Reset", id={'role': 'ZoneButtonReset', 'strategy':'Pentagrama', 'strategySymbol': symbol}, className="me-2", n_clicks=0)))
 
         # Y las tablas con ordenes
 
@@ -378,10 +385,10 @@ def layout_strategies_tab():
         insideOrdenes = html.Div([
             html.Div(
                 insideTable, 
-                id={'role': 'TableStrategyOrderDetails', 'symbol': symbol},
+                id={'role': 'TableStrategyOrderDetails', 'strategy':'Pentagrama', 'symbol': symbol},
             ),
             dcc.Interval(
-                id={'role': 'IntervalOrderTable', 'symbol': symbol},
+                id={'role': 'IntervalOrderTable', 'strategy':'Pentagrama', 'symbol': symbol},
                 interval= random_wait, # in milliseconds
                 n_intervals=0
             )
@@ -407,7 +414,104 @@ def layout_strategies_tab():
                         insideZonas,
                 )
             ],
-            id={'role': 'colapse_strategy', 'symbol': symbol},
+            id={'role': 'colapse_strategy', 'strategy':'Pentagrama', 'symbol': symbol},
+            is_open=False,
+            className = 'mb-3'
+        )
+        item += 1   
+
+        
+
+        
+        ContentItems.append({"header": headerRow, "details": collapseDetails})
+
+    for estrategia in strategyPentagramaRu_:
+        symbol = estrategia['symbol']
+        
+        random_wait = random.randint(0,2000) + 4000
+        headerRowInn = layout_getStrategyHeader (estrategia, 'PentagramaRu', False)
+        
+        headerRow = html.Div(
+            [
+                html.Div(
+                    headerRowInn, id ={'role':'estrategia_header', 'strategy':'PentagramaRu', 'symbol': symbol}
+                ),
+                dcc.Interval(
+                    id={'role': 'IntervalHeaderStrategy', 'strategy':'PentagramaRu', 'symbol': symbol},
+                    interval= random_wait, # in milliseconds
+                    n_intervals=0
+                )
+            ]
+        )
+
+        
+        # Los dos graficos
+        fig1 = layout_getFigureHistoricoRu(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
+        graphColumn1 = html.Div(
+            dcc.Graph(
+                    id={'role': 'graphDetailsComp', 'strategy':'PentagramaRu', 'strategySymbol': symbol},
+                    animate = False,
+                    figure = fig1
+            )
+        )
+        
+        random_wait = random.randint(0,1000) + 10000
+        fig2 = layout_getFigureToday(estrategia, 'Ru', False)   # Lo tengo en una funcion para que sea facil actualizar
+        graphColumn2 = html.Div([
+            dcc.Graph(
+                    id={'role': 'graphDetailsToday', 'strategy':'PentagramaRu', 'strategySymbol': symbol},
+                    animate = False,
+                    figure = fig2
+            ),
+            dcc.Interval(
+                id={'role': 'IntervalgraphToday', 'strategy':'PentagramaRu', 'strategySymbol': symbol},
+                interval= random_wait, # in milliseconds
+                n_intervals=0
+            )
+        ])
+        
+        # Los detalles de la estrategia (escondidos)
+
+        # Y las tablas con ordenes
+
+        insideTable = layout_getStrategyPenRuTableOrders(estrategia)
+        
+        random_wait = random.randint(0,2000) + 3000
+        insideOrdenes = html.Div([
+            html.Div(
+                insideTable, 
+                id={'role': 'TableStrategyOrderDetails', 'strategy':'PentagramaRu', 'symbol': symbol},
+            ),
+            dcc.Interval(
+                id={'role': 'IntervalOrderTable', 'strategy':'PentagramaRu', 'symbol': symbol},
+                interval= random_wait, # in milliseconds
+                n_intervals=0
+            )
+        ])
+
+        # El boton de recarga
+
+        insideDetailsBotonesZonas = []
+        insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'strategySymbol': symbol}, className="me-2", n_clicks=0)))
+
+
+        # Todo lo que se oculta junto
+        collapseDetails = dbc.Collapse(
+            [
+                dbc.Row(
+                    [
+                        dbc.Col(graphColumn1, width=6),
+                        dbc.Col(graphColumn2, width=6)
+                    ]
+                ),
+                dbc.Row(
+                        insideDetailsBotonesZonas,
+                ),
+                dbc.Row(
+                        insideOrdenes,
+                )
+            ],
+            id={'role': 'colapse_strategy', 'strategy':'PentagramaRu', 'symbol': symbol},
             is_open=False,
             className = 'mb-3'
         )
@@ -475,7 +579,51 @@ def layout_getFigureHistorico (estrategia):
     fig1.update_xaxes(
         rangebreaks=[
             dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
-            dict(bounds=[20.25, 15.66], pattern="hour"),  # hide hours outside of 9.30am-4pm
+            dict(bounds=[21.1, 15], pattern="hour"),  # hide hours outside of 9.30am-4pm
+            #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
+        ]
+    )
+
+    return fig1
+
+def layout_getFigureHistoricoRu (estrategia):
+
+    symbol = estrategia['symbol']
+    contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
+    if not contrato:
+        logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
+        return no_update
+    df_comp = contrato['dbPandas'].dbGetDataframeComp()
+    fig1 = go.Figure()
+    fig1.add_trace(go.Candlestick(x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']))
+    limitList= []
+    for zone in estrategia['zonesNOP']:   
+        ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
+        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
+        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
+
+        if zone['Price'] not in limitList:
+            zoneborder = [zone['Price']] * len (df_comp.index)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+            limitList.append(zone['Price'])
+        if zone['PrecioSL'] not in limitList:
+            zoneborder = [zone['PrecioSL']] * len (df_comp.index)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+            limitList.append(zone['PrecioSL'])
+        if zone['PrecioTP'] not in limitList:
+            zoneborder = [zone['PrecioTP']] * len (df_comp.index)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+            limitList.append(zone['PrecioTP'])
+    fig1.update_layout(showlegend=False, 
+                       xaxis_rangeslider_visible=False, 
+                       title_text='Historico (15min)', 
+                       title_x = 0.5,
+                       title_xanchor = 'center')
+    
+    fig1.update_xaxes(
+        rangebreaks=[
+            dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
+            dict(bounds=[21.1, 15], pattern="hour"),  # hide hours outside of 9.30am-4pm
             #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
         ]
     )
@@ -483,8 +631,7 @@ def layout_getFigureHistorico (estrategia):
     return fig1
 
 
-
-def layout_getFigureToday (estrategia, update = False):
+def layout_getFigureToday (estrategia, strategyType, update = False):
     symbol = estrategia['symbol']
     contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
     if not contrato:
@@ -496,58 +643,18 @@ def layout_getFigureToday (estrategia, update = False):
     dfToday = contrato['dbPandas'].dbGetDataframeToday()
     fig2 = go.Figure()
 
-    #highlight de la zona actual y precios
-    price_Upper = estrategia['lastCurrentZoneBufferPriceUp']
-    price_Lower = estrategia['lastCurrentZoneBufferPriceDown']
-    if price_Upper != None and price_Lower != None:
-        zoneborder = [price_Upper] * len (dfToday.index)
-        fig2.add_trace(go.Scatter(x=dfToday["timestamp"], 
-                                  y=zoneborder, 
-                                  mode="lines", 
-                                  line_color="blue", 
-                                  line_width=1, 
-                                  connectgaps = True, 
-                                  fill='none'))
-    
-        zoneborder = [price_Lower] * len (dfToday.index)
-        fig2.add_trace(go.Scatter(x=dfToday["timestamp"], 
-                                  y=zoneborder, 
-                                  mode="lines", 
-                                  line_color="blue", 
-                                  line_width=1, 
-                                  connectgaps = True, 
-                                  fillcolor='rgba(0, 0, 255, 0.1)',    #azure = 240, 255, 255
-                                  fill='tonexty'))
+
 
     # Valores de LAST
-    fig2.add_trace(go.Scatter(x=dfToday['timestamp'], y=dfToday["BID"], mode="lines", line_color="blue", connectgaps = True))
-    fig2.add_trace(go.Scatter(x=dfToday['timestamp'], y=dfToday["ASK"], mode="lines", line_color="crimson", connectgaps = True))
+    fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["BID"], mode="lines", line_color="blue", connectgaps = True))
+    fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["ASK"], mode="lines", line_color="crimson", connectgaps = True))
     
     # Y las zonas
-    limitList= []
-    nZone = 0
-    for zone in estrategia['zonesNOP']:       
-        if zone['limitUp'] not in limitList:
-            zoneborder = [zone['limitUp']] * len (dfToday.index)
-            fig2.add_trace(go.Scatter(x=dfToday["timestamp"], 
-                                      y=zoneborder, 
-                                      mode="lines", 
-                                      line_color="gray", 
-                                      line_width=1, 
-                                      connectgaps = True, 
-                                      fill='none'))
-            limitList.append(zone['limitUp'])
-        if zone['limitDown'] not in limitList:
-            zoneborder = [zone['limitDown']] * len (dfToday.index)
-            fig2.add_trace(go.Scatter(x=dfToday["timestamp"], 
-                                      y=zoneborder, 
-                                      mode="lines", 
-                                      line_color="gray", 
-                                      line_width=1, 
-                                      connectgaps = True, 
-                                      fill='none'))
-            limitList.append(zone['limitDown'])
-        nZone += 1
+    if strategyType == 'HE':
+        fig2 = addZonesLinesHE (fig2, estrategia, dfToday)
+
+    if strategyType == 'Ru':
+        fig2 = addZonesLinesRu (fig2, estrategia, dfToday)
 
     fig2.update_xaxes(
         rangebreaks=[
@@ -568,7 +675,87 @@ def layout_getFigureToday (estrategia, update = False):
 
     return fig2
 
-def layout_getStrategyHeader (estrategia, update = False):
+def addZonesLinesHE (fig2, estrategia, dfToday):
+
+    #highlight de la zona actual y precios
+    price_Upper = estrategia['lastCurrentZoneBufferPriceUp']
+    price_Lower = estrategia['lastCurrentZoneBufferPriceDown']
+    if price_Upper != None and price_Lower != None:
+        zoneborder = [price_Upper] * len (dfToday.index)
+        fig2.add_trace(go.Scatter(x=dfToday.index, 
+                                  y=zoneborder, 
+                                  mode="lines", 
+                                  line_color="blue", 
+                                  line_width=1, 
+                                  connectgaps = True, 
+                                  fill='none'))
+    
+        zoneborder = [price_Lower] * len (dfToday.index)
+        fig2.add_trace(go.Scatter(x=dfToday.index, 
+                                  y=zoneborder, 
+                                  mode="lines", 
+                                  line_color="blue", 
+                                  line_width=1, 
+                                  connectgaps = True, 
+                                  fillcolor='rgba(0, 0, 255, 0.1)',    #azure = 240, 255, 255
+                                  fill='tonexty'))
+    # Y las zonas
+    limitList= []
+    nZone = 0
+    for zone in estrategia['zonesNOP']:       
+        if zone['limitUp'] not in limitList:
+            zoneborder = [zone['limitUp']] * len (dfToday.index)
+            fig2.add_trace(go.Scatter(x=dfToday.index, 
+                                      y=zoneborder, 
+                                      mode="lines", 
+                                      line_color="gray", 
+                                      line_width=1, 
+                                      connectgaps = True, 
+                                      fill='none'))
+            limitList.append(zone['limitUp'])
+        if zone['limitDown'] not in limitList:
+            zoneborder = [zone['limitDown']] * len (dfToday.index)
+            fig2.add_trace(go.Scatter(x=dfToday.index, 
+                                      y=zoneborder, 
+                                      mode="lines", 
+                                      line_color="gray", 
+                                      line_width=1, 
+                                      connectgaps = True, 
+                                      fill='none'))
+            limitList.append(zone['limitDown'])
+        nZone += 1
+
+    return fig2
+
+def addZonesLinesRu (fig2, estrategia, dfToday):
+    limitList= []
+    for zone in estrategia['zonesNOP']:   
+        ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
+        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
+        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
+
+        if zone['Price'] not in limitList:
+            if ordenMain != None and ordenMain['params'] != None and 'status' in ordenMain['params']:
+                if ordenMain['params']['status'] == 'Submitted':
+                    zoneborder = [zone['Price']] * len (dfToday.index)
+                    fig1.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    limitList.append(zone['Price'])
+        if zone['PrecioSL'] not in limitList:
+            if ordenSL != None and ordenSL['params'] != None and 'status' in ordenSL['params']:
+                if ordenSL['params']['status'] == 'Submitted':
+                    zoneborder = [zone['PrecioSL']] * len (dfToday.index)
+                    fig1.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    limitList.append(zone['PrecioSL'])
+        if zone['PrecioTP'] not in limitList:
+            if ordenTP != None and ordenTP['params'] != None and 'status' in ordenTP['params']:
+                if ordenTP['params']['status'] == 'Submitted':
+                    zoneborder = [zone['PrecioTP']] * len (dfToday.index)
+                    fig1.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    limitList.append(zone['PrecioTP'])
+
+    return fig2
+
+def layout_getStrategyHeader (estrategia, strategyType, update = False):
     
     symbol = estrategia['symbol']
     posQty = estrategia['currentPos']
@@ -577,7 +764,7 @@ def layout_getStrategyHeader (estrategia, update = False):
     if not contrato:
         logging.error ('Error cargando estrategia Headerde %s. No tenemos el contrato cargado en RT_Data', symbol)
         return no_update
-    if (contrato['dbPandas'].toPrintPnL == False) and (update == True):
+    if (contrato['dbPandas'].toPrintPnL == False or estrategia['dbPandas'].toPrint) and (update == True):
         logging.debug ('Header estrategia no actualizado. No hay datos nuevos')
         return no_update
 
@@ -593,21 +780,30 @@ def layout_getStrategyHeader (estrategia, update = False):
         if lastPnL['unrealizedPnL'] != None:
             unrealizedPnL = formatCurrency(lastPnL['unrealizedPnL'])
 
+    execToday = 'Na'
+    execTotal = 'Na'
+    if strategyType == 'Pentagrama':
+        execToday = estrategia['dbPandas'].dbGetExecCountToday()
+        execTotal = estrategia['dbPandas'].dbGetExecCountAll()
+        estrategia['dbPandas'].toPrint = False
+    execString = str(execToday) + '/' + str(execTotal)
+
     # Cabecera para cada contrato con estrategia
     
     headerRow = dbc.Row(
         [
-            dbc.Col(dbc.Button(symbol,id={'role': 'boton_strategy_header', 'symbol': symbol}), className = 'bg-primary mr-1', width = 4),
+            dbc.Col(dbc.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), className = 'bg-primary mr-1', width = 4),
             dbc.Col(html.Div(posQty), className = 'bg-primary mr-1', width = 1),
             dbc.Col(html.Div(dailyPnL), className = 'bg-primary mr-1', width = 1),
             dbc.Col(html.Div(realizedPnL), className = 'bg-primary mr-1', width = 1),
             dbc.Col(html.Div(unrealizedPnL), className = 'bg-primary mr-1', width = 1),
-            dbc.Col(html.Div(""), className = 'bg-primary mr-1', width = 3),
-            dbc.Col(dbc.Switch(id={'role': 'switchStratEnabled', 'symbol': symbol}, value = stratEnabled), className = 'bg-primary mr-1', width = 1),
+            dbc.Col(html.Div(execString), className = 'bg-primary mr-1', width = 3),
+            dbc.Col(dbc.Switch(id={'role': 'switchStratEnabled', 'strategy':strategyType, 'symbol': symbol}, value = stratEnabled), className = 'bg-primary mr-1', width = 1),
         ], className = 'text-white mb-1'
     )
     
     contrato['dbPandas'].toPrintPnL = False
+    
     return headerRow
 
 def layout_getStrategyTableOrders (estrategia, update = False):
@@ -628,8 +824,10 @@ def layout_getStrategyTableOrders (estrategia, update = False):
         lmtUp = ordenUp['order'].lmtPrice
         if ordenUp['order'].orderType == 'STP':
             lmtUp = ordenUp['order'].auxPrice
+        lmtUp = formatCurrency(lmtUp)
         if ordenUp['order'].action == 'SELL':
             posUp = posUp * (-1)
+        
     else:
         posUp = 'N/A'
         lmtUp = 'N/A'
@@ -647,6 +845,7 @@ def layout_getStrategyTableOrders (estrategia, update = False):
         lmtDown = ordenDown['order'].lmtPrice
         if ordenDown['order'].orderType == 'STP':
             lmtDown = ordenDown['order'].auxPrice
+        lmtDown = formatCurrency(lmtDown)
         if ordenDown['order'].action == 'SELL':
             posDown = posDown * (-1)
     else:
@@ -706,6 +905,143 @@ def layout_getStrategyTableOrders (estrategia, update = False):
 
     return ret
 
+def layout_getStrategyPenRuTableOrders (estrategia, update = False):
+
+    #orden = globales.G_RTlocalData_.orderGetByOrderId(lOrderId)
+    if estrategia['ordersUpdated'] == False and update == True:
+        logging.debug ('Tabla de ordenes en Strategia no actualizado. No hay datos nuevos')
+        return no_update
+
+    insideDetailsTableHeader = [
+        html.Thead(
+            html.Tr(
+                [
+                   html.Th(""), 
+                   html.Th("Order Id"),
+                   html.Th("Perm Id"),
+                   html.Th("Lmt"),
+                   html.Th("Type"),
+                   html.Th("Status"),
+                   html.Th("Qty"),
+                ]
+            )   
+        )
+    ]
+
+    insideDetailsTableBodyInside = []
+
+    for zone in estrategia['zones']:
+        ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
+        if ordenParent:
+            posParent = ordenParent['order'].totalQuantity
+            typeParent = ordenParent['order'].orderType
+            if ordenParent['params'] != None and 'status' in ordenParent['params']:
+                statusParent = ordenParent['params']['status']
+            else:
+                statusParent = 'N/A'
+            lmtParent = ordenParent['order'].lmtPrice
+            if ordenParent['order'].orderType == 'STP':
+                lmtParent = ordenParent['order'].auxPrice
+            lmtParent = formatCurrency(lmtParent)
+            if ordenParent['order'].action == 'SELL':
+                posParent = posParent * (-1)
+        else:
+            posParent = 'N/A'
+            lmtParent = 'N/A'
+            typeParent = 'N/A'
+            statusParent = 'N/A'
+
+        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
+        if ordenTP:
+            posTP = ordenTP['order'].totalQuantity
+            typeTP = ordenTP['order'].orderType
+            if ordenTP['params'] != None and 'status' in ordenTP['params']:
+                statusTP = ordenTP['params']['status']
+            else:
+                statusTP = 'N/A'
+            lmtTP = ordenTP['order'].lmtPrice
+            if ordenTP['order'].orderType == 'STP':
+                lmtTP = ordenTP['order'].auxPrice
+            lmtTP = formatCurrency(lmtTP)
+            if ordenTP['order'].action == 'SELL':
+                posTP = posTP * (-1)
+        else:
+            posTP = 'N/A'
+            lmtTP = 'N/A'
+            typeTP = 'N/A'
+            statusTP = 'N/A'
+
+        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
+        if ordenSL:
+            posSL = ordenSL['order'].totalQuantity
+            typeSL = ordenSL['order'].orderType
+            if ordenSL['params'] != None and 'status' in ordenSL['params']:
+                statusSL = ordenSL['params']['status']
+            else:
+                statusSL = 'N/A'
+            lmtSL = ordenSL['order'].lmtPrice
+            if ordenSL['order'].orderType == 'STP':
+                lmtSL = ordenSL['order'].auxPrice
+            lmtSL = formatCurrency(lmtSL)
+            if ordenSL['order'].action == 'SELL':
+                posSL = posSL * (-1)
+        else:
+            posSL = 'N/A'
+            lmtSL = 'N/A'
+            typeSL = 'N/A'
+            statusSL = 'N/A'
+
+        insideDetailsStratParent = html.Tr(
+            [
+                html.Td("Parent"), 
+                html.Td(str(zone['OrderId'])),
+                html.Td(str(zone['OrderPermId'])),
+                html.Td(str(lmtParent)),
+                html.Td(str(typeParent)),
+                html.Td(str(statusParent)),
+                html.Td(str(posParent)),
+            ]
+        )
+
+        insideDetailsStratTP = html.Tr(
+            [
+                html.Td("T Profit", style={"textAlign": "right"}), 
+                html.Td(str(zone['OrderIdTP'])),
+                html.Td(str(zone['OrderPermIdTP'])),
+                html.Td(str(lmtTP)),
+                html.Td(str(typeTP)),
+                html.Td(str(statusTP)),
+                html.Td(str(posTP)),
+            ]
+        )
+
+        insideDetailsStratSL = html.Tr(
+            [
+                html.Td("Stop Loss", style={"textAlign": "right"}), 
+                html.Td(str(zone['OrderIdSL'])),
+                html.Td(str(zone['OrderPermIdSL'])),
+                html.Td(str(lmtSL)),
+                html.Td(str(typeSL)),
+                html.Td(str(statusSL)),
+                html.Td(str(posSL)),
+            ]
+        )
+
+        insideDetailsTableBodyInside.append(insideDetailsStratParent)
+        insideDetailsTableBodyInside.append(insideDetailsStratTP)
+        insideDetailsTableBodyInside.append(insideDetailsStratSL)
+
+
+    insideDetailsTableBody = [html.Tbody(insideDetailsTableBodyInside)]
+    estrategia['ordersUpdated'] = False
+
+    ret = dbc.Table(
+        insideDetailsTableHeader + insideDetailsTableBody, 
+        bordered=True
+    )
+
+    return ret
+
 def ordenesObtenerFilas (orden, update = False):
     #orden = globales.G_RTlocalData_.orderGetByOrderId(lOrderId)
     if orden == None or 'toPrint' not in orden:
@@ -724,15 +1060,21 @@ def ordenesObtenerFilas (orden, update = False):
     symbol = globales.G_RTlocalData_.contractSummaryBrief(orden['contractId'])
     lFillState = str(lQty) + '/' + str(lFilled) + '/' + str(lRemaining)
 
+    strategy = globales.G_RTlocalData_.strategies_.strategyGetStretegyByOrderId (lOrderId)
+    if strategy == None:
+        lStrategy = 'N/A'
+    else:
+        lStrategy = strategy['strategy'] + ' [' + strategy['symbol'] + ']'
+
     headerRow = dbc.Row(
             [
                 dbc.Col(dbc.Button(str(lOrderId),id={'role': 'boton', 'index': lOrderId}), className = 'bg-primary mr-1', width = 1),
                 dbc.Col(html.Div(symbol), className = 'bg-primary mr-1', width = 3),
                 dbc.Col(html.Div(lAction), className = 'bg-primary', width = 1),
                 dbc.Col(html.Div(lStatus), className = 'bg-success', width = 1),
-                dbc.Col(html.Div(lFillState), className = 'bg-primary', width = 2),
+                dbc.Col(html.Div(lFillState), className = 'bg-primary', width = 1),
                 dbc.Col(html.Div(lLastFillPrice), className = 'bg-primary', width = 1),
-                dbc.Col(html.Div("Comment"), className = 'bg-primary', width = 2),
+                dbc.Col(html.Div(lStrategy), className = 'bg-primary', width = 3),
                 dbc.Col(dbc.Button(html.I(className="bi bi-x-circle me-2"),id={'role': 'boton_order_cancel', 'orderId': str(lOrderId)}), className = 'bg-primary', width = 1),
             ], className = 'text-white mb-1'
     )  
@@ -833,9 +1175,9 @@ def toggle_colapse_generic(n_button, is_open):
 
 # Callback para colapsar o mostrar filas Strategias
 @appDashFE_.callback(
-    Output({'role': 'colapse_strategy', 'symbol': MATCH}, "is_open"),
-    Input({'role': 'boton_strategy_header', 'symbol': MATCH}, "n_clicks"),
-    State({'role': 'colapse_strategy', 'symbol': MATCH}, "is_open"),
+    Output({'role': 'colapse_strategy', 'strategy':MATCH, 'symbol': MATCH}, "is_open"),
+    Input({'role': 'boton_strategy_header', 'strategy':MATCH, 'symbol': MATCH}, "n_clicks"),
+    State({'role': 'colapse_strategy', 'strategy':MATCH, 'symbol': MATCH}, "is_open"),
     prevent_initial_call = True,
 )
 def toggle_colapse_strategy(n_button, is_open):
@@ -864,8 +1206,8 @@ def actualizarFilaOrdenes (n_intervals):
 
 #Callback para actualizar fila de valores de Strategies
 @appDashFE_.callback(
-    Output({'role':'estrategia_header', 'symbol': MATCH}, "children"),
-    Input({'role': 'IntervalHeaderStrategy', 'symbol': MATCH}, 'n_intervals'),
+    Output({'role':'estrategia_header', 'strategy':MATCH, 'symbol': MATCH}, "children"),
+    Input({'role': 'IntervalHeaderStrategy', 'strategy':MATCH, 'symbol': MATCH}, 'n_intervals'),
     prevent_initial_call = True,
 )
 def actualizarFilaStrategies (n_intervals):
@@ -873,16 +1215,20 @@ def actualizarFilaStrategies (n_intervals):
         raise PreventUpdate
     logging.debug ('Actualizando Estrategia Fila')
     symbol = ctx.triggered_id['symbol']
+    strategyType = ctx.triggered_id['strategy']
 
-    estrategia = globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaGetStrategyBySymbol (symbol)
+    if strategyType == 'Pentagrama':
+        estrategia = globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaGetStrategyBySymbol (symbol)
+    if strategyType == 'PentagramaRu':
+        estrategia = globales.G_RTlocalData_.strategies_.strategyPentagramaRuObj_.strategyPentagramaRuGetStrategyBySymbol (symbol)
     
-    resp = layout_getStrategyHeader (estrategia, True)
+    resp = layout_getStrategyHeader (estrategia, strategyType, True)
     return resp
 
 #Callback para actualizar tabla de ordenes en Strategy
 @appDashFE_.callback(
-    Output({'role':'TableStrategyOrderDetails', 'symbol': MATCH}, "children"),
-    Input({'role': 'IntervalOrderTable', 'symbol': MATCH}, 'n_intervals'),
+    Output({'role':'TableStrategyOrderDetails', 'strategy':MATCH, 'symbol': MATCH}, "children"),
+    Input({'role': 'IntervalOrderTable', 'strategy':MATCH, 'symbol': MATCH}, 'n_intervals'),
     prevent_initial_call = True,
 )
 def actualizarTablaOrdenesStrategies (n_intervals):
@@ -891,22 +1237,27 @@ def actualizarTablaOrdenesStrategies (n_intervals):
     logging.debug ('Actualizando tabla ordenes estrategia')
     symbol = ctx.triggered_id['symbol']
 
-    estrategia = globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaGetStrategyBySymbol (symbol)
-    
-    resp = layout_getStrategyTableOrders (estrategia, True)
+    strategyType = ctx.triggered_id['strategy']
+
+    if strategyType == 'Pentagrama':
+        estrategia = globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaGetStrategyBySymbol (symbol)
+        resp = layout_getStrategyTableOrders (estrategia, True)
+    if strategyType == 'PentagramaRu':
+        estrategia = globales.G_RTlocalData_.strategies_.strategyPentagramaRuObj_.strategyPentagramaRuGetStrategyBySymbol (symbol)
+        resp = layout_getStrategyPenRuTableOrders (estrategia, True)
     return resp
 
 
 # Callback para sincronizar limites de zona, definir limites
 # Y actualizar graphs
 @appDashFE_.callback(
-    Output({'role': 'filaZoneDown', 'strategySymbol': MATCH}, "children"),
-    Output({'role': 'graphDetailsComp', 'strategySymbol': MATCH}, 'figure'),
-    Output({'role': 'graphDetailsToday', 'strategySymbol': MATCH}, 'figure'),
-    Input({'role': 'ZoneInputUp', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    Input({'role': 'ZoneInputDown', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    Input({'role': 'ZoneInputPos', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    Input({'role': 'IntervalgraphToday', 'strategySymbol': MATCH}, 'n_intervals'),
+    Output({'role': 'filaZoneDown', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, "children"),
+    Output({'role': 'graphDetailsComp', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, 'figure'),
+    Output({'role': 'graphDetailsToday', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, 'figure'),
+    Input({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
+    Input({'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
+    Input({'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
+    Input({'role': 'IntervalgraphToday', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, 'n_intervals'),
     prevent_initial_call = True,
 )
 def syncLimites(zoneUps, zoneDowns, zonePos, n_intervals):
@@ -962,7 +1313,7 @@ def syncLimites(zoneUps, zoneDowns, zonePos, n_intervals):
     else:
         fig1 = no_update
 
-    fig2 = layout_getFigureToday(estrategia, intervalUpdate)
+    fig2 = layout_getFigureToday(estrategia, 'HE', intervalUpdate)
 
     #return  zonasFilaBorderDown, no_update, no_update
     return  zonasFilaBorderDown, fig1, fig2
@@ -970,11 +1321,11 @@ def syncLimites(zoneUps, zoneDowns, zonePos, n_intervals):
 
 # Callback para grabar info de zonas
 @appDashFE_.callback(
-    Output({'role': 'ZoneInputUp', 'strategySymbol': MATCH, 'index': ALL}, "value"),   # Dash obliga a poner un output. Uno que no se use
-    State({'role': 'ZoneInputUp', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    State({'role': 'ZoneInputDown', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    State({'role': 'ZoneInputPos', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    Input({'role': 'ZoneButtonSave', 'strategySymbol': MATCH}, "n_clicks"),
+    Output({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),   # Dash obliga a poner un output. Uno que no se use
+    State({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
+    State({'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
+    State({'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
+    Input({'role': 'ZoneButtonSave', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, "n_clicks"),
     prevent_initial_call = True,
 )
 def saveLimites(zoneUps, zoneDowns, zonePos, n_clicks):
@@ -1008,11 +1359,28 @@ def saveLimites(zoneUps, zoneDowns, zonePos, n_clicks):
     return  no_update
 
 
+# Callback para grabar info de zonas
+@appDashFE_.callback(
+    Output({'role': 'TableStrategyOrderDetails', 'strategy':'PentagramaRu', 'strategySymbol': MATCH, 'index': ALL}, "value"),   # Dash obliga a poner un output. Uno que no se use
+    Input({'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'strategySymbol': MATCH}, "n_clicks"),
+    prevent_initial_call = True,
+)
+def reloadStrategyRuFiles(n_clicks):
+
+    if n_clicks is None or (not ctx.triggered_id):
+        raise PreventUpdate
+
+    # Aqui grabamos los zones
+    logging.info ("Actualización de los ficheros de estrategia Ruben (%s)", symbol)
+    globales.G_RTlocalData_.strategies_.strategyPentagramaRuObj_.strategyPentagramaRuReadFile ()
+
+    return  no_update
+
 
 # Callback para enable/disable estrategia
 @appDashFE_.callback(
-    Output({'role': 'switchStratEnabled', 'symbol': MATCH}, "value"),   # Dash obliga a poner un output.
-    Input({'role': 'switchStratEnabled', 'symbol': MATCH}, "value"), 
+    Output({'role': 'switchStratEnabled', 'strategy':MATCH, 'symbol': MATCH}, "value"),   # Dash obliga a poner un output.
+    Input({'role': 'switchStratEnabled', 'strategy':MATCH, 'symbol': MATCH}, "value"), 
     prevent_initial_call = True,
 )
 def switchStrategy(state):
@@ -1024,7 +1392,14 @@ def switchStrategy(state):
     if not ctx.triggered_id:
         return no_update
     symbol = str(ctx.triggered_id.symbol)
+    strategyType = ctx.triggered_id['strategy']
+
     globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaEnableDisable(symbol, state)
+
+    if strategyType == 'Pentagrama':
+        globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaEnableDisable(symbol, state)
+    if strategyType == 'PentagramaRu':
+        globales.G_RTlocalData_.strategies_.strategyPentagramaRuObj_.strategyPentagramaRuEnableDisable(symbol, state)
     
     return no_update
 

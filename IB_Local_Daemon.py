@@ -15,7 +15,8 @@ import IB_API_Client
 import wsServer
 import strategies
 import webFE
-
+import os
+from dotenv import load_dotenv
 
 loop_timer = 0.1
 refreshFE_timer = 1
@@ -52,16 +53,21 @@ def wsServer_loop(wsServer1):
     #wsServer1 = wsServer.wsServer(appObj)
     wsServer1.wsServerIB()
 
-def webFE_loop():
+def webFE_loop(_mode):
 
     #wsServer1 = wsServer.wsServer(appObj)
-    webFE.appDashFE_.run_server(port=5000, debug=False, threaded=True)
+    if _mode == 'Lab':
+        port_ = 5500
+    else:
+        port_ = 5000
+    webFE.appDashFE_.run_server(port=port_, debug=False, threaded=True)
     
 def run_loop(app):
 	app.run()
 
 def main():
-    
+    load_dotenv()
+    _mode = os.getenv('MODE')
     
     SetupLogger()
     logging.info ('')
@@ -88,13 +94,17 @@ def main():
     
     # Init de RT_LocalData
     
-    #globales.G_RTlocalData_ = RT_LocalData.DataLocalRT()
     globales.G_RTlocalData_.verboseBrief = args.brief
     
     # Init de IB_API_Client
     
     client_id = 0
-    app = IB_API_Client.IBI_App("127.0.0.1", 4002, client_id, globales.G_RTlocalData_)
+    if _mode == 'Lab':
+        _port = 4002
+    else:
+        _port = 4002 # En realidad es 4011 para prod
+
+    app = IB_API_Client.IBI_App("127.0.0.1", _port, client_id, globales.G_RTlocalData_)
     t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)
     t_api_thread.start()
 
@@ -103,7 +113,7 @@ def main():
     # Init web page
     #webFE1 = webFE.webFE(globals.G_RTlocalData_)
     #t_webFE = threading.Thread(name='webFE', target=webFE_loop, args=(webFE1,))
-    t_webFE = threading.Thread(name='webFE', target=webFE_loop)
+    t_webFE = threading.Thread(name='webFE', target=webFE_loop, args=(_mode,))
     t_webFE.start()
 
     # Init de wsServer
@@ -194,14 +204,17 @@ def main():
                 callbackItem = app.CallbacksQueue_.get()
                 if callbackItem['type'] == 'execution':
                     globales.G_RTlocalData_.executionAnalisys (callbackItem['data'])
+                if callbackItem['type'] == 'commission':
+                    globales.G_RTlocalData_.commissionAnalisys(callbackItem['data'])
                 if callbackItem['type'] == 'tick':
                     globales.G_RTlocalData_.tickUpdatePrice (callbackItem['data'])
                 if callbackItem['type'] == 'pnl':
                     globales.G_RTlocalData_.pnlUpdate (callbackItem['data'])
                 if callbackItem['type'] == 'order':
-                    globales.G_RTlocalData_.orderUpdate(callbackItem['data'])
+                    bChange = globales.G_RTlocalData_.orderUpdate(callbackItem['data']) # Me dice si hay cambio o no
                     # Añadir algo que actualizar ordenes en Strategy
-                    strategyIns.strategyIndexOrderUpdate (callbackItem['data'])
+                    if bChange:
+                        strategyIns.strategyIndexOrderUpdate (callbackItem['data'])
                 if callbackItem['type'] == 'position':
                     globales.G_RTlocalData_.positionUpdate (callbackItem['data'])
                 if callbackItem['type'] == 'account':

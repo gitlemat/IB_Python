@@ -2,6 +2,7 @@
 from ibapi.contract import *
 from ibapi.order import *
 from ibapi.utils import floatMaxString, longMaxString
+from ibapi.common import UNSET_INTEGER, UNSET_DOUBLE, UNSET_LONG, UNSET_DECIMAL, DOUBLE_INFINITY, INFINITY_STR
 import strategies
 import pandasDB
 import logging
@@ -70,18 +71,14 @@ class DataLocalRT():
 
     def executionAnalisys (self, data):
         #Podemos hacer más cosas, de momento solo informamos a las estrategias
-        contract = data['contractObj']
-        execution = data['executionObj']
-        logging.info ('Order Executed:')
-        logging.info ('  Symbol: %s (%s)', contract.symbol, contract.secType)
-        logging.info ('  ExecId: %s', execution.execId)
-        logging.info ('  OrderId/PermId: %s/%s', execution.orderId, execution.permId)
-        logging.info ('  Number/Price: %s at %s', execution.shares, execution.price)
-        logging.info ('  Cumulative: %s', execution.cumQty)
-        logging.info ('  Liquidity: %s',execution.lastLiquidity)
-        #self.strategies_.strategyIndexOrderExecuted(data)   # Esto entra a traves de la orden
-
         
+        self.strategies_.strategyIndexOrderExecuted(data)   # Esto entra a traves de la orden
+
+    def commissionAnalisys (self, data):
+        #Podemos hacer más cosas, de momento solo informamos a las estrategias
+        
+        self.strategies_.strategyIndexOrderCommission(data)   # Esto entra a traves de la orden
+
     ########################################
     # Account
 
@@ -212,7 +209,7 @@ class DataLocalRT():
         tickType = data['tickType']
         price = None
         if 'price' in data:
-            price = data['price']
+            price = round(data['price'],5)  # bajo a 5 decimales
             if price == -100:  # Indica que no está disponible
                 return
         size = None
@@ -254,6 +251,8 @@ class DataLocalRT():
             if tickType == 8 or tickType == 74:
                 bChange = True
                 prices['VOLUME'] = size
+
+            
         
             self.tickPrices_[reqId] = prices
         
@@ -270,13 +269,13 @@ class DataLocalRT():
         reqIdPnL = data['reqId']        
         pnlType = data['pnlType']
 
-        logging.info ('PnL actualizado (req: %d):', reqIdPnL)
-        logging.info ('    dailyPnL: %d', data['dailyPnL'])
-        logging.info ('    realizedPnL: %d', data['realizedPnL'])
-        logging.info ('    unrealizedPnL: %d', data['unrealizedPnL'])
+        logging.debug ('PnL actualizado (req: %d):', reqIdPnL)
+        logging.debug ('    dailyPnL: %d', data['dailyPnL'])
+        logging.debug ('    realizedPnL: %d', data['realizedPnL'])
+        logging.debug ('    unrealizedPnL: %d', data['unrealizedPnL'])
         if pnlType == 'single':
-            logging.info ('    Pos: %d', data['pos'])
-            logging.info ('    Value: %d', data['value'])
+            logging.debug ('    Pos: %d', data['pos'])
+            logging.debug ('    Value: %d', data['value'])
 
 
         pnl = {}
@@ -288,6 +287,8 @@ class DataLocalRT():
         bChange = False
 
         for k,v in data.items():
+            if v == UNSET_DOUBLE:  # Este valor lo usa IB para indicar empty cell.
+                continue
             if k not in ['reqId']: # no quiero usar este key
                 if k not in pnl:
                     bChange = True
@@ -446,7 +447,7 @@ class DataLocalRT():
             contrato['hasContractSymbols'] = True
             lSymbol = self.contractSummaryBrief (contrato['gConId'])     
             contrato['fullSymbol'] = lSymbol      
-            contrato['dbPandas'] = pandasDB.dbPandas (lSymbol, self.influxIC_)           # No se puede hasta que no tenga todos los simbolos
+            contrato['dbPandas'] = pandasDB.dbPandasContrato (lSymbol, self.influxIC_)           # No se puede hasta que no tenga todos los simbolos
             # Pillo los ultimos precios guardados en DB
             logging.info ('Pido precios de BD para %s', lSymbol)
             lastPrices = contrato['dbPandas'].dbGetLastPrices()
@@ -498,30 +499,41 @@ class DataLocalRT():
                         price2buy = price2buy + self.tickPrices_[legReqId]['ASK'] * conReqLeg['ratio']
                         price2last = price2last + self.tickPrices_[legReqId]['LAST'] * conReqLeg['ratio']
                         if size2sell == None:
-                            self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio']
+                            size2sell = int(self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio'])   
                         else:
-                            size2sell = min(size2sell, self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio'])
+                            size2sell = min(size2sell, int(self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio']))
                         if size2buy == None:
-                            self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio']
+                            size2buy = int(self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio'])
                         else:
-                            size2buy = min(size2buy, self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio'])
+                            size2buy = min(size2buy, int(self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio']))
                     if conReqLeg['action'] == 'SELL':
                         price2sell = price2sell - self.tickPrices_[legReqId]['ASK'] * conReqLeg['ratio']
                         price2buy = price2buy - self.tickPrices_[legReqId]['BID'] * conReqLeg['ratio']
                         price2last = price2last - self.tickPrices_[legReqId]['LAST'] * conReqLeg['ratio']
                         if size2sell == None:
-                            self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio']
+                            size2sell = int(self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio'])
                         else:
-                            size2sell = min(size2sell, self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio'])
+                            size2sell = min(size2sell, int(self.tickPrices_[legReqId]['ASK_SIZE'] / conReqLeg['ratio']))
                         if size2buy == None:
-                            self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio']
+                            size2buy = int(self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio'])
                         else:
-                            size2buy = min(size2buy, self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio'])
+                            size2buy = min(size2buy, int(self.tickPrices_[legReqId]['BID_SIZE'] / conReqLeg['ratio']))
                 
                     if size2last == None:
-                        size2last = self.tickPrices_[legReqId]['LAST_SIZE']
+                        size2last = int(self.tickPrices_[legReqId]['LAST_SIZE'] / conReqLeg['ratio'])
                     else:
-                        size2last = min(size2last, self.tickPrices_[legReqId]['LAST_SIZE'])
+                        size2last = min(size2last, int(self.tickPrices_[legReqId]['LAST_SIZE'] / conReqLeg['ratio']))
+
+                    if not size2buy:  # Por si son None, les paso a 0 ( no debería, pero así aseguro la comparacion de abajo)
+                        size2buy = 0
+                    if not size2sell:
+                        size2sell = 0
+                    if not size2last:
+                        size2last = 0
+                    size2buy = float(size2buy)
+                    size2sell = float(size2sell)
+                    size2last = float(size2last)
+                    
                 '''
                 if allReady == False:
                     price2sell = None
@@ -531,35 +543,47 @@ class DataLocalRT():
                     size2sell = None
                     size2last = None
                 '''
+                bUpdated = False
                 if allReady != False:
-                    if contrato['currentPrices']['BUY'] != price2buy:
+                    timestamp = datetime.datetime.now()
+                    data_args = {'timestamp':timestamp}
+                    price2buy = round (price2buy, 5)
+                    price2sell = round (price2sell, 5)
+                    price2last = round (price2last, 5)
+                    if contrato['currentPrices']['BUY'] != price2buy and size2buy > 0:
                         contrato['currentPrices']['BUY'] = price2buy
                         contrato['currentPrices']['updated'] = True
-                    if contrato['currentPrices']['SELL'] != price2sell:
+                        data_args['ASK'] = price2buy
+                        bUpdated = True
+                    if contrato['currentPrices']['SELL'] != price2sell and size2sell > 0:
                         contrato['currentPrices']['SELL'] = price2sell
                         contrato['currentPrices']['updated'] = True
-                    if contrato['currentPrices']['LAST'] != price2last:
+                        data_args['BID'] = price2sell
+                        bUpdated = True
+                    if contrato['currentPrices']['LAST'] != price2last and size2last > 0:
                         contrato['currentPrices']['LAST'] = price2last
                         contrato['currentPrices']['updated'] = True
-                    if contrato['currentPrices']['BUY_SIZE'] != size2buy:
+                        data_args['LAST'] = price2last
+                        bUpdated = True
+                    if contrato['currentPrices']['BUY_SIZE'] != size2buy and size2buy > 0:
                         contrato['currentPrices']['BUY_SIZE'] = size2buy
                         contrato['currentPrices']['updated'] = True
-                    if contrato['currentPrices']['SELL_SIZE'] != size2sell:
+                        data_args['ASK_SIZE'] = size2buy
+                        bUpdated = True
+                    if contrato['currentPrices']['SELL_SIZE'] != size2sell and size2sell > 0:
                         contrato['currentPrices']['SELL_SIZE'] = size2sell
                         contrato['currentPrices']['updated'] = True
-                    if contrato['currentPrices']['LAST_SIZE'] != size2last:
+                        data_args['BID_SIZE'] = size2sell
+                        bUpdated = True
+                    if contrato['currentPrices']['LAST_SIZE'] != size2last and size2last > 0:
                         contrato['currentPrices']['LAST_SIZE'] = size2last
                         contrato['currentPrices']['updated'] = True
+                        data_args['LAST_SIZE'] = size2last
+                        bUpdated = True
 
-                
                     # Se actualiza la DB para el contrato['gConId'] con estos datos:
-                    lSymbol = contrato['fullSymbol']
-                    timestamp = datetime.datetime.now()
-                    data_args = {'gConId': gConId, 'Symbol':lSymbol, 'timestamp':timestamp, 
-                                 'BID': price2sell, 'ASK':price2buy, 'LAST':price2last,
-                                 'BID_SIZE': size2sell, 'ASK_SIZE':size2buy, 'LAST_SIZE':size2last
-                                 }
-                    contrato['dbPandas'].dbUpdateAdd(data_args)
+                    if bUpdated:
+                        contrato['dbPandas'].dbUpdateAddPrices(data_args)
 
     def contractUpdatePnL(self, reqIdPnL):
         # Tenemos por un lado los contratos BAG
@@ -588,12 +612,7 @@ class DataLocalRT():
                     if not legReqId in self.pnl_:   # Está subscrito pero no hemos recibido el PnL de este leg aun
                         allReady = False
                         break
-                    '''
-                    if conReqLeg['action'] == 'BUY':
-                        ratio = conReqLeg['ratio']
-                    else:
-                        ratio = (-1) * conReqLeg['ratio']  # Esto hay que revisarlo cuando salga. A saber si hace falta
-                    '''
+
                     if dailyPnL != None:   # Si es None es que no están todos
                         if not 'dailyPnL' in self.pnl_[legReqId]:  
                             dailyPnL = None   
@@ -619,26 +638,35 @@ class DataLocalRT():
                             value += self.pnl_[legReqId]['value']
 
                 if allReady != False:
-                    if contrato['pnl']['dailyPnL'] != dailyPnL:
+                    bUpdated = False
+                    if contrato['pnl']['dailyPnL'] != dailyPnL and dailyPnL != None:
                         contrato['pnl']['dailyPnL'] = dailyPnL
                         contrato['pnl']['updated'] = True
-                    if contrato['pnl']['realizedPnL'] != realizedPnL:
+                        bUpdated = True
+                    if contrato['pnl']['realizedPnL'] != realizedPnL and realizedPnL != None:
                         contrato['pnl']['realizedPnL'] = realizedPnL
                         contrato['pnl']['updated'] = True
-                    if contrato['pnl']['unrealizedPnL'] != unrealizedPnL:
+                        bUpdated = True
+                    if contrato['pnl']['unrealizedPnL'] != unrealizedPnL and unrealizedPnL != None:
                         contrato['pnl']['unrealizedPnL'] = unrealizedPnL
                         contrato['pnl']['updated'] = True
-                    if contrato['pnl']['value'] != value:
+                        bUpdated = True
+                    if contrato['pnl']['value'] != value and value != None:
                         contrato['pnl']['value'] = value
                         contrato['pnl']['updated'] = True
+                        bUpdated = True
 
                     # Se actualiza la DB para el contrato['gConId'] con estos datos:
-                    lSymbol = contrato['fullSymbol']
-                    timestamp = datetime.datetime.now()
-                    data_args = {'gConId': gConId, 'Symbol':lSymbol, 'timestamp':timestamp, 
-                                 'dailyPnL': dailyPnL, 'realizedPnL':realizedPnL, 'unrealizedPnL':unrealizedPnL
-                                 }
-                    contrato['dbPandas'].dbUpdateAdd(data_args)
+                    if bUpdated:
+                        lSymbol = contrato['fullSymbol']
+                        timestamp = datetime.datetime.now()
+                        data_args = {'timestamp':timestamp, 
+                                     'dailyPnL': contrato['pnl']['dailyPnL'], 
+                                     'realizedPnL':contrato['pnl']['realizedPnL'], 
+                                     'unrealizedPnL':contrato['pnl']['unrealizedPnL']
+                                     }
+                        if self.strategies_.strategyGetStretegyBySymbol(lSymbol) != None:   # Solo añado a la DB si forma parte de una strategia
+                            contrato['dbPandas'].dbUpdateAddPnL(data_args)
                    
 
     def contractGetCurrentPricesPerGconId (self, gConId):
@@ -947,6 +975,7 @@ class DataLocalRT():
         orden['contractId'] = self.contractGetGconId(contractObj)
         orden['order'] = orderObj
         orden['params'] = paramsDict
+        orden['Executed'] = False
         orden['toPrint'] = False
         orden['toCancel'] = False
         str_o = self.orderSummary(orden)
@@ -983,6 +1012,7 @@ class DataLocalRT():
             if orden['permId'] == localPermId:
                 exists = True
                 bChanged = False
+                bStatusChanged = False
                 if not contractObj=="" and contractObj != None:
                     orden['contractId'] = self.contractGetGconId(contractObj)
                 if not orderObj=="" and orderObj != None:
@@ -992,12 +1022,20 @@ class DataLocalRT():
                     if orden['params'] != None:
                         if 'status' in orden['params'] and 'status' in paramsDict and orden['params']['status'] != paramsDict['status']:
                             bChanged = True
+                        elif 'status' not in orden['params'] and 'status' in paramsDict:
+                            bChanged = True
                         if 'filled' in orden['params'] and 'filled' in paramsDict and orden['params']['filled'] != paramsDict['filled']:
+                            bChanged = True
+                        elif 'filled' not in orden['params'] and 'filled' in paramsDict:
                             bChanged = True
                         if 'remaining' in orden['params'] and 'remaining' in paramsDict and orden['params']['remaining'] != paramsDict['remaining']:
                             bChanged = True
+                        elif 'remaining' not in orden['params'] and 'remaining' in paramsDict:
+                            bChanged = True
                         if 'lastFillPrice' in orden['params'] and 'lastFillPrice' in paramsDict and orden['params']['lastFillPrice'] != paramsDict['lastFillPrice']:
                             bChanged = True
+                    elif 'status' in paramsDict or 'filled' in paramsDict or 'remaining' in paramsDict:
+                        bChanged = True
                     orden['params'].update(paramsDict)
                 orden['toPrint'] = True
                 str_o = self.orderSummary(orden)
@@ -1027,7 +1065,16 @@ class DataLocalRT():
             if orden['params']['status'] == 'Filled':
                 self.orderList_.remove(orden)
 
+    def orderSetExecutedStatus (self, orderId, bExec):
+        for orden in self.orderList_: 
+            if orden['order'].orderId == orderId:
+                orden['Executed'] = bExec
+                return True
+        return None
+
     def orderGetStatusbyOrderId (self, orderId):
+        if not orderId:
+            return None
         for orden in self.orderList_: 
             if orden['order'].orderId == orderId:
                 if 'status' in orden['params']:
@@ -1089,10 +1136,20 @@ class DataLocalRT():
         return False
 
     def orderCheckIfExistsByOrderId (self, orderId):
+        if not orderId:
+            return False
         for order in self.orderList_: 
             if int(order['order'].orderId) == int(orderId):
                 return True
         return False
+
+    def orderPlaceBrief (self, symbol, secType, action, oType, lmtPrice, qty):
+        newreqDownId = self.appObj_.placeOrderBrief (symbol, secType, action, oType, lmtPrice, qty) 
+        return newreqDownId
+
+    def orderPlaceBracket (self, symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice):
+        ordersIds = self.appObj_.placeBracketOrder (symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice) 
+        return ordersIds
 
     def orderCancelByOrderId (self, orderId):
         for order in self.orderList_: 
