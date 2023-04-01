@@ -5,12 +5,14 @@ import time
 import datetime
 import pytz
 import queue
+import sys
 
 
 import logging
 
 logger = logging.getLogger(__name__)
 utc=pytz.UTC
+UNSET_DOUBLE = sys.float_info.max
 
 
 # data_args = {'gConId': gConId, 'BID': price2buy, 'ASK':price2sell, 'LAST':price2last, 'Symbol':lSymbol, 'timestamp':timestamp}
@@ -31,13 +33,13 @@ plt.show()
 '''
 class dbPandasStrategy():
 
-    def __init__(self, symbol, estrategia, influxIC):
+    def __init__(self, symbol, strategyType, influxIC):
         self.dfExecs_ = None
         self.dfExecCount_ = None
 
         self.symbol_ = symbol
         self.influxIC_ = influxIC
-        self.estrategia_ = estrategia
+        self.strategyType = strategyType
         self.toPrint = True
         self.toPrintPnL = True
         self.ExecsList = {}
@@ -46,8 +48,8 @@ class dbPandasStrategy():
 
     def dbReadInflux(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes')
-        self.dfExecs_ = self.influxIC_.influxGetExecDataFrame (self.symbol_, self.estrategia_)
-        self.dfExecCount_ = self.influxIC_.influxGetExecCountDataFrame (self.symbol_, self.estrategia_)
+        self.dfExecs_ = self.influxIC_.influxGetExecDataFrame (self.symbol_, self.strategyType)
+        self.dfExecCount_ = self.influxIC_.influxGetExecCountDataFrame (self.symbol_, self.strategyType)
 
     def dbGetExecsDataframeToday(self):
         #                                   OrderId  Quantity Side
@@ -75,6 +77,8 @@ class dbPandasStrategy():
         today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
 
         ret = self.dfExecCount_[self.dfExecCount_.index ==  today]
+
+        logging.info("Las Exec count hoy: \n%s", self.dfExecCount_)
         if len(ret) > 0:
             return ret.iloc[-1]['ExecCount']
         
@@ -87,7 +91,7 @@ class dbPandasStrategy():
     def dbAddExecToCount(self):
         today = datetime.datetime.today()
         today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
-        lastdate == self.dfExecCount_.index.max().to_pydatetime()
+        lastdate = self.dfExecCount_.index.max().to_pydatetime()
 
         if today == lastdate:
             self.dfExecCount_.iloc[-1]['ExecCount'] += 1
@@ -97,27 +101,19 @@ class dbPandasStrategy():
             newlineL.append(data)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
-            self.dfExecCount_ =  pd.concat([self.dfExecCount_, dfDelta])
-        
-    def dbCheckIfExecIdInStrategy(self,ExecId ):
-        index1 = ExecId[:ExecId.index('.')]
-        rest = ExecId[ExecId.index('.')+1:]
-        index2 = rest[:a2.rest('.')]
-        index = index1 + '.' + index2
+            self.dfExecCount_ = pd.concat([self.dfExecCount_, dfDelta])
 
-        if index in self.ExecsList:
-            return True
-        else:
-            return False
 
     def dbAddExecOrder(self, data):
-        logging.debug ('Actualizamos Exec Order %s[%s]: %s', self.estrategia_, self.symbol_, data)
+        logging.info ('Actualizamos Exec Order %s[%s]: %s', self.strategyType, self.symbol_, data)
 
+        # Nos quedamos con la parte mas significativa del index
         index1 = data['ExecId'][:data['ExecId'].index('.')]
         rest = data['ExecId'][data['ExecId'].index('.')+1:]
         index2 = rest[:rest.index('.')]
         index = index1 + '.' + index2
 
+        # Si el index recibido no está en la lista, lo añado
         if not index in self.ExecsList:
             self.ExecsList[index] = {}
             self.ExecsList[index]['realizadPnL'] = 0
@@ -126,18 +122,18 @@ class dbPandasStrategy():
             self.ExecsList[index]['legsDone'] = 0
             self.ExecsList[index]['Side'] = None
             self.ExecsList[index]['Quantity'] = 0
-            self.ExecsList[index]['data'] = []
+            self.ExecsList[index]['data'] = [] # Aquí guardamos cada una de las legs que me llegan, para luego recibir la commision
         
+        # El qty/side lo pillo del index de la spread (me va a llegar uno de la spread y luego por cada leg)
         if data['contractSecType'] == data['execSecType']:
-            self.dbAddExecToCount()  # Mejor en comisionse
             self.ExecsList[index]['Side'] = data['Side']
             self.ExecsList[index]['Quantity'] = data['Quantity']
         else:
-            # Aqui deberiamos llenar una queue, y vacier en Commissiones
+            # Estos son los de cada leg. Aqui llenamos la lista, y la vaciamos en Commissiones
             self.ExecsList[index]['data'].append(data)
 
     def dbAddCommissionsOrder(self, dataCommission):
-        logging.debug ('Actualizamos Commission Order %s[%s]: %s', self.estrategia_, self.symbol_, dataCommission)
+        logging.info ('Actualizamos Commission Order %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
 
         index1 = dataCommission.execId[:dataCommission.execId.index('.')]
         rest = dataCommission.execId[dataCommission.execId.index('.')+1:]
@@ -145,60 +141,84 @@ class dbPandasStrategy():
         index = index1 + '.' + index2
 
         dataExec = None
-        if not index in self.ExecsQueue:
-            logging.error('Me ha llegado una comision sin tener la info de la Orden exec. ExecId: %s', dataCommission.execId)
-            return
+        if not index in self.ExecsList:
+            logging.info('Esta comissionReport no es de esta strategia [%s]. ExecId: %s', self.strategyType, dataCommission.execId)
+            return False
 
-        for exec in self.ExecsQueue[index]:
-            if  dataCommission.execId == exec['data'].execId:
+        for exec in self.ExecsList[index]['data']:
+            if  dataCommission.execId == exec['ExecId']:
                 dataExec = exec
                 break
         if not dataExec:
             logging.error('Me ha llegado una comision sin tener la info de la Orden exec. ExecId: %s', dataCommission.execId)
-            return
+            return False
 
-        self.ExecsQueue[index]['realizadPnL'] += dataCommission.realizedPNL
-        self.ExecsQueue[index]['Commission'] += dataCommission.commission
-        self.ExecsQueue[index]['legsDone'] += 1
+        self.ExecsList[index]['realizadPnL'] += dataCommission.realizedPNL
+        self.ExecsList[index]['Commission'] += dataCommission.commission
+        self.ExecsList[index]['legsDone'] += 1
 
-        if dataExec['legsDone'] < dataExec['numLegs']:
-            return
+        self.ExecsList[index]['data'].remove(dataExec) # por si llegan dos comisiones al mismo Exec (no deberia)
 
+        if self.ExecsList[index]['legsDone'] < dataExec['numLegs']:
+            logging.info ('El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]', self.ExecsList[index]['legsDone'], dataExec['numLegs'])
+            return True
+
+        time = datetime.datetime.now()
         dataFlux = {}
+        dataFlux['timestamp'] = time
         dataFlux['ExecId'] = index + '01.01'
         dataFlux['OrderId'] = dataExec['OrderId']
         dataFlux['PermId'] = dataExec['PermId']
-        dataFlux['Quantity'] = self.ExecsQueue[index]['Quantity'] 
-        dataFlux['Side'] = self.ExecsQueue[index]['Side'] 
-        dataFlux['RealizedPnL'] = self.ExecsQueue[index]['realizadPnL'] 
-        dataFlux['Commission'] = self.ExecsQueue[index]['Commission'] 
+        dataFlux['Quantity'] = self.ExecsList[index]['Quantity'] 
+        dataFlux['Side'] = self.ExecsList[index]['Side'] 
+        dataFlux['RealizedPnL'] = self.ExecsList[index]['realizadPnL'] 
+        dataFlux['Commission'] = self.ExecsList[index]['Commission'] 
         # Aqui seguimos con le escritura a Flux
-        # Y borrar todo el self.ExecsQueue[index]
-        records = []
-        record = {}
-        tags = {'symbol': symbol, 'strategy': 'Pentagrama'}
-        time = datetime.datetime.now()
-    
-        record = {
-            "measurement": "executions", 
-            "tags": tags,
-            "fields": dataFlux,
-            "time": time,
-        }
-        records.append(record)
-    
-        self.RTLocalData_.influxIC_.write_data(records)
+        # Y borrar todo el self.ExecsList[index]
 
-        dataFlux.pop('ExecId', None)
-        dataFlux.pop('PermId', None)
+        self.dbUpdateInfluxCommission (dataFlux)
         
+        logging.info ('Commission Order Finalizada %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
         newlineL = []
         newlineL.append (dataFlux)
-
         dfDelta = pd.DataFrame.from_records(newlineL)
         dfDelta.set_index('timestamp', inplace=True)
         self.dfExecs_ = pd.concat([self.dfExecs_, dfDelta]) #, ignore_index=True
+        self.dbAddExecToCount() 
+
         self.toPrint = True
+
+        self.ExecsList.pop(index)
+
+        return True
+
+    def dbUpdateInfluxCommission (self, data):
+        keys_comission = ['ExecId', 'PermId', 'OrderId', 'Quantity', 'Side', 'RealizedPnL', 'Commission']
+        
+        records = []
+        record = {}
+        tags = {'symbol': self.symbol_, 'strategy': self.strategyType}
+        time = data['timestamp']
+        
+        fields_influx = {}
+
+        for key in keys_comission:
+            if key in data:
+                if data[key] != None and data[key] != UNSET_DOUBLE:
+                    fields_influx[key] = data[key]
+
+
+        record = {
+            "measurement": "executions", 
+            "tags": tags,
+            "fields": fields_influx,
+            "time": time,
+        }
+
+        records.append(record)
+
+        if len(fields_influx) > 0:
+            self.influxIC_.write_data(records)
 
 
 class dbPandasContrato():
@@ -233,12 +253,6 @@ class dbPandasContrato():
 
     def dbGetDataframeComp(self):
         return self.dfcomp_
-
-    def dbGetFileName(self):
-        return 'market/' + self.symbol_ + time.strftime("_%y%m%d") + '.csv'
-
-    def dbGetFilePnLName(self):
-        return 'market/' + self.symbol_ + time.strftime("_%y%m%d") + '_pnl.csv'
 
     def dbGetLastPrices(self):
         lastPrices = {}
@@ -308,6 +322,7 @@ class dbPandasContrato():
             self.dbUpdateInfluxPrices (data)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
+            #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
             self.df_ = pd.concat([self.df_, dfDelta]) #, ignore_index=True
             self.toPrint = True
 
@@ -378,17 +393,6 @@ class dbPandasContrato():
 
     def dbUpdateInfluxPrices (self, data):
         keys_prices = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE']
-        
-        '''
-        records = [
-            {
-                "measurement": "cpu",
-    	        "tags": {"core": "0"},
-    	        "fields": {"temp": 25.3},
-    	        "time": 1657729063
-            },
-        ]
-        '''
 
         records = []
         record = {}
@@ -409,6 +413,8 @@ class dbPandasContrato():
             "time": time,
         }
         records.append(record)
+
+        #logging.info ('Escribo valor para %s: %s', self.symbol_, records)
 
         if len(fields_prices) > 0:
             self.influxIC_.write_data(records)

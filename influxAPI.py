@@ -15,6 +15,12 @@ logger = logging.getLogger(__name__)
 # You can generate an API token from the "API Tokens Tab" in the UI
 # influx delete --bucket "ib_prices_1h_prod" --org "rodsic.com" --predicate '_measurement="precios"' --start "2020-12-23T21:37:00Z" --stop "2023-12-23T21:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 
+# Buscar zeros:
+# influx query 'from(bucket:"ib_prices_lab") |> range(start:-130d) |> filter(fn: (r) => r["_measurement"] == "precios") |> filter(fn: (r) => r["_field"] == "LAST") |> filter(fn: (r) => r["symbol"] == "LEQ3") |> filter(fn: (r) => r["_value"] == 0)'
+# Borrar rango
+# influx delete --bucket "ib_prices_lab" --predicate '_measurement="precios" AND symbol="LEQ3"' --start 2023-02-24T15:10:01.944930000Z --stop 2023-02-24T15:40:05.447333000Z 
+
+
 class InfluxClient:
     def __init__(self): 
         load_dotenv()
@@ -38,10 +44,10 @@ class InfluxClient:
         
         write_api = self._client.write_api(write_option)
         try:
-            write_api.write(bucket=self._bucket, org=self._org, record=data)
             logging.debug ('Escribiendo en influx esto: %s', data)
+            write_api.write(bucket=self._bucket, org=self._org, record=data)
         except:
-            logging.error ('Error al escribir en Influx: %s', data)
+            logging.error ("Exception occurred", exc_info=True)
 
     def influxGetTodayDataFrame (self, symbol):
         logging.info('Leyendo precios de hoy de Influx para: %s', symbol)
@@ -67,7 +73,7 @@ class InfluxClient:
             result = self.query_data_frame(query, param)
         if len(result) == 0:
             result = self.influxGetLastPrice(symbol)
-            logging.debug ('Influx de Last: %s', result)
+            logging.info ('Influx de Last: %s', result)
 
         if len(result) == 0:
             df_ = pd.DataFrame(columns = ['timestamp', 'BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE'])
@@ -176,19 +182,19 @@ class InfluxClient:
 
         return result
 
-    def influxGetExecDataFrame (self, symbol, strategy):
+    def influxGetExecDataFrame (self, symbol, strategyType):
         logging.info('Leyendo Execs de Influx para: %s', symbol)
 
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategy": strategy, "_desc": False}
+        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
         query = '''
         from(bucket: _bucket)
         |> range(start: _start, stop: _stop)
         |> filter(fn:(r) => r._measurement == "executions")
         |> filter(fn:(r) => r.symbol == _symbol)
-        |> filter(fn:(r) => r.strategy == _strategy)
+        |> filter(fn:(r) => r.strategy == _strategyType)
         |> filter(fn:(r) => r._field == "OrderId" or r._field == "Quantity" or r._field == "Side")
         |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
         |> keep(columns: ["_time", "OrderId", "Quantity", "Side"])
@@ -212,7 +218,7 @@ class InfluxClient:
 
         return result
 
-    def influxGetExecCountDataFrame (self, symbol, strategy):
+    def influxGetExecCountDataFrame (self, symbol, strategyType):
         logging.info('Leyendo Execs de Influx para: %s', symbol)
 
         todayStart = datetime.datetime.today() - datetime.timedelta(days=180)
@@ -220,15 +226,15 @@ class InfluxClient:
         todayStart = todayStart.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
         print (todayStop)
-        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategy": strategy, "_desc": False}
+        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
         query = '''
         from(bucket: _bucket)
         |> range(start: 0)
         |> filter(fn:(r) => r._measurement == "executions")
         |> filter(fn:(r) => r.symbol == _symbol)
-        |> filter(fn: (r) => r["strategy"] == _strategy)
+        |> filter(fn: (r) => r["strategy"] == _strategyType)
         |> filter(fn:(r) => r._field == "ExecId")
-        |> aggregateWindow(every: 24h, fn: count, createEmpty: false)
+        |> aggregateWindow(every: 24h, fn: count, createEmpty: false, timeSrc: "_start")
         |> sort(columns: ["_time"], desc: _desc)
         |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
         |> keep(columns: ["_time", "ExecId"])
@@ -254,7 +260,11 @@ class InfluxClient:
     def query_data_frame(self,query, param):
 
         query_api = self._client.query_api()
-        result = query_api.query_data_frame(org=self._org, query=query, params = param)
+        try:
+            result = query_api.query_data_frame(org=self._org, query=query, params = param)
+        except:
+            logging.info('Error leyendo en influx', exc_info=True)
+            result = []
         return result
 
 

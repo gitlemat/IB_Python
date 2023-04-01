@@ -177,10 +177,10 @@ class wsServer:
     def print_string (self, text):
         asyncio.run(self.print_text(text))
 
-    def wsServerIB (self):
+    def wsServerIB (self, port):
         host = "localhost"
     
-        port_number = 9998
+        port_number = port
     
         asyncio.run(self.start_websocket_server(host, port_number) )
         

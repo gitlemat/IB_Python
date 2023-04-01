@@ -211,10 +211,12 @@ def layout_contratos_tab ():
         # El grafico
         #fig = px.line(contrato['dbPandas'].dbGetDataframe(), x="timestamp", y="LAST", title="LAST Evolution") 
         #fig.update_layout(xaxis = dict(type="category")) # Para que no deje los vacios de fecha de cierre
-        df_today = contrato['dbPandas'].dbGetDataframeToday()
-
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df_today.index, y=df_today["LAST"], mode="lines", connectgaps = True))
+        
+        if contrato['dbPandas']:
+            df_today = contrato['dbPandas'].dbGetDataframeToday()
+            fig.add_trace(go.Scatter(x=df_today.index, y=df_today["LAST"], mode="lines", connectgaps = True))
+
         fig.update_xaxes(
             rangebreaks=[
                 dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
@@ -557,19 +559,23 @@ def layout_getFigureHistorico (estrategia):
     if not contrato:
         logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
         return no_update
-    df_comp = contrato['dbPandas'].dbGetDataframeComp()
+
     fig1 = go.Figure()
-    fig1.add_trace(go.Candlestick(x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']))
-    limitList= []
-    for zone in estrategia['zonesNOP']:       
-        if zone['limitUp'] not in limitList:
-            zoneborder = [zone['limitUp']] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
-            limitList.append(zone['limitUp'])
-        if zone['limitDown'] not in limitList:
-            zoneborder = [zone['limitDown']] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
-            limitList.append(zone['limitDown'])
+
+    if contrato['dbPandas']:
+        df_comp = contrato['dbPandas'].dbGetDataframeComp()
+        
+        fig1.add_trace(go.Candlestick(x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']))
+        limitList= []
+        for zone in estrategia['zonesNOP']:       
+            if zone['limitUp'] not in limitList:
+                zoneborder = [zone['limitUp']] * len (df_comp.index)
+                fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+                limitList.append(zone['limitUp'])
+            if zone['limitDown'] not in limitList:
+                zoneborder = [zone['limitDown']] * len (df_comp.index)
+                fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+                limitList.append(zone['limitDown'])
     fig1.update_layout(showlegend=False, 
                        xaxis_rangeslider_visible=False, 
                        title_text='Historico (15min)', 
@@ -593,27 +599,31 @@ def layout_getFigureHistoricoRu (estrategia):
     if not contrato:
         logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
         return no_update
-    df_comp = contrato['dbPandas'].dbGetDataframeComp()
-    fig1 = go.Figure()
-    fig1.add_trace(go.Candlestick(x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']))
-    limitList= []
-    for zone in estrategia['zonesNOP']:   
-        ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
-        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
-        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
 
-        if zone['Price'] not in limitList:
-            zoneborder = [zone['Price']] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
-            limitList.append(zone['Price'])
-        if zone['PrecioSL'] not in limitList:
-            zoneborder = [zone['PrecioSL']] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
-            limitList.append(zone['PrecioSL'])
-        if zone['PrecioTP'] not in limitList:
-            zoneborder = [zone['PrecioTP']] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
-            limitList.append(zone['PrecioTP'])
+    fig1 = go.Figure()
+
+    if contrato['dbPandas']:
+        df_comp = contrato['dbPandas'].dbGetDataframeComp()
+        
+        fig1.add_trace(go.Candlestick(x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']))
+        limitList= []
+        for zone in estrategia['zonesNOP']:   
+            ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
+            ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
+            ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
+    
+            if zone['Price'] not in limitList:
+                zoneborder = [zone['Price']] * len (df_comp.index)
+                fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+                limitList.append(zone['Price'])
+            if zone['PrecioSL'] not in limitList:
+                zoneborder = [zone['PrecioSL']] * len (df_comp.index)
+                fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+                limitList.append(zone['PrecioSL'])
+            if zone['PrecioTP'] not in limitList:
+                zoneborder = [zone['PrecioTP']] * len (df_comp.index)
+                fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+                limitList.append(zone['PrecioTP'])
     fig1.update_layout(showlegend=False, 
                        xaxis_rangeslider_visible=False, 
                        title_text='Historico (15min)', 
@@ -764,9 +774,14 @@ def layout_getStrategyHeader (estrategia, strategyType, update = False):
     if not contrato:
         logging.error ('Error cargando estrategia Headerde %s. No tenemos el contrato cargado en RT_Data', symbol)
         return no_update
-    if (contrato['dbPandas'].toPrintPnL == False or estrategia['dbPandas'].toPrint) and (update == True):
-        logging.debug ('Header estrategia no actualizado. No hay datos nuevos')
-        return no_update
+    
+    if update == True:
+        if contrato['dbPandas'].toPrintPnL == False:
+            logging.debug ('Header estrategia no actualizado. No hay datos nuevos')
+            return no_update
+        if estrategia['dbPandas'].toPrint == False:
+            logging.debug ('Header estrategia no actualizado. No hay datos nuevos')
+            return no_update
 
     dailyPnL = ''
     realizedPnL = ''
@@ -1060,7 +1075,7 @@ def ordenesObtenerFilas (orden, update = False):
     symbol = globales.G_RTlocalData_.contractSummaryBrief(orden['contractId'])
     lFillState = str(lQty) + '/' + str(lFilled) + '/' + str(lRemaining)
 
-    strategy = globales.G_RTlocalData_.strategies_.strategyGetStretegyByOrderId (lOrderId)
+    strategy = globales.G_RTlocalData_.strategies_.strategyGetStrategyByOrderId (lOrderId)
     if strategy == None:
         lStrategy = 'N/A'
     else:

@@ -13,8 +13,8 @@ import time
 import datetime
 import IB_API_Client
 import wsServer
-import strategies
-import webFE
+import strategiesNew
+import webFE.webFENew_App
 import os
 from dotenv import load_dotenv
 
@@ -48,19 +48,27 @@ def SetupLogger():
     logger.addHandler(console_handler)
     '''
 
-def wsServer_loop(wsServer1):
+def wsServer_loop(wsServer1, _mode):
 
     #wsServer1 = wsServer.wsServer(appObj)
-    wsServer1.wsServerIB()
+    if _mode == 'Lab':
+        port_ = 9998
+    elif _mode == 'Prod':
+        port_ = 9997
+    else:
+        port_ = 9998
+    wsServer1.wsServerIB(port_)
 
 def webFE_loop(_mode):
 
     #wsServer1 = wsServer.wsServer(appObj)
     if _mode == 'Lab':
         port_ = 5500
-    else:
+    elif _mode == 'Prod':
         port_ = 5000
-    webFE.appDashFE_.run_server(port=port_, debug=False, threaded=True)
+    else:
+        port_ = 5500
+    webFE.webFENew_App.appDashFE_.run_server(port=port_, debug=False, threaded=True)
     
 def run_loop(app):
 	app.run()
@@ -101,14 +109,20 @@ def main():
     client_id = 0
     if _mode == 'Lab':
         _port = 4002
+    elif _mode == 'Prod':
+        _port = 4011 # En realidad es 4011 para prod
+        logging.info ('# SISTEMA EN PRISUCCION !!!!!')
     else:
         _port = 4002 # En realidad es 4011 para prod
+
+    logging.info ('#')
+    logging.info ('Abriendo conexion con 127.0.0.1:%d', _port)
 
     app = IB_API_Client.IBI_App("127.0.0.1", _port, client_id, globales.G_RTlocalData_)
     t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)
     t_api_thread.start()
 
-    strategyIns = strategies.Strategies(globales.G_RTlocalData_, app)
+    strategyIns = strategiesNew.Strategies(globales.G_RTlocalData_, app)
     
     # Init web page
     #webFE1 = webFE.webFE(globals.G_RTlocalData_)
@@ -118,7 +132,7 @@ def main():
 
     # Init de wsServer
     wsServer1 = wsServer.wsServer(app, globales.G_RTlocalData_)
-    t_wsServerIB = threading.Thread(name='wsServerIB', target=wsServer_loop, args=(wsServer1,))
+    t_wsServerIB = threading.Thread(name='wsServerIB', target=wsServer_loop, args=(wsServer1,_mode,))
     t_wsServerIB.start()
 
 
@@ -202,6 +216,8 @@ def main():
 
             while app.CallbacksQueue_.empty() == False:
                 callbackItem = app.CallbacksQueue_.get()
+                if 'type' not in callbackItem:
+                    continue
                 if callbackItem['type'] == 'execution':
                     globales.G_RTlocalData_.executionAnalisys (callbackItem['data'])
                 if callbackItem['type'] == 'commission':
@@ -215,6 +231,7 @@ def main():
                     # Añadir algo que actualizar ordenes en Strategy
                     if bChange:
                         strategyIns.strategyIndexOrderUpdate (callbackItem['data'])
+
                 if callbackItem['type'] == 'position':
                     globales.G_RTlocalData_.positionUpdate (callbackItem['data'])
                 if callbackItem['type'] == 'account':

@@ -306,6 +306,10 @@ class IBI_App(EWrapper, EClient):
         self.semaforo_requestingAccount = False
         self.accountToPrint = True
 
+        data = {'reqId': reqId, 'end': True}
+        queueEntry = {'type':'account', 'data': data}
+        self.CallbacksQueue_.put(queueEntry)
+
     @iswrapper  
     def reqPositions (self):
         if self.semaforo_requestingPositions:
@@ -644,15 +648,15 @@ class IBI_App(EWrapper, EClient):
 
         parentOrder = orderCreate(action, 'LMTGTC', limitPrice, quantity)
         parentOrder.transmit = False
-
+    
         try:
             parentOrderId = self.placeOrder (contract_symbol, contract, parentOrder) 
         except:
             logging.error ("Error emplazando la orden Parent")
             return None
 
-        tfAction = "SELL" if action == "BUY" else "BUY"
-        tpOrder = orderCreate(tfAction, 'LMTGTC', takeProfitLimitPrice, quantity)
+        tpAction = "SELL" if action == "BUY" else "BUY"
+        tpOrder = orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
         tpOrder.parentId = parentOrderId
         tpOrder.transmit = False
 

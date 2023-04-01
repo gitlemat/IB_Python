@@ -3,7 +3,7 @@ from ibapi.contract import *
 from ibapi.order import *
 from ibapi.utils import floatMaxString, longMaxString
 from ibapi.common import UNSET_INTEGER, UNSET_DOUBLE, UNSET_LONG, UNSET_DECIMAL, DOUBLE_INFINITY, INFINITY_STR
-import strategies
+import strategiesNew
 import pandasDB
 import logging
 import datetime
@@ -49,13 +49,12 @@ class DataLocalRT():
         self.verboseBrief = False
         self.appObj_ = None
         self.wsServerInt_ = None
-        self.strategies_ = None
+        self.strategies_ = None # Se inicializa desde Local_Daemon llamando al constructor dr Strategies, y ese lo copia aqui
         self.influxIC_ = influxAPI.InfluxClient()
-        #self.strategies_ = strategies.Strategies(self)
 
         self.accountData_ = {}
         self.orderList_ = []  # includes orders and contracts (hay que sacar los contracts a puntero externo, y los usan las posiciones)
-        self.contractList_ = []  # Directamente lista de contracts
+        #self.contractList_ = []  # Directamente lista de contracts
         self.contractDict_ = {}  # Directamente dict de contracts
 
         self.tickPrices_ = {}    # Key: reqId ['12'] ---> {12: {'BID': 10, 'ASK': 10.1, 'LAST': 10.1, 'HIGH': 11, 'LOW': 9, 'OPEN':10.5, 'CLOSE': 10.2}}
@@ -85,16 +84,17 @@ class DataLocalRT():
     def accountTagUpdate (self, data):
 
         reqId = data['reqId']
+        if 'end' in data:
+            logging.info ("Ya tengo la account info:\n%s", self.accountSummary())
+            return # no hay nada mas. Ha terminado y punto (mirar IB_API_Client)
         account = data['account']
         tag = data['tag']
         value = data['value']
 
         dictLocal = {}
         dictLocal[tag] = value
-        self.accountData_.update (dictLocal)
         dictLocal['accountId'] = account
         self.accountData_.update (dictLocal)
-
 
 
     def accountSummary (self):
@@ -210,7 +210,7 @@ class DataLocalRT():
         price = None
         if 'price' in data:
             price = round(data['price'],5)  # bajo a 5 decimales
-            if price == -100:  # Indica que no está disponible
+            if price == -100 or price == 0:  # Indica que no está disponible
                 return
         size = None
         if 'size' in data:
@@ -466,7 +466,7 @@ class DataLocalRT():
         # Los que no son BAG tambien tienren el contractReqIdLegs con 1 solo entry, por lo que se buscan los dos igual
         for gConId, contrato in self.contractDict_.items():
             updated = False
-            for conReqLeg in contrato['contractReqIdLegs']:
+            for conReqLeg in contrato['contractReqIdLegs']: # Directamente esto implica que contrato['hasContractSymbols'] = True
                 if conReqLeg['reqId'] == reqId:
                     updated = True
             if updated:
@@ -583,7 +583,7 @@ class DataLocalRT():
 
                     # Se actualiza la DB para el contrato['gConId'] con estos datos:
                     if bUpdated:
-                        contrato['dbPandas'].dbUpdateAddPrices(data_args)
+                        contrato['dbPandas'].dbUpdateAddPrices(data_args)  # no estariamos aquí si no hay 'dbpandas'
 
     def contractUpdatePnL(self, reqIdPnL):
         # Tenemos por un lado los contratos BAG
@@ -593,8 +593,8 @@ class DataLocalRT():
 
         for gConId, contrato in self.contractDict_.items():
             updated = False
-            for conReqLeg in contrato['contractReqIdLegs']:
-                if conReqLeg['reqIdPnL'] == reqIdPnL:
+            for conReqLeg in contrato['contractReqIdLegs']:  # Directamente esto implica que contrato['hasContractSymbols'] = True
+                if ('reqIdPnL' in conReqLeg) and (conReqLeg['reqIdPnL'] == reqIdPnL):
                     updated = True
             if updated:
                 dailyPnL = 0
@@ -665,8 +665,8 @@ class DataLocalRT():
                                      'realizedPnL':contrato['pnl']['realizedPnL'], 
                                      'unrealizedPnL':contrato['pnl']['unrealizedPnL']
                                      }
-                        if self.strategies_.strategyGetStretegyBySymbol(lSymbol) != None:   # Solo añado a la DB si forma parte de una strategia
-                            contrato['dbPandas'].dbUpdateAddPnL(data_args)
+                        if self.strategies_.strategyGetStrategyTypesBySymbol(lSymbol) != None:   # Solo añado a la DB si forma parte de una strategia
+                            contrato['dbPandas'].dbUpdateAddPnL(data_args) # Si estamos aqui es que hay dbPandas
                    
 
     def contractGetCurrentPricesPerGconId (self, gConId):
@@ -682,6 +682,7 @@ class DataLocalRT():
         if gConId in self.contractDict_:
             return self.contractDict_[gConId]
         else:
+            logging.info ('No he encontrado el contrato con gConId: %s', gConId)
             return None
 
 
@@ -701,7 +702,7 @@ class DataLocalRT():
 
     def contractGetBySymbol(self, symbol):
         for gConId, contrato in self.contractDict_.items():
-            if contrato['fullSymbol'] == symbol:
+            if ('fullSymbol' in contrato) and contrato['fullSymbol'] == symbol:
                 return contrato
         return None
 

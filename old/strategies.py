@@ -12,7 +12,6 @@ class Strategies():
     def __init__(self, RTlocalData, appObj):
         self.RTLocalData_ = RTlocalData
         self.appObj_ = appObj
-
         self.RTLocalData_.strategies_ = self
         
         self.strategyPentagramaObj_ = strategyPentagrama.strategyPentagrama(self.RTLocalData_)
@@ -26,7 +25,7 @@ class Strategies():
         self.strategyPentagramaObj_.strategyPentagramaLoopCheck ()
         self.strategyPentagramaRuObj_.strategyPentagramaRuLoopCheck ()
 
-    def strategyGetStretegyBySymbol(self, symbol):
+    def strategyGetStrategyBySymbol(self, symbol):
         ret = self.strategyPentagramaObj_.strategyPentagramaGetStrategyBySymbol (symbol)
         if ret is not None:
             return 'PentagramaHE'
@@ -35,7 +34,7 @@ class Strategies():
             return 'PentagramaRu'
         return None
 
-    def strategyGetStretegyByOrderId(self, orderId):
+    def strategyGetStrategyByOrderId(self, orderId):
         ret = self.strategyPentagramaObj_.strategyPentagramaGetStrategyByOrderId (orderId)
         if ret is not None:
             return ret
@@ -68,7 +67,7 @@ class Strategies():
         gConId = order['contractId'] 
         symbol = self.RTLocalData_.contractSummaryBrief(gConId)
 
-        stratType = self.strategyGetStretegyByOrderId(orderId) 
+        stratType = self.strategyGetStrategyByOrderId(orderId) 
         if stratType == 'PentagramaHE':
             self.strategyPentagramaObj_.strategyPentagramaOrderExecuted (symbol, data)
 
