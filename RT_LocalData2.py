@@ -416,7 +416,7 @@ class DataLocalRT():
         
     def contractLoadFixedWatchlist (self):
 
-        file1 = open('strategies/fixedContracts.conf', 'r')
+        file1 = open('strategies/ContractsWatchList.conf', 'r')
         Lines = file1.readlines()
   
         for line in Lines:
