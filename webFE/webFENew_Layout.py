@@ -14,7 +14,6 @@ def layout_init():
         [
             layout_tabs(),
             modal_error(),
-            modal_contratoOrdenCreate(),
         ]
     )
 
@@ -87,83 +86,7 @@ def modal_error():
     )
     return modal
 
-def modal_contratoOrdenCreate():
 
-    orderSymbol = dcc.Input(
-        id = "contract_orders_create_symbol",
-        type = "text",
-        readOnly = True,
-        placeholder = "",
-    )
-
-    orderQty = dcc.Input(
-        id = "contract_orders_create_qty",
-        type = "number",
-        placeholder = "0",
-    )
-
-    orderLmtPrice = dcc.Input(
-        id = "contract_orders_create_LmtPrice",
-        type = "number",
-        placeholder = "0",
-    )
-
-    orderAction = dcc.Dropdown(
-        options = ['BUY', 'SELL'], 
-        value = 'BUY', 
-        id = 'contract_orders_create_action'
-    )
-
-    orderType = dcc.Dropdown(
-        options = ['MKT', 'LMT', 'STP', 'MKTGTC', 'LMTGTC', 'STPGTC'], 
-        value = 'MKT', 
-        id='contract_orders_create_orderType'
-    )
-
-    responseBody = html.Div([
-        html.P('Contract Symbol: ',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        orderSymbol,
-        html.P('Order Action:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        orderAction,
-        html.P('Order Type:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        orderType,
-        html.P('Order Qty:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        orderQty,
-        html.P('Order LMT Price:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        orderLmtPrice,
-    ])
-    
-    modal = html.Div(
-        [
-            dbc.Modal(
-                [
-                    dbc.ModalHeader(dbc.ModalTitle("Crear Ordem", id = "modalContratoOrdenCreateHeader")),
-                    dbc.ModalBody(responseBody, id = "modalContratoOrdenCreateBody"),
-                    dbc.ModalFooter([
-                        dbc.Button(
-                            "Crear", id="modalContratoOrdenCreate_boton_create", className="ms-auto", n_clicks=0
-                        ),
-                        dbc.Button(
-                            "Close", id="modalContratoOrdenCreate_boton_close", className="ms-auto", n_clicks=0
-                        )
-                    ]),
-                ],
-                id="modalContratoOrdenCreate_main",
-                is_open=False,
-            ),
-        ]
-    )
-    return modal
 
 # Callback para cambiar tab
 @callback(Output("tabContent", "children"), [Input("tabs", "active_tab")])
