@@ -23,6 +23,11 @@ class Strategies():
         self.stratList_ += strategyPentagramaNew.strategyReadFile(self.RTLocalData_)
         self.stratList_ += strategyPentagramaRuNew.strategyReadFile(self.RTLocalData_)
 
+        # Hay que asegurarse qe todos los contratos estan en la lista:
+        for strategy in self.stratList_: 
+            contractN = self.appObj_.contractFUTcreate(strategy['symbol'])
+            self.RTLocalData_.contractAdd(contractN)
+
         self.stratTypes_ = {'PentagramaRu', 'Pentagrama'}
 
     def strategyGetAll (self):

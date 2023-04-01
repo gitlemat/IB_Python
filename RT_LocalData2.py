@@ -415,13 +415,29 @@ class DataLocalRT():
         return missing
         
     def contractLoadFixedWatchlist (self):
-
         file1 = open('strategies/ContractsWatchList.conf', 'r')
         Lines = file1.readlines()
   
         for line in Lines:
+            if line.rstrip() == '':
+                continue
             contractN = self.appObj_.contractFUTcreate(line.rstrip())
             self.contractAdd(contractN)
+
+    def contractWriteFixedWatchlist (self, contractList):
+        with open('strategies/ContractsWatchList.conf', 'w') as f:
+            for line in contractList:
+                f.writelines(line + '\n')
+
+    def contractReturnFixedWatchlist (self):
+        file1 = open('strategies/ContractsWatchList.conf', 'r')
+        Lines = file1.readlines()
+        contractList = []
+  
+        for line in Lines:
+            contractList.append(line.rstrip())
+
+        return contractList
 
     def contractUnsubscribeAll (self):
         for gConId, contrato in self.contractDict_.items():

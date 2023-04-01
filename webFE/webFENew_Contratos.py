@@ -26,9 +26,10 @@ def layout_contratos_tab ():
     # Ahora creamos el tab de contratos usando la info anterior
     tabContratos = [
             dbc.Row(
-                dbc.Col(html.H1("Lista de Contratos",
-                                className='text-center text-primary mb-4'),
-                        width=12)
+                [
+                    html.P("Lista de Contratos", className='text-left text-secondary mb-4 display-6'),
+                    html.Hr()
+                ]
             ),
             dbc.Row(
                 [
@@ -81,9 +82,30 @@ def layout_contratos_tab ():
 
         tabContratos.append(headerRow)
         tabContratos.append(collapseDetails)
-        
-    tabContratos.append(modal_contratoOrdenCreate())
 
+    tabContratosWLLabel = [
+        dbc.Row(
+            [
+                html.Hr(),
+                html.P("Contratos WatchList", className='text-left text-secondary mb-4 display-6')
+            ]
+        ),
+        contratosEditWatchList(),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Button("Guardar", id={'role': 'ContractWLButtonSave'}, className="mr-3, mt-4", n_clicks=0),
+                        dbc.Button("Reload", id={'role': 'ContractWLButtonReload'}, className="mr-3, mt-4", n_clicks=0)
+                    ],
+                    width = 3
+                ),
+            ]
+        ),
+    ]
+
+    tabContratos += tabContratosWLLabel   
+    tabContratos.append(modal_contratoOrdenCreate())
     return tabContratos
 
 def contratosObtenerFilas (contrato, update = False):
@@ -171,6 +193,24 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
     )
 
     return insideDetailsData, graphColumn
+
+def contratosEditWatchList ():
+    contractsWL = globales.G_RTlocalData_.contractReturnFixedWatchlist()
+    text = ''
+    for line in contractsWL:
+        text += line + '\n'
+    n_rows = len (contractsWL)
+    
+    textareas = html.Div(
+        [
+            dbc.Textarea(
+                id = {'role': 'contratosInputWatchList'},
+                rows = n_rows, 
+                value = text.rstrip()
+            ),
+        ]
+    )
+    return textareas
 
 def modal_contratoOrdenCreate():
 
@@ -351,3 +391,48 @@ def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderT
     # Para todos los demas:
     return no_update
 
+# Callback para guardar watchlist
+@callback(
+    Output({'role': 'ContractWLButtonSave'}, "value"),
+    Input({'role': 'ContractWLButtonSave'}, "n_clicks"),
+    Input({'role': 'contratosInputWatchList'}, "value"),
+    prevent_initial_call = True,
+)
+def actualizarContractWL(n_button, textWL):
+        # Esto es por si las moscas
+    if not ctx.triggered_id or n_button == None:
+        raise PreventUpdate
+
+    if ctx.triggered_id['role'] != 'ContractWLButtonSave':
+        raise PreventUpdate
+
+    logging.info ('Id: %s', ctx.triggered_id)
+    contractList = textWL.rstrip().split('\n')
+    logging.info ('Lista:\n %s', contractList)
+
+    globales.G_RTlocalData_.contractWriteFixedWatchlist(contractList)
+
+    raise PreventUpdate
+
+# Callback para recargar watchlist
+@callback(
+    Output({'role': 'contratosInputWatchList'}, "value"),
+    Output({'role': 'contratosInputWatchList'}, "rows"),
+    Input({'role': 'ContractWLButtonReload'}, "n_clicks"),
+    prevent_initial_call = True,
+)
+def actualizarContractWL(n_button):
+        # Esto es por si las moscas
+    if not ctx.triggered_id or n_button == None:
+        raise PreventUpdate
+
+    logging.info ('Id: %s', ctx.triggered_id)
+    contractsWL = globales.G_RTlocalData_.contractReturnFixedWatchlist()
+    text = ''
+    for line in contractsWL:
+        text += line + '\n'
+    n_rows = len (contractsWL)
+
+    return text, n_rows
+
+    
