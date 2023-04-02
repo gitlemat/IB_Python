@@ -11,44 +11,24 @@ import random
 
 logger = logging.getLogger(__name__)
 
-def insideDetailsPentagrama (estrategia, graphColumn1, graphColumn2, itemZG):
+def insideDetailsPentagrama (estrategia, graphColumn1, graphColumn2):
     # Los detalles de la estrategia (escondidos)
     # Primero las zonas con sus datos
 
     symbol = estrategia['symbol']
-    
-    zonasFilaHeader = []
-    zonasFilaBorderUp = []
-    zonasFilaBorderDown = []
-    zonasFilaPosiciones = []
-    zonasFilaHeader.append(dbc.Col(''))
-    zonasFilaBorderUp.append(dbc.Col('Limit Up', align="center"))
-    zonasFilaBorderDown.append(dbc.Col('Limit Down', align="center"))
-    zonasFilaPosiciones.append(dbc.Col('Posiciones', align="center"))
-    itemZ = 1
-    for zone in estrategia['classObject'].zonesNOP_:
-        val1 = zone['limitUp']
-        val2 = zone['limitDown']
-        val3 = zone['reqPos']
-        
-        zonasFilaHeader.append(dbc.Col('Zona ' + str(itemZ), className="text-center"))
-        zonasFilaBorderUp.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'strategySymbol': symbol, 'index': itemZG}, value=val1, type="text", debounce=True, className="text-end")))
-        if itemZ < len(estrategia['classObject'].zonesNOP_):
-            zonasFilaBorderDown.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'strategySymbol': symbol, 'index': itemZG}, value=val2, type="text", debounce=True, readonly= True, className="text-end")))
-        else:
-            zonasFilaBorderDown.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'strategySymbol': symbol, 'index': itemZG}, value=val2, type="text", debounce=True, readonly= False, className="text-end")))
-        zonasFilaPosiciones.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'strategySymbol': symbol, 'index': itemZG}, value=val3, type="text", debounce=True, className="text-end")))
-        itemZ += 1
-        itemZG += 1
-    insideDetailsZonas = []
-    insideDetailsZonas.append(dbc.Row(zonasFilaHeader))
-    insideDetailsZonas.append(dbc.Row(zonasFilaBorderUp))
-    insideDetailsZonas.append(dbc.Row(zonasFilaBorderDown, id={'role': 'filaZoneDown', 'strategy':'Pentagrama', 'strategySymbol': symbol}))
-    insideDetailsZonas.append(dbc.Row(zonasFilaPosiciones))
+    insideDetailsZonasInn = layout_getStrategyTableZones (estrategia, False)
+    insideDetailsZonas = html.Div([
+        html.Div(
+            insideDetailsZonasInn, 
+            id={'role': 'TableStrategyZonas', 'strategy':'Pentagrama', 'symbol': symbol},
+        )
+    ])
+
     # Ahora los botones de Actualizar/Reset
     insideDetailsBotonesZonas = []
-    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar", id={'role': 'ZoneButtonSave', 'strategy':'Pentagrama', 'strategySymbol': symbol}, className="me-2", n_clicks=0)))
-    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Reset", id={'role': 'ZoneButtonReset', 'strategy':'Pentagrama', 'strategySymbol': symbol}, className="me-2", n_clicks=0)))
+    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Guargar", id={'role': 'ZoneButtonSave', 'strategy':'Pentagrama', 'symbol': symbol}, className="me-2", n_clicks=0)))
+    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Reset", id={'role': 'ZoneButtonReset', 'strategy':'Pentagrama', 'symbol': symbol}, className="me-2", n_clicks=0)))
+    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Reload", id={'role': 'ZoneButtonReload', 'strategy':'Pentagrama', 'symbol': symbol}, className="me-2", n_clicks=0)))
     # Y las tablas con ordenes
     insideTable = layout_getStrategyTableOrders(estrategia)
     
@@ -90,7 +70,7 @@ def insideDetailsPentagrama (estrategia, graphColumn1, graphColumn2, itemZG):
         className = 'mb-3'
     )
 
-    return collapseDetails, itemZG
+    return collapseDetails
 
 def layout_getFigureHistoricoPen (estrategia):
 
@@ -233,6 +213,41 @@ def addZonesLinesTodayHE (fig2, estrategia, dfToday):
 
     return fig2
 
+def layout_getStrategyTableZones (estrategia, update = False):
+
+    symbol = estrategia['symbol']
+    
+    zonasFilaHeader = []
+    zonasFilaBorderUp = []
+    zonasFilaBorderDown = []
+    zonasFilaPosiciones = []
+    zonasFilaHeader.append(dbc.Col(''))
+    zonasFilaBorderUp.append(dbc.Col('Limit Up', align="center"))
+    zonasFilaBorderDown.append(dbc.Col('Limit Down', align="center"))
+    zonasFilaPosiciones.append(dbc.Col('Posiciones', align="center"))
+    itemZ = 1
+    for zone in estrategia['classObject'].zonesNOP_:
+        val1 = zone['limitUp']
+        val2 = zone['limitDown']
+        val3 = zone['reqPos']
+        
+        zonasFilaHeader.append(dbc.Col('Zona ' + str(itemZ), className="text-center"))
+        zonasFilaBorderUp.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'symbol': symbol, 'index': itemZ}, value=val1, type="text", debounce=True, className="text-end")))
+        if itemZ < len(estrategia['classObject'].zonesNOP_):
+            zonasFilaBorderDown.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'symbol': symbol, 'index': itemZ}, value=val2, type="text", debounce=True, readonly= True, className="text-end")))
+        else:
+            zonasFilaBorderDown.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'symbol': symbol, 'index': itemZ}, value=val2, type="text", debounce=True, readonly= False, className="text-end")))
+        zonasFilaPosiciones.append(dbc.Col(dbc.Input(id={'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'symbol': symbol, 'index': itemZ}, value=val3, type="text", debounce=True, className="text-end")))
+        itemZ += 1
+    insideDetailsZonas = []
+    insideDetailsZonas.append(dbc.Row(zonasFilaHeader))
+    insideDetailsZonas.append(dbc.Row(zonasFilaBorderUp))
+    insideDetailsZonas.append(dbc.Row(zonasFilaBorderDown, id={'role': 'filaZoneDown', 'strategy':'Pentagrama', 'symbol': symbol}))
+    insideDetailsZonas.append(dbc.Row(zonasFilaPosiciones))
+
+    return insideDetailsZonas
+
+
 def layout_getStrategyTableOrders (estrategia, update = False):
 
     #orden = globales.G_RTlocalData_.orderGetByOrderId(lOrderId)
@@ -341,9 +356,9 @@ def layout_getStrategyTableOrders (estrategia, update = False):
 def actualizarTablaOrdenesStrategiesPen (n_intervals):
     if not ctx.triggered_id:
         raise PreventUpdate
-    logging.debug ('Actualizando tabla ordenes estrategia')
+    
     symbol = ctx.triggered_id['symbol']
-
+    logging.info ('Actualizando tabla ordenes estrategia %s', symbol)
     estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'Pentagrama')
     resp = layout_getStrategyTableOrders (estrategia, True)
 
@@ -352,13 +367,13 @@ def actualizarTablaOrdenesStrategiesPen (n_intervals):
 # Callback para sincronizar limites de zona, definir limites
 # Y actualizar graphs
 @callback(
-    Output({'role': 'filaZoneDown', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, "children"),
-    Output({'role': 'graphDetailsComp', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, 'figure'),
-    Output({'role': 'graphDetailsToday', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, 'figure'),
-    Input({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    Input({'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    Input({'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    Input({'role': 'IntervalgraphToday', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, 'n_intervals'),
+    Output({'role': 'filaZoneDown', 'strategy':'Pentagrama', 'symbol': MATCH}, "children"),
+    Output({'role': 'graphDetailsComp', 'strategy':'Pentagrama', 'symbol': MATCH}, 'figure'),
+    Output({'role': 'graphDetailsToday', 'strategy':'Pentagrama', 'symbol': MATCH}, 'figure'),
+    Input({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'symbol': MATCH, 'index': ALL}, "value"),
+    Input({'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'symbol': MATCH, 'index': ALL}, "value"),
+    Input({'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'symbol': MATCH, 'index': ALL}, "value"),
+    Input({'role': 'IntervalgraphToday', 'strategy':'Pentagrama', 'symbol': MATCH}, 'n_intervals'),
     prevent_initial_call = True,
 )
 def syncLimites(zoneUps, zoneDowns, zonePos, n_intervals):
@@ -369,7 +384,7 @@ def syncLimites(zoneUps, zoneDowns, zonePos, n_intervals):
     if not ctx.triggered_id:
         raise PreventUpdate
 
-    symbol = inputsUps[0]['id']['strategySymbol']  # Lo pillo de esta, pero da igual
+    symbol = inputsUps[0]['id']['symbol']  # Lo pillo de esta, pero da igual
 
     zonasFilaBorderDown = no_update
 
@@ -422,11 +437,11 @@ def syncLimites(zoneUps, zoneDowns, zonePos, n_intervals):
 
 # Callback para grabar info de zonas
 @callback(
-    Output({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),   # Dash obliga a poner un output. Uno que no se use
-    State({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    State({'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    State({'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'strategySymbol': MATCH, 'index': ALL}, "value"),
-    Input({'role': 'ZoneButtonSave', 'strategy':'Pentagrama', 'strategySymbol': MATCH}, "n_clicks"),
+    Output({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'symbol': MATCH, 'index': ALL}, "value"),   # Dash obliga a poner un output. Uno que no se use
+    State({'role': 'ZoneInputUp', 'strategy':'Pentagrama', 'symbol': MATCH, 'index': ALL}, "value"),
+    State({'role': 'ZoneInputDown', 'strategy':'Pentagrama', 'symbol': MATCH, 'index': ALL}, "value"),
+    State({'role': 'ZoneInputPos', 'strategy':'Pentagrama', 'symbol': MATCH, 'index': ALL}, "value"),
+    Input({'role': 'ZoneButtonSave', 'strategy':'Pentagrama', 'symbol': MATCH}, "n_clicks"),
     prevent_initial_call = True,
 )
 def saveLimites(zoneUps, zoneDowns, zonePos, n_clicks):
@@ -440,7 +455,7 @@ def saveLimites(zoneUps, zoneDowns, zonePos, n_clicks):
 
     ###### Todo esto no hace falta. Solo hace falta copir NOP en normal
 
-    symbol = inputsUps[0]['id']['strategySymbol']  # Lo pillo de esta, pero da igual
+    symbol = inputsUps[0]['id']['symbol']  # Lo pillo de esta, pero da igual
 
     
     #zone = {'reqPos':pos), 'limitUp': float(limit_up), 'limitDown': float(limitdown)}
@@ -458,3 +473,29 @@ def saveLimites(zoneUps, zoneDowns, zonePos, n_clicks):
     globales.G_RTlocalData_.strategies_.strategyUpdateZones (symbol, 'Pentagrama', lzones, False)
 
     return  no_update
+
+# Callback para grabar info de zonas
+@callback(
+    Output({'role': 'TableStrategyZonas', 'strategy':'Pentagrama', 'symbol': MATCH}, 'children'),
+    Input ({'role': 'ZoneButtonReload', 'strategy':'Pentagrama', 'symbol': MATCH}, "n_clicks"),
+    prevent_initial_call = True,
+)
+def ReloadStratData(n_button):
+
+    if not ctx.triggered_id or n_button == None:
+        raise PreventUpdate
+
+    symbol = ctx.triggered_id['symbol']
+    stratType = ctx.triggered_id['strategy']
+
+    # Aqui grabamos los zones
+    logging.info ("Recargar datos en estrategia %s", symbol)
+
+    # Cargamos el fichero
+    globales.G_RTlocalData_.strategies_.strategyReload (stratType, symbol)
+
+    # Y actualizar en pantalla
+    estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'Pentagrama')
+    insideTable = layout_getStrategyTableZones (estrategia, True)
+
+    return  insideTable

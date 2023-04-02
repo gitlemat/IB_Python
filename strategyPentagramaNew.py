@@ -411,10 +411,11 @@ class strategyPentagrama(strategyBaseClass):
         self.OverlapMargin_ = lineOverlapMargin
         self.zones_ = zones
         self.zonesNOP_ = zones
+        self.ordersUpdated_ = True
         
         logging.info ('Estrategias %s [Pentagrama] recargada de fichero', self.symbol_)
         
-        return 
+        return True
 
     def strategyGetCurrentZoneByPos (self):
         nPos = self.currentPos_

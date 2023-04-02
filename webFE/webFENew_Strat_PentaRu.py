@@ -34,7 +34,7 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2):
     # El boton de recarga
 
     insideDetailsBotonesZonas = []
-    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'strategySymbol': symbol}, className="me-2", n_clicks=0)))
+    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0)))
 
 
     # Todo lo que se oculta junto
@@ -344,8 +344,8 @@ def actualizarTablaOrdenesStrategiesPenRu (n_intervals):
 
 # Callback para grabar info de zonas
 @callback(
-    Output({'role': 'TableStrategyOrderDetails', 'strategy':'PentagramaRu', 'strategySymbol': MATCH, 'index': ALL}, "value"),   # Dash obliga a poner un output. Uno que no se use
-    Input({'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'strategySymbol': MATCH}, "n_clicks"),
+    Output({'role': 'TableStrategyOrderDetails', 'strategy':'PentagramaRu', 'symbol': MATCH, 'index': ALL}, "value"),   # Dash obliga a poner un output. Uno que no se use
+    Input({'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': MATCH}, "n_clicks"),
     prevent_initial_call = True,
 )
 def reloadStrategyRuFiles(n_clicks):

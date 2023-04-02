@@ -421,7 +421,7 @@ def actualizarContractWL(n_button, textWL):
     Input({'role': 'ContractWLButtonReload'}, "n_clicks"),
     prevent_initial_call = True,
 )
-def actualizarContractWL(n_button):
+def guardarContractWL(n_button):
         # Esto es por si las moscas
     if not ctx.triggered_id or n_button == None:
         raise PreventUpdate

@@ -21,7 +21,7 @@ def layout_strategies_tab():
 
     #{'symbol': symbol, 'type': type, 'classObject': classObject}
 
-    itemZG = 0 # Sirve para dar identidades unicas a las zonas
+    #itemZG = 0 # Sirve para dar identidades unicas a las zonas
     ContentItems = []
     ####################################
     # Preparacion de Tab de Estratgias
@@ -74,7 +74,7 @@ def layout_strategies_tab():
         fig1 = layout_getFigura1(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
         graphColumn1 = html.Div(
             dcc.Graph(
-                    id={'role': 'graphDetailsComp', 'strategy': stratType, 'strategySymbol': symbol},
+                    id={'role': 'graphDetailsComp', 'strategy': stratType, 'symbol': symbol},
                     animate = False,
                     figure = fig1
             )
@@ -85,18 +85,18 @@ def layout_strategies_tab():
         fig2 = layout_getFigura2(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
         graphColumn2 = html.Div([
             dcc.Graph(
-                    id={'role': 'graphDetailsToday', 'strategy': stratType, 'strategySymbol': symbol},
+                    id={'role': 'graphDetailsToday', 'strategy': stratType, 'symbol': symbol},
                     animate = False,
                     figure = fig2
             ),
             dcc.Interval(
-                id={'role': 'IntervalgraphToday', 'strategy': stratType, 'strategySymbol': symbol},
+                id={'role': 'IntervalgraphToday', 'strategy': stratType, 'symbol': symbol},
                 interval= random_wait, # in milliseconds
                 n_intervals=0
             )
         ])
 
-        collapseDetails, itemZG = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, itemZG)
+        collapseDetails = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2)
 
         # Lo añadimos a la pagina/tab:
 
@@ -127,16 +127,15 @@ def layout_getFigura2(estrategia):
 
     return fig2
 
-def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, itemZG):
+def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2):
     stratType = estrategia['type']
     collapseDetails = None
     if stratType == 'Pentagrama':
-        collapseDetails, itemZG = webFE.webFENew_Strat_Penta.insideDetailsPentagrama (estrategia, graphColumn1, graphColumn2, itemZG)
+        collapseDetails = webFE.webFENew_Strat_Penta.insideDetailsPentagrama (estrategia, graphColumn1, graphColumn2)
     if stratType == 'PentagramaRu':
         collapseDetails = webFE.webFENew_Strat_PentaRu.insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2)
-        itemZG = itemZG
     
-    return collapseDetails, itemZG
+    return collapseDetails
 
 
 def layout_getStrategyHeader (estrategia, update = False):

@@ -50,7 +50,7 @@ class Strategies():
 
     def strategyReload (self, stratType, symbol):
         for strategy in self.stratList_:
-            if strategy['symbol'] == symbol and strategy['type'] == strategyType:
+            if strategy['symbol'] == symbol and strategy['type'] == stratType:
                 strategy['classObject'].strategyReloadFromFile()
 
     def strategyGetStrategyTypesBySymbol(self, symbol):   # Mejor concatenar si hay mas de una
