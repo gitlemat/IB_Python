@@ -434,5 +434,3 @@ def actualizarContractWL(n_button):
     n_rows = len (contractsWL)
 
     return text, n_rows
-
-    
