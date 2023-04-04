@@ -1,0 +1,134 @@
+HEM3-2HEN3+HEQ3,,,,  -7,    1.5,-0.75,-4, -0.75,-1.25, 0,   -1.25,   -2, 4,-2,-2.75, 7, -2.75,   -4   
+--------- 1.5
+
+
+--------- -0.75
+
+
+--------- -1.25
+
+
+--------- -2
+
+
+--------- -2.75
+
+
+--------- -4
+
+
+
+ --------------------------------------
+Orden 39 actualizada
+     Orden:
+         PermId:401022376
+         Action:BUY
+         Qty:1
+         Status:PreSubmitted
+         Filled:0
+         Remaining:1
+         LastFillPrice:0.0
+         Price (BUY/SELL/LAST): 0/0/7.525
+     Contrato:
+         gConId:491205281496647135
+         ConId: 32615157
+         Symbol: HE
+         SecType: BAG
+         Leg:
+             ConId: 491205281
+             Action: BUY
+             Symbol: HE
+             Ratio: 1
+             LocalSymbol: HEV2
+             LastOrderDate: 20221014
+         Leg:
+             ConId: 496647135
+             Action: SELL
+             Symbol: HE
+             Ratio: 1
+             LocalSymbol: HEZ2
+             LastOrderDate: 20221214
+--------------------------------------
+
+
+
+
+
+> list contratos
+list CONTRATOS
+> [496647135] - HEZ2, Price (BUY/SELL/LAST): -100/-100/83.525
+[508146607] - HEG3, Price (BUY/SELL/LAST): -100/-100/87.325
+[520534377] - HEJ3, Price (BUY/SELL/LAST): -100/-100/92
+[496647135508146607520534377] - HEZ2-2HEG3+HEJ3, Price (BUY/SELL/LAST): 0/0/0.875
+[532513468] - HEM3, Price (BUY/SELL/LAST): -100/-100/101.7
+[544436082] - HEN3, Price (BUY/SELL/LAST): -100/-100/101.75
+[556236475] - HEQ3, Price (BUY/SELL/LAST): -100/-100/100.425
+[532513468544436082556236475] - HEM3-2HEN3+HEQ3, Price (BUY/SELL/LAST): 0/0/-1.375
+[265598] - AAPL, Price (BUY/SELL/LAST): 155.49/155.48/155.49
+[491205281] - HEV2, Price (BUY/SELL/LAST): -100/-100/91.05
+[491205281496647135] - HEV2-HEZ2, Price (BUY/SELL/LAST): 0/0/7.525
+
+
+Order Executed (reqId:  -1 )
+  Symbol: AAPL  ( STK )
+  ExecId: 00012ec5.631ce897.01.01
+  OrderId/PermId: -6 / 401022379
+  Number/Price: 1 at 155.56
+  Liquidity: 2
+ANSWER commissionReport {'commissionReport': 4807036784: ExecId: 00012ec5.631ce897.01.01, Commission: 1.003692, Currency: USD, RealizedPnL: -1.813692, Yield: , YieldRedemptionDate: 0}
+CommissionReport. ExecId: 00012ec5.631ce897.01.01, Commission: 1.003692, Currency: USD, RealizedPnL: -1.813692, Yield: , YieldRedemptionDate: 0
+
+
+[Posicion] - AAPL, Qty: 1, AvgCost: 156.37, Price (BUY/SELL/LAST): 155.62/155.6/155.61
+
+        layout = html.Div(
+            id="parent",
+            children=[
+                html.H1(
+                    children="Prueba Front-End IB",
+                    style={"textAlign": "center"}
+                ),
+                html.Div(children='Prueba'),
+                html.Div(children=response),
+            ]
+        )
+
+
+IB_API_Client.py:227 Order Executed (reqId: -1 )
+IB_API_Client.py:228   Symbol: HE (BAG)
+IB_API_Client.py:229   ExecId: 000130e8.6359d975.01.01
+IB_API_Client.py:230   OrderId/PermId: 339/1589234227
+IB_API_Client.py:231   Number/Price: 1.0 at -1.575
+IB_API_Client.py:232   Liquidity: 1
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529845056: 556236475,HE,FUT,20230814,0.0,,40000,,,USD,HEQ3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41170.0}
+IB_API_Client.py:227 Order Executed (reqId: -1 )
+IB_API_Client.py:228   Symbol: HE (FUT)
+IB_API_Client.py:229   ExecId: 000130e8.6359d975.02.01
+IB_API_Client.py:230   OrderId/PermId: 339/1589234227
+IB_API_Client.py:231   Number/Price: 1.0 at 102.925
+IB_API_Client.py:232   Liquidity: 1
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658515177040: 544436082,HE,FUT,20230717,0.0,,40000,,,USD,HEN3,HE,False,,combo:, 'position': -2.0, 'avgCost': 41550.0}
+IB_API_Client.py:227 Order Executed (reqId: -1 )
+IB_API_Client.py:228   Symbol: HE (FUT)
+IB_API_Client.py:229   ExecId: 000130e8.6359d975.03.01
+IB_API_Client.py:230   OrderId/PermId: 339/1589234227
+IB_API_Client.py:231   Number/Price: 2.0 at 103.875
+IB_API_Client.py:232   Liquidity: 1
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658531971024: 532513468,HE,FUT,20230614,0.0,,40000,,,USD,HEM3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41300.0}
+IB_API_Client.py:227 Order Executed (reqId: -1 )
+IB_API_Client.py:228   Symbol: HE (FUT)
+IB_API_Client.py:229   ExecId: 000130e8.6359d975.04.01
+IB_API_Client.py:230   OrderId/PermId: 339/1589234227
+IB_API_Client.py:231   Number/Price: 1.0 at 103.25
+IB_API_Client.py:232   Liquidity: 1
+wrapper.py:48 ANSWER commissionReport {'commissionReport': 139658526277008: ExecId: 000130e8.6359d975.02.01, Commission: 2.900000, Currency: USD, RealizedPnL: , Yield: , YieldRedemptionDate: 0}
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529166192: 556236475,HE,FUT,20230814,0.0,,40000,,,USD,HEQ3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41172.9}
+wrapper.py:48 ANSWER commissionReport {'commissionReport': 139658526276864: ExecId: 000130e8.6359d975.03.01, Commission: 5.800000, Currency: USD, RealizedPnL: , Yield: , YieldRedemptionDate: 0}
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529166000: 544436082,HE,FUT,20230717,0.0,,40000,,,USD,HEN3,HE,False,,combo:, 'position': -2.0, 'avgCost': 41547.1}
+wrapper.py:48 ANSWER commissionReport {'commissionReport': 139658526276816: ExecId: 000130e8.6359d975.04.01, Commission: 2.900000, Currency: USD, RealizedPnL: , Yield: , YieldRedemptionDate: 0}
+wrapper.py:48 ANSWER position {'account': 'DU5853276', 'contract': 139658529466832: 532513468,HE,FUT,20230614,0.0,,40000,,,USD,HEM3,HE,False,,combo:, 'position': 1.0, 'avgCost': 41302.9}
+
+
+commissionReport {'commissionReport': 140050319658912: ExecId: 000130e8.63acd031.02.01, Commission: 2.9, Currency: USD, RealizedPnL: 244.2, Yield: , YieldRedemptionDate: 0}
+commissionReport {'commissionReport': 140050319657616: ExecId: 000130e8.63acd031.03.01, Commission: 5.8, Currency: USD, RealizedPnL: -161.6, Yield: , YieldRedemptionDate: 0}
+commissionReport {'commissionReport': 140050323377408: ExecId: 000130e8.63acd031.04.01, Commission: 2.9, Currency: USD, RealizedPnL: -45.8, Yield: , YieldRedemptionDate: 0}
