@@ -218,7 +218,7 @@ class dbPandasStrategy():
         records.append(record)
 
         if len(fields_influx) > 0:
-            self.influxIC_.write_data(records)
+            self.influxIC_.write_data(records, 'executions')
 
 
 class dbPandasContrato():
@@ -389,7 +389,7 @@ class dbPandasContrato():
         records.append(record)
 
         if len(fields_pnl) > 0:
-            self.influxIC_.write_data(records)
+            self.influxIC_.write_data(records, 'pnl')
 
     def dbUpdateInfluxPrices (self, data):
         keys_prices = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE']
@@ -417,7 +417,7 @@ class dbPandasContrato():
         #logging.info ('Escribo valor para %s: %s', self.symbol_, records)
 
         if len(fields_prices) > 0:
-            self.influxIC_.write_data(records)
+            self.influxIC_.write_data(records, 'precios')
         
 
 

@@ -28,14 +28,19 @@ class InfluxClient:
         self._mode = os.getenv('MODE')
         self._org = 'rodsic.com'
         if self._mode == 'Lab':
-            self._bucket = 'ib_prices_lab'
+            self._bucket_prices = 'ib_prices_lab'
             self._bucket_ohcl = 'ib_prices_1h_lab'
+            self._bucket_pnl = 'ib_prices_lab'
+            self._bucket_execs = 'ib_prices_lab'
+
         else:
-            self._bucket = 'ib_prices_prod'
-            self._bucket_ohcl = 'ib_prices_1h_prod'
+            self._bucket_prices = 'ib_prices_lab' #Utilizo lab para tener todos. Asi están juntos
+            self._bucket_ohcl = 'ib_prices_1h_lab'
+            self._bucket_pnl = 'ib_prices_prod'
+            self._bucket_execs = 'ib_prices_prod'
         self._client = InfluxDBClient(url="http://localhost:8086", token=token)
 
-    def write_data(self,data,write_option=SYNCHRONOUS):
+    def write_data(self,data, type='precios', write_option=SYNCHRONOUS):
         # measurementName,tagKey=tagValue fieldKey1="fieldValue1",fieldKey2=fieldValue2 timestamp
         # There’s a space between the tagValue and the first fieldKey, and another space between the last fieldValue and timeStamp
         # timestamp is optional
@@ -43,9 +48,18 @@ class InfluxClient:
 
         
         write_api = self._client.write_api(write_option)
+        if type == 'precios':
+            lbucket = self._bucket_prices
+        elif type == 'pnl':
+            lbucket = self._bucket_pnl
+        elif type == 'executions':
+            lbucket = self._bucket_execs
+        else:
+            lbucket = self._bucket_prices
+
         try:
             logging.debug ('Escribiendo en influx esto: %s', data)
-            write_api.write(bucket=self._bucket, org=self._org, record=data)
+            write_api.write(bucket=lbucket, org=self._org, record=data)
         except:
             logging.error ("Exception occurred", exc_info=True)
 
@@ -55,7 +69,7 @@ class InfluxClient:
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 15, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
+        param = {"_bucket": self._bucket_prices, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
         
         query = '''
         from(bucket:_bucket)
@@ -93,7 +107,7 @@ class InfluxClient:
         return result
 
     def influxGetLastPrice(self, symbol):
-        param = {"_bucket": self._bucket, "_symbol": symbol, "_desc": False}
+        param = {"_bucket": self._bucket_prices, "_symbol": symbol, "_desc": False}
 
         query = '''
         from(bucket: _bucket)
@@ -153,7 +167,7 @@ class InfluxClient:
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
+        param = {"_bucket": self._bucket_pnl, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
         query = '''
         from(bucket: _bucket)
         |> range(start: _start, stop: _stop)
@@ -188,7 +202,7 @@ class InfluxClient:
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
+        param = {"_bucket": self._bucket_execs, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
         query = '''
         from(bucket: _bucket)
         |> range(start: _start, stop: _stop)
@@ -226,7 +240,7 @@ class InfluxClient:
         todayStart = todayStart.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
         print (todayStop)
-        param = {"_bucket": self._bucket, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
+        param = {"_bucket": self._bucket_execs, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
         query = '''
         from(bucket: _bucket)
         |> range(start: 0)
