@@ -91,7 +91,10 @@ class dbPandasStrategy():
     def dbAddExecToCount(self):
         today = datetime.datetime.today()
         today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
-        lastdate = self.dfExecCount_.index.max().to_pydatetime()
+        try:
+            lastdate = self.dfExecCount_.index.max().to_pydatetime()
+        except:
+            lastdate = today - datetime.timedelta(days=3)
 
         if today == lastdate:
             self.dfExecCount_.iloc[-1]['ExecCount'] += 1
@@ -122,18 +125,21 @@ class dbPandasStrategy():
             self.ExecsList[index]['legsDone'] = 0
             self.ExecsList[index]['Side'] = None
             self.ExecsList[index]['Quantity'] = 0
+            self.ExecsList[index]['lastFillPrice'] = 0
             self.ExecsList[index]['data'] = [] # Aquí guardamos cada una de las legs que me llegan, para luego recibir la commision
         
         # El qty/side lo pillo del index de la spread (me va a llegar uno de la spread y luego por cada leg)
         if data['contractSecType'] == data['execSecType']:
             self.ExecsList[index]['Side'] = data['Side']
             self.ExecsList[index]['Quantity'] = data['Quantity']
+            self.ExecsList[index]['lastFillPrice'] = data['lastFillPrice']
         else:
             # Estos son los de cada leg. Aqui llenamos la lista, y la vaciamos en Commissiones
             self.ExecsList[index]['data'].append(data)
 
     def dbAddCommissionsOrder(self, dataCommission):
         logging.info ('Actualizamos Commission Order %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
+        #orden['params']['lastFillPrice']
 
         index1 = dataCommission.execId[:dataCommission.execId.index('.')]
         rest = dataCommission.execId[dataCommission.execId.index('.')+1:]
@@ -173,6 +179,7 @@ class dbPandasStrategy():
         dataFlux['Side'] = self.ExecsList[index]['Side'] 
         dataFlux['RealizedPnL'] = self.ExecsList[index]['realizadPnL'] 
         dataFlux['Commission'] = self.ExecsList[index]['Commission'] 
+        dataFlux['FillPrice'] = self.ExecsList[index]['lastFillPrice'] 
         # Aqui seguimos con le escritura a Flux
         # Y borrar todo el self.ExecsList[index]
 
@@ -193,7 +200,7 @@ class dbPandasStrategy():
         return True
 
     def dbUpdateInfluxCommission (self, data):
-        keys_comission = ['ExecId', 'PermId', 'OrderId', 'Quantity', 'Side', 'RealizedPnL', 'Commission']
+        keys_comission = ['ExecId', 'PermId', 'OrderId', 'Quantity', 'Side', 'RealizedPnL', 'Commission', 'FillPrice']
         
         records = []
         record = {}

@@ -179,6 +179,7 @@ class Strategies():
         data_new['contractSecType'] = contract_secType
         data_new['execSecType'] = exec_secType
         data_new['strategy_type'] = strategy_type
+        data_new['lastFillPrice'] = order['params']['lastFillPrice']
 
         # Pandas va a guardar cada execId para cuando llegue la comission 
         currentSymbolStrategy.pandas_.dbAddExecOrder(data_new)

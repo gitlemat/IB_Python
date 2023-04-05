@@ -606,8 +606,10 @@ class strategyPentagrama(strategyBaseClass):
 
         if orderStatus == 'Filled':
             self.strategyOrderFilled (order)
+            bChanged = True
         if orderStatus == 'Cancelled':
             self.strategyOrderCancelled (order)
+            bChanged = True
 
         return bChanged
 

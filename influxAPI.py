@@ -70,7 +70,8 @@ class InfluxClient:
         todayStart = today.replace(hour = 15, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
         param = {"_bucket": self._bucket_prices, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
-        
+        logging.info('      Params: %s', param)
+
         query = '''
         from(bucket:_bucket)
         |> range(start: _start)
