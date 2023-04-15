@@ -131,10 +131,12 @@ class dbPandasStrategy():
         if data['contractSecType'] == data['execSecType']:
             self.ExecsList[index]['Side'] = data['Side']
             self.ExecsList[index]['Quantity'] = data['Quantity']
-            self.ExecsList[index]['lastFillPrice'] = data['lastFillPrice']
         else:
             # Estos son los de cada leg. Aqui llenamos la lista, y la vaciamos en Commissiones
             self.ExecsList[index]['data'].append(data)
+
+        if data['lastFillPrice'] != 0:
+            self.ExecsList[index]['lastFillPrice'] = data['lastFillPrice']
 
     def dbAddCommissionsOrder(self, dataCommission):
         logging.debug ('Actualizamos Commission Order %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
