@@ -3,6 +3,7 @@ import datetime
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 import pandas as pd
+import utils
 
 
 import os
@@ -39,6 +40,7 @@ class InfluxClient:
             self._bucket_pnl = 'ib_prices_prod'
             self._bucket_execs = 'ib_prices_prod'
         self._client = InfluxDBClient(url="http://localhost:8086", token=token)
+        
 
     def write_data(self,data, type='precios', write_option=SYNCHRONOUS):
         # measurementName,tagKey=tagValue fieldKey1="fieldValue1",fieldKey2=fieldValue2 timestamp
@@ -66,9 +68,12 @@ class InfluxClient:
     def influxGetTodayDataFrame (self, symbol):
         logging.info('Leyendo precios de hoy de Influx para: %s', symbol)
         now  = datetime.datetime.now()
+        now = utils.date2UTC (now) # Para poder comparar
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 15, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        todayStart = utils.date2UTC (todayStart)
+        todayStop = utils.date2UTC (todayStop)
         param = {"_bucket": self._bucket_prices, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
         logging.info('      Params: %s', param)
 
@@ -100,7 +105,11 @@ class InfluxClient:
 
         logging.info('%s', result.iloc[-1])
 
-        result.index = result.index.tz_localize(None)
+        try:
+            result.index = result.index.tz_convert('Europe/Madrid')
+        except:
+            result.index = result.index.tz_localize(None)
+
         #result.index = result.index + pd.DateOffset(hours=1)
         
         logging.info('%s', result.iloc[-1])
@@ -131,6 +140,8 @@ class InfluxClient:
         todayStop = datetime.datetime.today()
         todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)
         todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        todayStart = utils.date2UTC (todayStart)
+        todayStop = utils.date2UTC (todayStop)
         param = {"_bucket": self._bucket_ohcl, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
         
         query = '''
@@ -154,7 +165,10 @@ class InfluxClient:
         result.drop(columns=['result','table'], inplace=True)
         result.set_index('timestamp', inplace=True)
 
-        result.index = result.index.tz_localize(None)
+        try:
+            result.index = result.index.tz_convert('Europe/Madrid')
+        except:
+            result.index = result.index.tz_localize(None)
         #result.index = result.index + pd.DateOffset(hours=1)
 
         logging.debug('%s', result)
@@ -168,6 +182,8 @@ class InfluxClient:
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        todayStart = utils.date2UTC (todayStart)
+        todayStop = utils.date2UTC (todayStop)
         param = {"_bucket": self._bucket_pnl, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
         query = '''
         from(bucket: _bucket)
@@ -190,7 +206,10 @@ class InfluxClient:
         result.drop(columns=['result','table'], inplace=True)
         result.set_index('timestamp', inplace=True)
 
-        result.index = result.index.tz_localize(None)
+        try:
+            result.index = result.index.tz_convert('Europe/Madrid')
+        except:
+            result.index = result.index.tz_localize(None)
         #result.index = result.index + pd.DateOffset(hours=1)
 
         logging.debug('%s', result)
@@ -203,6 +222,8 @@ class InfluxClient:
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        todayStart = utils.date2UTC (todayStart)
+        todayStop = utils.date2UTC (todayStop)
         param = {"_bucket": self._bucket_execs, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
         query = '''
         from(bucket: _bucket)
@@ -226,7 +247,10 @@ class InfluxClient:
         result.drop(columns=['result','table'], inplace=True)
         result.set_index('timestamp', inplace=True)
 
-        result.index = result.index.tz_localize(None)
+        try:
+            result.index = result.index.tz_convert('Europe/Madrid')
+        except:
+            result.index = result.index.tz_localize(None)
         #result.index = result.index + pd.DateOffset(hours=1)
 
         logging.debug('%s', result)
@@ -240,7 +264,8 @@ class InfluxClient:
         todayStop = datetime.datetime.today()
         todayStart = todayStart.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        print (todayStop)
+        todayStart = utils.date2UTC (todayStart)
+        todayStop = utils.date2UTC (todayStop)
         param = {"_bucket": self._bucket_execs, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
         query = '''
         from(bucket: _bucket)
@@ -265,7 +290,10 @@ class InfluxClient:
         result.drop(columns=['result','table'], inplace=True)
         result.set_index('timestamp', inplace=True)
 
-        result.index = result.index.tz_localize(None)
+        try:
+            result.index = result.index.tz_convert('Europe/Madrid')
+        except:
+            result.index = result.index.tz_localize(None)
         #result.index = result.index + pd.DateOffset(hours=1)
 
         logging.debug('%s', result)

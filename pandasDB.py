@@ -1,9 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import utils
 import os.path
 import time
 import datetime
-import pytz
 import queue
 import sys
 
@@ -11,7 +11,6 @@ import sys
 import logging
 
 logger = logging.getLogger(__name__)
-utc=pytz.UTC
 UNSET_DOUBLE = sys.float_info.max
 
 
@@ -36,14 +35,14 @@ class dbPandasStrategy():
     def __init__(self, symbol, strategyType, influxIC):
         self.dfExecs_ = None
         self.dfExecCount_ = None
+        self.ExecsList = {} # Esta no es un pandas, pero viene bien dejarlo aqui
 
         self.symbol_ = symbol
         self.influxIC_ = influxIC
         self.strategyType = strategyType
         self.toPrint = True
         self.toPrintPnL = True
-        self.ExecsList = {}
-
+        
         self.dbReadInflux()
 
     def dbReadInflux(self):
@@ -138,7 +137,7 @@ class dbPandasStrategy():
             self.ExecsList[index]['data'].append(data)
 
     def dbAddCommissionsOrder(self, dataCommission):
-        logging.info ('Actualizamos Commission Order %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
+        logging.debug ('Actualizamos Commission Order %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
         #orden['params']['lastFillPrice']
 
         index1 = dataCommission.execId[:dataCommission.execId.index('.')]
@@ -148,8 +147,10 @@ class dbPandasStrategy():
 
         dataExec = None
         if not index in self.ExecsList:
-            logging.info('Esta comissionReport no es de esta strategia [%s]. ExecId: %s', self.strategyType, dataCommission.execId)
+            logging.debug('Esta comissionReport no es de esta strategia [%s]. ExecId: %s', self.strategyType, dataCommission.execId)
             return False
+
+        logging.info ('Actualizamos Commission Order %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
 
         for exec in self.ExecsList[index]['data']:
             if  dataCommission.execId == exec['ExecId']:
@@ -163,10 +164,13 @@ class dbPandasStrategy():
         self.ExecsList[index]['Commission'] += dataCommission.commission
         self.ExecsList[index]['legsDone'] += 1
 
+        logging.info ('    Comision acumulada: [%s]', self.ExecsList[index]['Commission'])
+        logging.info ('    RealizedPnL acumulada: [%s]', self.ExecsList[index]['realizadPnL'])
+
         self.ExecsList[index]['data'].remove(dataExec) # por si llegan dos comisiones al mismo Exec (no deberia)
 
         if self.ExecsList[index]['legsDone'] < dataExec['numLegs']:
-            logging.info ('El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]', self.ExecsList[index]['legsDone'], dataExec['numLegs'])
+            logging.info ('    El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]', self.ExecsList[index]['legsDone'], dataExec['numLegs'])
             return True
 
         time = datetime.datetime.now()
@@ -185,7 +189,8 @@ class dbPandasStrategy():
 
         self.dbUpdateInfluxCommission (dataFlux)
         
-        logging.info ('Commission Order Finalizada %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
+        logging.info ('    Commission Order Finalizada')
+        
         newlineL = []
         newlineL.append (dataFlux)
         dfDelta = pd.DataFrame.from_records(newlineL)
@@ -206,6 +211,7 @@ class dbPandasStrategy():
         record = {}
         tags = {'symbol': self.symbol_, 'strategy': self.strategyType}
         time = data['timestamp']
+        time = utils.date2UTC (time)
         
         fields_influx = {}
 
@@ -253,6 +259,7 @@ class dbPandasContrato():
         #otimeDT = otime.to_pydatetime()
         otimeDT = datetime.datetime.now()
         otimeDT = otimeDT.replace(hour=15, minute=40, second=0, microsecond=0, tzinfo=None)
+        otimeDT = utils.date2local (otimeDT) # Para poder comparar
         
         ret = self.df_[(self.df_.index > otimeDT)]
 
@@ -379,6 +386,7 @@ class dbPandasContrato():
         record = {}
         tags = {'symbol': self.symbol_}
         time = data['timestamp']
+        time = utils.date2UTC (time)
         
         fields_pnl = {}
 
@@ -405,6 +413,7 @@ class dbPandasContrato():
         record = {}
         tags = {'symbol': self.symbol_}
         time = data['timestamp']
+        time = utils.date2UTC (time)
         
         fields_prices = {}
 

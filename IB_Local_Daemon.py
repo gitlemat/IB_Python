@@ -16,6 +16,7 @@ import wsServer
 import strategiesNew
 import webFE.webFENew_App
 import os
+import utils
 from dotenv import load_dotenv
 
 loop_timer = 0.1
@@ -26,10 +27,17 @@ def SetupLogger():
     if not os.path.exists("log"):
         os.makedirs("log")
 
+    
+    try:
+        max_len = str(utils.getLongestFileName())
+    except:
+        max_len = '25'
+
     time.strftime("pyibapi.%Y%m%d_%H%M%S.log")
 
     #recfmt = '(%(threadName)s) %(asctime)s.%(msecs)03d %(levelname)s %(filename)s:%(lineno)d %(message)s'
-    recfmt = '%(asctime)s.%(msecs)03d %(levelname)s %(filename)s:%(lineno)d %(message)s'
+    recfmt = '%(asctime)s.%(msecs)03d %(levelname)-5s [%(filename)-MMMM.MMMMs:%(lineno)-4.4d] %(message)s'
+    recfmt = recfmt.replace('MMMM', max_len)
 
     timefmt = '%y-%m-%d_%H:%M:%S'
 

@@ -112,6 +112,8 @@ class Strategies():
         self.strategyWriteFile(toWrite)
     
     # Se ha ejecutado una orden y hay que ver si corresponde a alguna estrategia para temas de influx
+    # Cada vez que se llega una ejecución la guardamos, y despues cuando llegan las comisiones, lo analizamos y mandamos a influx
+    # Las comisiones no traen el orderId, por lo que hay que guardar las exec para enlazar la comission con la ordenId
     def strategyIndexOrderExecuted (self, data):
         if not 'executionObj' in data:
             return
