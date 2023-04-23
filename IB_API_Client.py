@@ -636,29 +636,30 @@ class IBI_App(EWrapper, EClient):
         else:
             return newReq
 
-    def orderPlaceOCA(contract_symbol:str, secType:str, slAction:str, tpAction:str, quantity:Decimal, 
+    def orderPlaceOCA(self, contract_symbol:str, secType:str, slAction:str, tpAction:str, quantity:Decimal, 
                      takeProfitLimitPrice:float, 
                      stopLossPrice:float):
 
         if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
             return None
         
-        contract = contractFUTcreateGlobal (contract_symbol, secType)
+        contract = self.contractFUTcreateGlobal (contract_symbol, secType)
         
         if contract == None:
             logging.error ("Error creando el contrato para la orden. Contrato vacio")
             return None
 
-        tpOrder = orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
+        tpOrder = self.orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
         tpOrder.ocaGroup = "OCA_" + str(tpOrder)
         tpOrder.ocaType = 2
 
         try:
             tpOrderId = self.placeOrder (contract_symbol, contract, tpOrder) 
         except:
+            logging.error ("Error emplazando la orden TP")
             return None
  
-        slOrder = orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
+        slOrder = self.orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
         slOrder.ocaGroup = "OCA_" + str(tpOrder)
         slOrder.ocaType = 2
 
@@ -673,14 +674,14 @@ class IBI_App(EWrapper, EClient):
         return OcaOrders
     
     
-    def placeBracketOrder(contract_symbol:str, secType:str, action:str, quantity:Decimal, 
+    def placeBracketOrder(self, contract_symbol:str, secType:str, action:str, quantity:Decimal, 
                      limitPrice:float, takeProfitLimitPrice:float, 
                      stopLossPrice:float):
 
         if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
             return None
         
-        contract = contractFUTcreateGlobal (contract_symbol, secType)
+        contract = self.contractFUTcreateGlobal (contract_symbol, secType)
         
         if contract == None:
             logging.error ("Error creando el contrato para la orden. Contrato vacio")
@@ -688,7 +689,7 @@ class IBI_App(EWrapper, EClient):
 
         #This will be our main or "parent" order
 
-        parentOrder = orderCreate(action, 'LMTGTC', limitPrice, quantity)
+        parentOrder = self.orderCreate(action, 'LMTGTC', limitPrice, quantity)
         parentOrder.transmit = False
     
         try:
@@ -698,7 +699,7 @@ class IBI_App(EWrapper, EClient):
             return None
 
         tpAction = "SELL" if action == "BUY" else "BUY"
-        tpOrder = orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
+        tpOrder = self.orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
         tpOrder.parentId = parentOrderId
         tpOrder.transmit = False
 
@@ -710,7 +711,7 @@ class IBI_App(EWrapper, EClient):
             return None
  
         slAction = "SELL" if action == "BUY" else "BUY"
-        slOrder = orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
+        slOrder = self.orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
         slOrder.parentId = parentOrderId
         slOrder.transmit = True
 

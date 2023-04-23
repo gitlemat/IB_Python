@@ -151,8 +151,9 @@ def strategyWriteFile (strategies):
             line += str(zone['OrderIdTP']) + ','
             line += str(zone['OrderPermIdTP']) + ','
             line += str(zone['BracketOrderFilledState'])
+            line += '\n'
             lines.append(line)
-        line = '%'
+        line = '%\n'
         lines.append(line)
     with open(STRAT_File, 'w') as f:
         for line in lines:
@@ -218,9 +219,12 @@ class strategyPentagramaRu(strategyBaseClass):
         #         - Si la parent no está exec: igual hay que rehacer todo.
 
 
-
+        
         if self.stratEnabled_ == False:
             return False
+
+        bStrategyUpdated = False
+
         for iter in range(len(self.zones_)):
             zone = self.zones_[iter]
             bParentOrderError = False
@@ -249,11 +253,11 @@ class strategyPentagramaRu(strategyBaseClass):
                     bTPOrderError = True
             # Si la OrderSL no existe: error siempre
             if zone['OrderIdSL'] == None or not bSLOrderExists:
-                logging.error ('Estrategia %s [PentagramaRu]. Error en SLOrder. OrderId %s', self.symbol_ ,zone['OrderIdSL'])
+                #logging.error ('Estrategia %s [PentagramaRu]. Error en SLOrder. OrderId %s', self.symbol_ ,zone['OrderIdSL'])
                 bSLOrderError = True
             # Si la OrderTP no existe: error siempre
             if zone['OrderIdTP'] == None or not bTPOrderExists:
-                logging.error ('Estrategia %s [PentagramaRu]. Error en TPOrder. OrderId %s', self.symbol_ ,zone['OrderIdTP'])
+                #logging.error ('Estrategia %s [PentagramaRu]. Error en TPOrder. OrderId %s', self.symbol_ ,zone['OrderIdTP'])
                 bTPOrderError = True                
 
             # Ahora vemos qué se hace por cada error
@@ -269,14 +273,15 @@ class strategyPentagramaRu(strategyBaseClass):
                 if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
                     continue
                 parentOrderId = None
+                logging.error ('Estrategia %s [PentagramaRu]. Error en parentId', self.symbol_)
                 if bParentOrderExists:
-                    logging.error ('Estrategia %s [PentagramaRu]. Error en parentId. Cancelamos la Parent OrderId %s', self.symbol_ ,zone['OrderId'])
+                    logging.error ('    Cancelamos la Parent OrderId %s', zone['OrderId'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderId'])  
                 if bSLOrderExists:
-                    logging.error ('Estrategia %s [PentagramaRu]. Error en parentId. Cancelamos la SLOrder OrderId %s', self.symbol_ ,zone['OrderIdSL'])
+                    logging.error ('    Cancelamos la SLOrder OrderId %s', zone['OrderIdSL'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderIdSL'])  
                 if bSLOrderExists:
-                    logging.error ('Estrategia %s [PentagramaRu]. Error en parentId. Cancelamos la OrderIdTP OrderId %s', self.symbol_ ,zone['OrderIdTP'])
+                    logging.error ('    Cancelamos la OrderIdTP OrderId %s', zone['OrderIdTP'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderIdTP'])
                 bRehacerTodo = True
 
@@ -285,27 +290,30 @@ class strategyPentagramaRu(strategyBaseClass):
             # Si no esta exec: borramos todo y recrear
             # Si ya esta exec: Hacemos a mano la TP y SL
             elif bSLOrderError or bTPOrderError:
+                if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
+                    continue
+                logging.error ('Estrategia %s [PentagramaRu]. Error en childOrder', self.symbol_)
                 if bSLOrderExists:
-                    logging.error ('Estrategia %s [PentagramaRu]. Error en childOrder. Cancelamos la SLOrder OrderId %s', self.symbol_ ,zone['OrderIdSL'])
+                    logging.error ('    Cancelamos la SLOrder OrderId %s', zone['OrderIdSL'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderIdSL'])  
                 if bSLOrderExists:
-                    logging.error ('Estrategia %s [PentagramaRu]. Error en childOrder. Cancelamos la OrderIdTP OrderId %s', self.symbol_ ,zone['OrderIdTP'])
+                    logging.error ('    Cancelamos la OrderIdTP OrderId %s', zone['OrderIdTP'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderIdTP'])  
                 if not zone['BracketOrderFilledState'] in ['ParentFilled', 'ParentFilled+F', 'ParentFilled+C']:
-                    logging.error ('Estrategia %s [PentagramaRu]. Error en childOrder. Cancelamos la Parent OrderId %s', self.symbol_ ,zone['OrderId'])
+                    logging.error ('    Cancelamos la Parent OrderId %s', zone['OrderId'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderId'])
                     bRehacerTodo = True
                 else:
                     bGenerarOCA = True
 
             if bRehacerTodo or bGenerarOCA:
-                if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
-                    continue
                 self.timelasterror_ = datetime.datetime.now()
                 new_zone = None
                 if bRehacerTodo:
+                    logging.error ('Estrategia %s [PentagramaRu]. Rehacemos todo', self.symbol_)
                     new_zone = self.strategyCreateBracketOrder (zone)
                 elif bGenerarOCA:
+                    logging.error ('Estrategia %s [PentagramaRu]. Rehacemos OCA para childs', self.symbol_)
                     new_zone = self.strategyCreateChildOca (zone)
                 if new_zone != None:
                     self.zones_[iter] = new_zone   # Actualiza la zona
@@ -409,7 +417,16 @@ class strategyPentagramaRu(strategyBaseClass):
             return False
 
         ordenObj = data['orderObj']
-        self.strategyOrderIdUpdated (ordenObj)
+
+        bChanged = False
+
+        if ordenObj != "":
+            ret = self.strategyOrderIdUpdated (ordenObj)
+            if ret:
+                bChanged = True
+
+        return bChanged
+        
 
     def strategyOrderIdUpdated (self, ordenObj):
         bChanged = False
@@ -461,9 +478,9 @@ class strategyPentagramaRu(strategyBaseClass):
             logging.info ('     Precio LMT: %.3f', lmtPrice)
             logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
             logging.info ('     Precio SL : %.3f', stopLossPrice)
-            orderIds = self.RTLocalData_.orderPlaceBracket (self, symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice)
+            orderIds = self.RTLocalData_.orderPlaceBracket (symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice)
         except:
-            logging.error('Error lanzando las barcket orders para %s', symbol)
+            logging.error('Error lanzando las barcket orders', exc_info = True)
             return None
 
         if orderIds == None:
@@ -490,9 +507,9 @@ class strategyPentagramaRu(strategyBaseClass):
             logging.info ('Vamos a crear las ordenes SL/TP como OCA para %s', symbol)
             logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
             logging.info ('     Precio SL : %.3f', stopLossPrice)
-            orderIds = self.RTLocalData_.orderPlaceOCA (self, symbol, secType, action1, action2, qty, takeProfitLimitPrice, stopLossPrice)
+            orderIds = self.RTLocalData_.orderPlaceOCA (symbol, secType, action1, action2, qty, takeProfitLimitPrice, stopLossPrice)
         except:
-            logging.error('Error lanzando las OCA orders para %s', symbol)
+            logging.error('Error lanzando las OCA orders', exc_info=True)
             return None
 
         if orderIds == None:
