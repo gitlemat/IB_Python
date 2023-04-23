@@ -14,9 +14,10 @@ def testToday():
     todayStop = today.replace(hour = 20, minute = 15, second = 0, microsecond=0)
     print (todayStart)
     week = datetime.datetime.today() - datetime.timedelta(days = 70)
-    param = {"_bucket": BUCKET, "_start": todayStart, "_stop": todayStop, "_symbol": "HEM3", "_desc": False}
+    param = {"_bucket": BUCKET, "_start": todayStart, "_stop": todayStop, "_symbol": "HEM3-2HEN3+HEQ3", "_desc": False}
     query = '''
-    from(bucket: _bucket)|> range(start: _start, stop: _stop)
+    from(bucket: _bucket)
+    |> range(start: _start, stop: _stop)
     |> filter(fn:(r) => r._measurement == "precios")
     |> filter(fn:(r) => r.symbol == _symbol)
     |> filter(fn:(r) => r._field == "ASK" or r._field == "BID" or r._field == "LAST" or r._field == "BID_SIZE" or r._field == "LAST_SIZE" or r._field == "BID_SIZE")
@@ -33,14 +34,16 @@ def testToday():
     if now > todayStart:
         result = query_api.query_data_frame(org=ORG, query=query, params = param)
     if len(result) == 0:
-        print ('Cero')
         result = getLast(client)
 
     result.rename(columns = {'_time':'timestamp'}, inplace = True)
-
-
     result.drop(columns=['result','table'], inplace=True)
     result.set_index('timestamp', inplace=True)
+
+    try:
+        result.index = result.index.tz_convert('Europe/Madrid')
+    except:
+        result.index = result.index.tz_localize(None)
 
     return result
 

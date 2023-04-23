@@ -75,7 +75,7 @@ class InfluxClient:
         todayStart = utils.date2UTC (todayStart)
         todayStop = utils.date2UTC (todayStop)
         param = {"_bucket": self._bucket_prices, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
-        logging.info('      Params: %s', param)
+        logging.debug('      Params: %s', param)
 
         query = '''
         from(bucket:_bucket)
@@ -93,26 +93,27 @@ class InfluxClient:
             result = self.query_data_frame(query, param)
         if len(result) == 0:
             result = self.influxGetLastPrice(symbol)
-            logging.info ('Influx de Last: %s', result)
+            logging.debug ('Influx de Last: %s', result)
 
         if len(result) == 0:
             df_ = pd.DataFrame(columns = ['timestamp', 'BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE'])
+            df_.set_index('timestamp', inplace=True)
             return df_
     
         result.rename(columns = {'_time':'timestamp'}, inplace = True)
         result.drop(columns=['result','table'], inplace=True)
         result.set_index('timestamp', inplace=True)
 
-        logging.info('%s', result.iloc[-1])
-
         try:
             result.index = result.index.tz_convert('Europe/Madrid')
         except:
+            logging.error('[%s] - Fallo al normalizar fechas con TZ', symbol)
             result.index = result.index.tz_localize(None)
+            result.index = result.index.tz_localize('Europe/Madrid')
 
         #result.index = result.index + pd.DateOffset(hours=1)
         
-        logging.info('%s', result.iloc[-1])
+        logging.debug('%s', result.iloc[-1])
 
         return result
 
@@ -159,6 +160,7 @@ class InfluxClient:
 
         if len(result) == 0:
             dfcomp_ = pd.DataFrame(columns = ['timestamp','open','high','low','close'])
+            dfcomp_.set_index('timestamp', inplace=True)
             return dfcomp_
     
         result.rename(columns = {'_time':'timestamp'}, inplace = True)
@@ -169,6 +171,7 @@ class InfluxClient:
             result.index = result.index.tz_convert('Europe/Madrid')
         except:
             result.index = result.index.tz_localize(None)
+            result.index = result.index.tz_localize('Europe/Madrid')
         #result.index = result.index + pd.DateOffset(hours=1)
 
         logging.debug('%s', result)
@@ -200,6 +203,7 @@ class InfluxClient:
 
         if len(result) == 0:
             df_temp = pd.DataFrame(columns = ['timestamp', 'dailyPnL','realizedPnL','unrealizedPnL'])
+            df_temp.set_index('timestamp', inplace=True)
             return df_temp
     
         result.rename(columns = {'_time':'timestamp'}, inplace = True)
@@ -210,6 +214,7 @@ class InfluxClient:
             result.index = result.index.tz_convert('Europe/Madrid')
         except:
             result.index = result.index.tz_localize(None)
+            result.index = result.index.tz_localize('Europe/Madrid')
         #result.index = result.index + pd.DateOffset(hours=1)
 
         logging.debug('%s', result)
@@ -241,6 +246,7 @@ class InfluxClient:
 
         if len(result) == 0:
             df_temp = pd.DataFrame(columns = ['timestamp', 'OrderId','Quantity','Side'])
+            df_temp.set_index('timestamp', inplace=True)
             return df_temp
     
         result.rename(columns = {'_time':'timestamp'}, inplace = True)
@@ -251,6 +257,7 @@ class InfluxClient:
             result.index = result.index.tz_convert('Europe/Madrid')
         except:
             result.index = result.index.tz_localize(None)
+            result.index = result.index.tz_localize('Europe/Madrid')
         #result.index = result.index + pd.DateOffset(hours=1)
 
         logging.debug('%s', result)
@@ -284,6 +291,7 @@ class InfluxClient:
 
         if len(result) == 0:
             df_temp = pd.DataFrame(columns = ['timestamp', 'ExecCount'])
+            df_temp.set_index('timestamp', inplace=True)
             return df_temp
     
         result.rename(columns = {'_time':'timestamp', 'ExecId':'ExecCount'}, inplace = True)
@@ -294,6 +302,7 @@ class InfluxClient:
             result.index = result.index.tz_convert('Europe/Madrid')
         except:
             result.index = result.index.tz_localize(None)
+            result.index = result.index.tz_localize('Europe/Madrid')
         #result.index = result.index + pd.DateOffset(hours=1)
 
         logging.debug('%s', result)

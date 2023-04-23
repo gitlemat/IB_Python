@@ -561,11 +561,11 @@ class DataLocalRT():
                 '''
                 bUpdated = False
                 if allReady != False:
-                    timestamp = datetime.datetime.now()
-                    data_args = {'timestamp':timestamp}
+                    
                     price2buy = round (price2buy, 5)
                     price2sell = round (price2sell, 5)
                     price2last = round (price2last, 5)
+                    data_args = {}
                     if contrato['currentPrices']['BUY'] != price2buy and size2buy > 0:
                         contrato['currentPrices']['BUY'] = price2buy
                         contrato['currentPrices']['updated'] = True
@@ -675,9 +675,8 @@ class DataLocalRT():
                     # Se actualiza la DB para el contrato['gConId'] con estos datos:
                     if bUpdated:
                         lSymbol = contrato['fullSymbol']
-                        timestamp = datetime.datetime.now()
-                        data_args = {'timestamp':timestamp, 
-                                     'dailyPnL': contrato['pnl']['dailyPnL'], 
+                        
+                        data_args = {'dailyPnL': contrato['pnl']['dailyPnL'], 
                                      'realizedPnL':contrato['pnl']['realizedPnL'], 
                                      'unrealizedPnL':contrato['pnl']['unrealizedPnL']
                                      }
@@ -1168,6 +1167,10 @@ class DataLocalRT():
         ordersIds = self.appObj_.placeBracketOrder (symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice) 
         return ordersIds
 
+    def orderPlaceOCA (self, symbol, secType, actionUp, actionDown, qty, LmtUp, LmtDown):
+        ordersIds = self.appObj_.placeOCAOrder (symbol, secType, actionUp, actionDown, qty, LmtUp, LmtDown) 
+        return ordersIds
+
     def orderCancelByOrderId (self, orderId):
         for order in self.orderList_: 
             if int(order['order'].orderId) == int(orderId):
@@ -1260,7 +1263,6 @@ class DataLocalRT():
         
         summaryStr += ', ' + self.contractSummaryPricesOnly(orden['contractId'])
 
-        summaryStr += '\n'
         #orden['toPrint'] = False
                 
         return summaryStr

@@ -6,6 +6,7 @@ import time
 import datetime
 import queue
 import sys
+import utils
 
 
 import logging
@@ -57,8 +58,9 @@ class dbPandasStrategy():
 
         today = datetime.datetime.today()
         today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+        today = utils.date2local (today)
         
-        ret = self.dfExecs_[(self.df_.index > today)]
+        ret = self.dfExecs_[(self.dfExecs_.index > today)]
 
         return ret
 
@@ -66,18 +68,21 @@ class dbPandasStrategy():
         yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
         yesterdayInit = yesterday.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         yesterdayEnd = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=None)
+        yesterdayInit = utils.date2local (yesterdayInit)
+        yesterdayEnd = utils.date2local (yesterdayEnd)
         
-        ret = self.dfExecs_[((self.df_.index > yesterdayInit) & (yesterdayEnd > self.df_.index))]
+        ret = self.dfExecs_[((self.dfExecs_.index > yesterdayInit) & (yesterdayEnd > self.dfExecs_.index))]
 
         return ret
 
     def dbGetExecCountToday(self):
         today = datetime.datetime.today()
         today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+        today = utils.date2local (today)
 
         ret = self.dfExecCount_[self.dfExecCount_.index ==  today]
 
-        logging.info("Las Exec count hoy: \n%s", self.dfExecCount_)
+        logging.debug("Las Exec count hoy: \n%s", self.dfExecCount_)
         if len(ret) > 0:
             return ret.iloc[-1]['ExecCount']
         
@@ -90,6 +95,7 @@ class dbPandasStrategy():
     def dbAddExecToCount(self):
         today = datetime.datetime.today()
         today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+        today = utils.date2local (today)
         try:
             lastdate = self.dfExecCount_.index.max().to_pydatetime()
         except:
@@ -176,6 +182,7 @@ class dbPandasStrategy():
             return True
 
         time = datetime.datetime.now()
+        time = utils.date2local (time)
         dataFlux = {}
         dataFlux['timestamp'] = time
         dataFlux['ExecId'] = index + '01.01'
@@ -263,6 +270,8 @@ class dbPandasContrato():
         otimeDT = otimeDT.replace(hour=15, minute=40, second=0, microsecond=0, tzinfo=None)
         otimeDT = utils.date2local (otimeDT) # Para poder comparar
         
+        #logging.info('Pandas: %s', self.df_.index)
+        #logging.info('otimeDT: %s', otimeDT)
         ret = self.df_[(self.df_.index > otimeDT)]
 
         return ret
@@ -331,6 +340,10 @@ class dbPandasContrato():
                 elif key not in lastone and data[key] != None:
                     different = True
 
+        timestamp = datetime.datetime.now()
+        timestamp = utils.date2local (timestamp)
+        data = {'timestamp':timestamp}
+
         newlineL = []
         newlineL.append (data)
 
@@ -369,6 +382,10 @@ class dbPandasContrato():
                     differentPnL = True
                 elif key not in lastone and data[key] != None:
                     differentPnL = True
+
+        timestamp = datetime.datetime.now()
+        timestamp = utils.date2local (timestamp)
+        data = {'timestamp':timestamp}
             
         newlineL = []
         newlineL.append (data)

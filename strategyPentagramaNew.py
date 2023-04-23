@@ -679,7 +679,7 @@ class strategyPentagrama(strategyBaseClass):
             lAccion = 'vendido'
             delta_pos = (-1) * order['params']['filled']
         self.currentPos_ += delta_pos  # La posición va a ser la que tenía más el cambio
-        logging.info ('     Hemos %s %d posiciones. Ahora tenemos %d', lAccion, delta_pos, self.currentPos_)
+        logging.info ('    Hemos %s %d posiciones. Ahora tenemos %d', lAccion, delta_pos, self.currentPos_)
         
         self.RTLocalData_.orderSetExecutedStatus (orderId, True)    # La marcamos como Executed
 

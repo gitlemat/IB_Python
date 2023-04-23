@@ -14,6 +14,11 @@ import logging
 import globales
 
 logger = logging.getLogger(__name__)
+logging.getLogger('ibapi').setLevel(logging.WARNING)
+logging.getLogger('ibapi.wrapper').setLevel(logging.WARNING)
+logging.getLogger('ibapi.client').setLevel(logging.WARNING)
+logging.getLogger('ibapi.contract').setLevel(logging.WARNING)
+logging.getLogger('ibapi.order').setLevel(logging.WARNING)
 
 
 class IBI_App(EWrapper, EClient):
@@ -22,8 +27,8 @@ class IBI_App(EWrapper, EClient):
         #EWrapper.__init__(self)
         EClient.__init__(self, wrapper=self)
         
-        Order.__setattr__ = utils.setattr_log
-        Contract.__setattr__ = utils.setattr_log
+        #Order.__setattr__ = utils.setattr_log
+        #Contract.__setattr__ = utils.setattr_log
 
         self.accSumTags = AccountSummaryTags()
         
@@ -83,7 +88,7 @@ class IBI_App(EWrapper, EClient):
         #super().error(id, errorCode, errorString, advancedOrderRejectJson)
         ## Overrides the native method EWrapper
         if errorCode == 202:
-            errormessage = "[202] Order Cancelled." 
+            errormessage = "[202] Order Cancelled. %s" % (errorString)
         elif errorCode == 2104:
             errormessage = "[2104] Market data farm connection is OK."
         elif errorCode == 2106:
@@ -631,6 +636,43 @@ class IBI_App(EWrapper, EClient):
         else:
             return newReq
 
+    def orderPlaceOCA(contract_symbol:str, secType:str, slAction:str, tpAction:str, quantity:Decimal, 
+                     takeProfitLimitPrice:float, 
+                     stopLossPrice:float):
+
+        if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
+            return None
+        
+        contract = contractFUTcreateGlobal (contract_symbol, secType)
+        
+        if contract == None:
+            logging.error ("Error creando el contrato para la orden. Contrato vacio")
+            return None
+
+        tpOrder = orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
+        tpOrder.ocaGroup = "OCA_" + str(tpOrder)
+        tpOrder.ocaType = 2
+
+        try:
+            tpOrderId = self.placeOrder (contract_symbol, contract, tpOrder) 
+        except:
+            return None
+ 
+        slOrder = orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
+        slOrder.ocaGroup = "OCA_" + str(tpOrder)
+        slOrder.ocaType = 2
+
+        try:
+            slOrderId = self.placeOrder (contract_symbol, contract, slOrder) 
+        except:
+            logging.error ("Error emplazando la orden SL. Cancelamos la TP (%s)", parentOrderId, tpOrderId)
+            self.cancelOrderByOrderId (tpOrderId)
+            return None
+ 
+        OcaOrders = {'tpOrderId': tpOrderId, 'slOrderId': slOrderId}
+        return OcaOrders
+    
+    
     def placeBracketOrder(contract_symbol:str, secType:str, action:str, quantity:Decimal, 
                      limitPrice:float, takeProfitLimitPrice:float, 
                      stopLossPrice:float):
