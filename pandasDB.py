@@ -113,7 +113,7 @@ class dbPandasStrategy():
 
 
     def dbAddExecOrder(self, data):
-        logging.info ('Actualizamos Exec Order %s[%s]: %s', self.strategyType, self.symbol_, data)
+        logging.info ('[Execution (%s)] Actualizamos Exec Order de %s[%s]. ExedId: %s. Qty: %s, Side: %s, Type: %s', data['OrderId'],self.strategyType, self.symbol_, data['ExecId'], data['Quantity'], data['Side'], data['execSecType'])
 
         # Nos quedamos con la parte mas significativa del index
         index1 = data['ExecId'][:data['ExecId'].index('.')]
@@ -145,7 +145,7 @@ class dbPandasStrategy():
             self.ExecsList[index]['lastFillPrice'] = data['lastFillPrice']
 
     def dbAddCommissionsOrder(self, dataCommission):
-        logging.debug ('Actualizamos Commission Order %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
+        logging.debug ('[Comision (%s)] Actualizamos Commission en Estrategia %s: %s', self.symbol_, self.strategyType, dataCommission)
         #orden['params']['lastFillPrice']
 
         index1 = dataCommission.execId[:dataCommission.execId.index('.')]
@@ -155,17 +155,17 @@ class dbPandasStrategy():
 
         dataExec = None
         if not index in self.ExecsList:
-            logging.debug('Esta comissionReport no es de esta strategia [%s]. ExecId: %s', self.strategyType, dataCommission.execId)
+            logging.debug('[Comision (%s)] Esta comissionReport no es de esta strategia [%s]. ExecId: %s', self.symbol_, self.strategyType, dataCommission.execId)
             return False
 
-        logging.info ('Actualizamos Commission Order %s[%s]: %s', self.strategyType, self.symbol_, dataCommission)
+        logging.info ('[Comision (%s)] Actualizamos Commission en Estrategia %s: %s', self.symbol_, self.strategyType, dataCommission)
 
         for exec in self.ExecsList[index]['data']:
             if  dataCommission.execId == exec['ExecId']:
                 dataExec = exec
                 break
         if not dataExec:
-            logging.error('Me ha llegado una comision sin tener la info de la Orden exec. ExecId: %s', dataCommission.execId)
+            logging.error ('[Comision (%s)] Comision sin tener la info de la Orden ExecId (%s) anteriormente.', self.symbol_, dataCommission.execId)
             return False
 
         self.ExecsList[index]['realizadPnL'] += dataCommission.realizedPNL
@@ -198,7 +198,7 @@ class dbPandasStrategy():
 
         self.dbUpdateInfluxCommission (dataFlux)
         
-        logging.info ('    Commission Order Finalizada')
+        logging.info ('    Commission Order Finalizada [100%]')
         
         newlineL = []
         newlineL.append (dataFlux)
@@ -342,7 +342,7 @@ class dbPandasContrato():
 
         timestamp = datetime.datetime.now()
         timestamp = utils.date2local (timestamp)
-        data = {'timestamp':timestamp}
+        data['timestamp'] = timestamp
 
         newlineL = []
         newlineL.append (data)
@@ -385,7 +385,7 @@ class dbPandasContrato():
 
         timestamp = datetime.datetime.now()
         timestamp = utils.date2local (timestamp)
-        data = {'timestamp':timestamp}
+        data['timestamp'] = timestamp
             
         newlineL = []
         newlineL.append (data)

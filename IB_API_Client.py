@@ -143,7 +143,7 @@ class IBI_App(EWrapper, EClient):
     def tickPrice(self, reqId, tickType, price, attrib):
         ## Overriden method EWrapper
         #print('The current ask price (',tickType,') for reqid', reqId, 'is: ', price)
-        #logging.info ('[TICK] - The current ask price (%d) for reqid %d is: %.4f', tickType, reqId, price)  
+        logging.debug ('[TICK] - The current price (%d) for reqid %d is: %.4f', tickType, reqId, price)  
         data = {'reqId': reqId, 'tickType': tickType, 'price': price, 'attrib':attrib }
         queueEntry = {'type':'tick', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
@@ -636,7 +636,7 @@ class IBI_App(EWrapper, EClient):
         else:
             return newReq
 
-    def orderPlaceOCA(self, contract_symbol:str, secType:str, slAction:str, tpAction:str, quantity:Decimal, 
+    def placeOCAOrder(self, contract_symbol:str, secType:str, slAction:str, tpAction:str, quantity:Decimal, 
                      takeProfitLimitPrice:float, 
                      stopLossPrice:float):
 
@@ -651,7 +651,7 @@ class IBI_App(EWrapper, EClient):
 
         tpOrder = self.orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
         tpOrder.ocaGroup = "OCA_" + str(tpOrder)
-        tpOrder.ocaType = 2
+        tpOrder.ocaType = 3
 
         try:
             tpOrderId = self.placeOrder (contract_symbol, contract, tpOrder) 
@@ -661,7 +661,7 @@ class IBI_App(EWrapper, EClient):
  
         slOrder = self.orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
         slOrder.ocaGroup = "OCA_" + str(tpOrder)
-        slOrder.ocaType = 2
+        slOrder.ocaType = 3
 
         try:
             slOrderId = self.placeOrder (contract_symbol, contract, slOrder) 
@@ -751,7 +751,7 @@ class IBI_App(EWrapper, EClient):
         return (self.nextorderId - 1)
 
     def cancelOrderByOrderId (self, orderId):
-        logging.info ("Vamos a CANCELAR la orden %s", orderId)
+        logging.info ("[Orden (%s)] Vamos a CANCELAR esta orden", orderId)
         manualOrderCancelTime = ''
         super().cancelOrder (orderId, manualOrderCancelTime)
         return True
@@ -764,6 +764,7 @@ class IBI_App(EWrapper, EClient):
     
     def reqMktDataGen (self, contract):
         reqId = self.reqIdNew()
+        logging.info ("Subscribiendo a market data de: %s", contract.symbol)
         super().reqMktData(reqId, contract, '', False, False, [])
         return reqId
 

@@ -160,7 +160,7 @@ class DataLocalRT():
                     logging.debug("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
                 # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
                 if pos_min != 0: # Hay algo
-                    logging.info("Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
+                    logging.info("[Posicion] Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
                     avgPrice = 0
                     for contractLegInfo in contrato['contractReqIdLegs']:
                         conId = contractLegInfo['conId']
@@ -1258,10 +1258,18 @@ class DataLocalRT():
         summaryStr = '[Orden (' + str(orden['order'].orderId) + ')] "' + self.contractSummaryBrief(orden['contractId']) + '" '
         summaryStr += str(orden['order'].action)
         summaryStr += ' (' + status + ')'
+        summaryStr += ', ' + orden['order'].orderType
+        if orden['order'].orderType[:3] == 'LMT':
+            summaryStr += ': $' + str(orden['order'].lmtPrice)
+        if orden['order'].orderType[:3] == 'STP':
+            summaryStr += ': $' + str(orden['order'].auxPrice)
         summaryStr += ', Qty: ' + str(orden['order'].totalQuantity)
-        summaryStr += '(' + filled + '/' + remaining + ') Last Price: ' +  lastFillPrice
+        summaryStr += '(' + filled + '/' + remaining + ') Filled Price: $' +  lastFillPrice
         
-        summaryStr += ', ' + self.contractSummaryPricesOnly(orden['contractId'])
+
+            
+        
+        # summaryStr += ', ' + self.contractSummaryPricesOnly(orden['contractId'])
 
         #orden['toPrint'] = False
                 

@@ -31,7 +31,8 @@ Error_orders_timer_dt = datetime.timedelta(seconds=90)
 
 
 orderChildErrorStatus = ['Inactive']
-orderChildValidExecStatus = ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
+orderChildValidExecStatusParentFilled = ['Filled', 'Submitted', 'Cancelled', 'PreSubmitted', 'PendingCancel', 'ApiCancelled']
+orderChildInvalidExecStatusParentNotFilled = ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
 orderInactiveStatus = ['Cancelled', 'PendingCancel', 'Inactive', 'ApiCancelled']
 STRAT_File = 'strategies/RU_Pentagrama.conf'
 
@@ -198,7 +199,7 @@ class strategyPentagramaRu(strategyBaseClass):
         #     - Sintomas:
         #         - SL_id o TP_id Null
         #         - SL_id o TP_id no existe segun IB
-        #         - SL_id o TP_id en estado erroneo orderChildValidExecStatus -> ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
+        #         - SL_id o TP_id en estado erroneo orderChildInvalidExecStatusParentNotFilled -> ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
         #     - Accion:
         #         - Rehacer las TP/SL (seguramente deshaciendo la que esta bien). Entiendo que se puede hacer usando parent_id
         #         - Quizá es mejor deshacer/cancel todo y rehacer
@@ -206,7 +207,7 @@ class strategyPentagramaRu(strategyBaseClass):
         #     - Sintoma:
         #         - SL_id o TP_id Null
         #         - SL_id o TP_id no existe segun IB
-        #         - SL_id o TP_id en estado erroneo NO EN orderChildValidExecStatus -> ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
+        #         - SL_id o TP_id en estado erroneo NO EN orderChildValidExecStatusParentFilled -> ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
         #     - Accion:
         #         - Rehacer las TP/SL pero quizá haciendo un OCA nuevo. Follon necesario
         # En todos los casos:
@@ -226,6 +227,7 @@ class strategyPentagramaRu(strategyBaseClass):
         bStrategyUpdated = False
 
         for iter in range(len(self.zones_)):
+            bRehacerNoError = False
             zone = self.zones_[iter]
             bParentOrderError = False
             bParentOrderExists = self.RTLocalData_.orderCheckIfExistsByOrderId(zone['OrderId'])
@@ -237,19 +239,25 @@ class strategyPentagramaRu(strategyBaseClass):
             bTPOrderExists = self.RTLocalData_.orderCheckIfExistsByOrderId(zone['OrderIdTP'])
             bTPOrderStatus = self.RTLocalData_.orderGetStatusbyOrderId (zone['OrderIdTP'])
             # Si no tengo constancia de que se halla comprado la parent, si no existe es error
-            if not zone['BracketOrderFilledState'] in ['ParentFilled', 'ParentFilled+F', 'ParentFilled+C']:
+            if zone['BracketOrderFilledState'] == None:
                 if zone['OrderId'] == None or not bParentOrderExists or bParentOrderStatus in orderInactiveStatus:
                     bParentOrderError = True
                 # Parent no ejecutada, y error en child
-                if bSLOrderStatus in orderChildValidExecStatus:
+                elif bSLOrderStatus in orderChildInvalidExecStatusParentNotFilled:
                     bSLOrderError = True
-                if bTPOrderStatus in orderChildValidExecStatus:
+                elif bTPOrderStatus in orderChildInvalidExecStatusParentNotFilled:
                     bTPOrderError = True
-            # Si la parentOrder se ha ejecutado, las child tienen que estar en un estado valido. Si no error.
+            elif zone['BracketOrderFilledState'] in ['ParentFilled+F']:
+                bRehacerNoError = True
+            # Si la parentOrder se ha ejecutado, las child tienen que estar en un estado valido. Si no error.                
             else:
-                if bSLOrderStatus not in orderChildValidExecStatus:
+                if bSLOrderStatus == 'Filled' and bTPOrderStatus == 'Cancelled': # Todo ejecutado
+                    bRehacerNoError = True
+                if bSLOrderStatus == 'Cancelled' and bTPOrderStatus == 'Filled':
+                    bRehacerNoError = True
+                if bSLOrderStatus not in orderChildValidExecStatusParentFilled:
                     bSLOrderError = True
-                if bTPOrderStatus not in orderChildValidExecStatus:
+                if bTPOrderStatus not in orderChildValidExecStatusParentFilled:
                     bTPOrderError = True
             # Si la OrderSL no existe: error siempre
             if zone['OrderIdSL'] == None or not bSLOrderExists:
@@ -266,14 +274,17 @@ class strategyPentagramaRu(strategyBaseClass):
             bRehacerTodo = False
             bGenerarOCA = False
 
-            parentOrderId = zone['OrderId']
+            parentOrderId = zone['OrderId']                
 
+            # Hay que rehacer, pero no es error
+            if bRehacerNoError:
+                pass
             # Si hemos detectado error en parent, borramos todas si no existen
-            if bParentOrderError: # La parentId no está, y no está ejecutada. Borramos todas y rehacemos
+            elif bParentOrderError: # La parentId no está, y no está ejecutada. Borramos todas y rehacemos
                 if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
                     continue
                 parentOrderId = None
-                logging.error ('Estrategia %s [PentagramaRu]. Error en parentId', self.symbol_)
+                logging.error ('[Estrategia PentagramaRu (%s)]. Error en parentId', self.symbol_)
                 if bParentOrderExists:
                     logging.error ('    Cancelamos la Parent OrderId %s', zone['OrderId'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderId'])  
@@ -292,28 +303,31 @@ class strategyPentagramaRu(strategyBaseClass):
             elif bSLOrderError or bTPOrderError:
                 if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
                     continue
-                logging.error ('Estrategia %s [PentagramaRu]. Error en childOrder', self.symbol_)
+                logging.error ('[Estrategia PentagramaRu (%s)]. Error en childOrder', self.symbol_)
                 if bSLOrderExists:
                     logging.error ('    Cancelamos la SLOrder OrderId %s', zone['OrderIdSL'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderIdSL'])  
                 if bSLOrderExists:
                     logging.error ('    Cancelamos la OrderIdTP OrderId %s', zone['OrderIdTP'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderIdTP'])  
-                if not zone['BracketOrderFilledState'] in ['ParentFilled', 'ParentFilled+F', 'ParentFilled+C']:
+                if zone['BracketOrderFilledState'] not in ['ParentFilled', 'ParentFilled+F', 'ParentFilled+C']:
                     logging.error ('    Cancelamos la Parent OrderId %s', zone['OrderId'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderId'])
                     bRehacerTodo = True
                 else:
                     bGenerarOCA = True
 
-            if bRehacerTodo or bGenerarOCA:
+            if bRehacerTodo or bGenerarOCA or bRehacerNoError:
                 self.timelasterror_ = datetime.datetime.now()
                 new_zone = None
-                if bRehacerTodo:
-                    logging.error ('Estrategia %s [PentagramaRu]. Rehacemos todo', self.symbol_)
+                if bRehacerNoError:
+                    logging.info ('[Estrategia PentagramaRu (%s)]. Todo ejecutado rehacemos', self.symbol_)
+                    new_zone = self.strategyCreateBracketOrder (zone)
+                elif bRehacerTodo:
+                    logging.error ('[Estrategia PentagramaRu (%s)]. Rehacemos todo', self.symbol_)
                     new_zone = self.strategyCreateBracketOrder (zone)
                 elif bGenerarOCA:
-                    logging.error ('Estrategia %s [PentagramaRu]. Rehacemos OCA para childs', self.symbol_)
+                    logging.error ('[Estrategia PentagramaRu (%s)]. Rehacemos OCA para childs', self.symbol_)
                     new_zone = self.strategyCreateChildOca (zone)
                 if new_zone != None:
                     self.zones_[iter] = new_zone   # Actualiza la zona
@@ -416,13 +430,32 @@ class strategyPentagramaRu(strategyBaseClass):
         if self.stratEnabled_ == False:
             return False
 
-        ordenObj = data['orderObj']
-
         bChanged = False
-
+        
+        ordenObj = data['orderObj']
         if ordenObj != "":
             ret = self.strategyOrderIdUpdated (ordenObj)
             if ret:
+                bChanged = True
+
+        orderId = data['orderId']
+        order = self.RTLocalData_.orderGetByOrderId(orderId) # Nos va a dar su permId que usaremos para los datos guardados
+
+        if not order:
+            logging.error ('Error leyendo la orderId %s', str(orderId))
+            return bChanged
+
+        if not 'status' in order['params']:
+            return bChanged
+
+        orderStatus = order['params']['status']
+
+        for zone in self.zones_:
+            if zone['OrderId'] == orderId and orderStatus == 'Filled':
+                zone['BracketOrderFilledState'] = 'ParentFilled'
+                bChanged = True
+            if (zone['OrderIdSL'] == orderId or zone['OrderIdTP'] == orderId) and orderStatus == 'Filled':
+                zone['BracketOrderFilledState'] = 'ParentFilled+F'
                 bChanged = True
 
         return bChanged
@@ -433,27 +466,27 @@ class strategyPentagramaRu(strategyBaseClass):
         symbol = self.symbol_
         for zone in self.zones_:
             if zone['OrderPermId'] == None and zone['OrderId'] == ordenObj.orderId:
-                logging.info ('Orden actualizada en estrategia %s. Nueva OrderPermId: %s', symbol, ordenObj.permId)
+                logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada. Nueva OrderPermId: %s', symbol, ordenObj.permId)
                 zone['OrderPermId'] = ordenObj.permId
                 bChanged = True
             elif zone['OrderPermIdSL'] == None and zone['OrderIdSL'] == ordenObj.orderId:
-                logging.info ('Orden actualizada en estrategia %s. Nueva OrderPermIdSL: %s', symbol, ordenObj.permId)
+                logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada. Nueva OrderPermIdSL: %s', symbol, ordenObj.permId)
                 zone['OrderPermIdSL'] = ordenObj.permId
                 bChanged = True
             elif zone['OrderPermIdTP'] == None and zone['OrderIdTP'] == ordenObj.orderId:
-                logging.info ('Orden actualizada en estrategia %s. Nueva OrderPermIdTP: %s', symbol, ordenObj.permId)
+                logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada. Nueva OrderPermIdTP: %s', symbol, ordenObj.permId)
                 zone['OrderPermIdTP'] = ordenObj.permId
                 bChanged = True
             elif zone['OrderPermId'] == ordenObj.permId and zone['OrderId'] != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
-                logging.info ('Orden actualizada en estrategia (o inicializamos) %s. Nueva OrderId: %s', symbol, ordenObj.orderId)
+                logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderId: %s', symbol, ordenObj.orderId)
                 zone['OrderId'] = ordenObj.orderId
                 bChanged = True
             elif zone['OrderPermIdSL'] == ordenObj.permId and zone['OrderIdSL'] != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
-                logging.info ('Orden actualizada en estrategia (o inicializamos) %s. Nueva OrderIdSL: %s', symbol, ordenObj.orderId)
+                logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderIdSL: %s', symbol, ordenObj.orderId)
                 zone['OrderIdSL'] = ordenObj.orderId
                 bChanged = True
             elif zone['OrderPermIdTP'] == ordenObj.permId and zone['OrderIdTP'] != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
-                logging.info ('Orden actualizada en estrategia (o inicializamos) %s. Nueva OrderIdTP: %s', symbol, ordenObj.orderId)
+                logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderIdTP: %s', symbol, ordenObj.orderId)
                 zone['OrderIdTP'] = ordenObj.orderId
                 bChanged = True
         
@@ -474,7 +507,7 @@ class strategyPentagramaRu(strategyBaseClass):
         stopLossPrice = zone['PrecioSL']
 
         try:
-            logging.info ('Vamos a crear la triada de ordenes bracket para %s', symbol)
+            logging.info ('[Estrategia PentagramaRu (%s)]. Vamos a crear la triada de ordenes bracket', symbol)
             logging.info ('     Precio LMT: %.3f', lmtPrice)
             logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
             logging.info ('     Precio SL : %.3f', stopLossPrice)
@@ -489,6 +522,7 @@ class strategyPentagramaRu(strategyBaseClass):
         zone['OrderId'] = orderIds['parentOrderId']
         zone['OrderIdTP'] = orderIds['tpOrderId']
         zone['OrderIdSL'] = orderIds['slOrderId']
+        zone['BracketOrderFilledState'] = None
 
         return zone
 
@@ -504,7 +538,7 @@ class strategyPentagramaRu(strategyBaseClass):
         stopLossPrice = zone['PrecioSL']
 
         try:
-            logging.info ('Vamos a crear las ordenes SL/TP como OCA para %s', symbol)
+            logging.info ('[Estrategia PentagramaRu (%s)] Vamos a crear las ordenes SL/TP como OCA', symbol)
             logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
             logging.info ('     Precio SL : %.3f', stopLossPrice)
             orderIds = self.RTLocalData_.orderPlaceOCA (symbol, secType, action1, action2, qty, takeProfitLimitPrice, stopLossPrice)

@@ -150,7 +150,7 @@ def layout_getFigureTodayPen (estrategia, update = False):
     )
 
     rannn = str(random.randint(0,1000))
-    logging.info ('Grafico actualizado con %s', rannn)
+    logging.debug ('Grafico actualizado con %s', rannn)
     fig2.update_layout(showlegend=False, 
                        title_text='Datos Tiempo Real Hoy', 
                        title_x = 0.5,
@@ -358,7 +358,7 @@ def actualizarTablaOrdenesStrategiesPen (n_intervals):
         raise PreventUpdate
     
     symbol = ctx.triggered_id['symbol']
-    logging.info ('Actualizando tabla ordenes estrategia %s', symbol)
+    logging.debug ('Actualizando tabla ordenes estrategia %s', symbol)
     estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'Pentagrama')
     resp = layout_getStrategyTableOrders (estrategia, True)
 
@@ -394,10 +394,10 @@ def syncLimites(zoneUps, zoneDowns, zonePos, n_intervals):
         # Sincronizamos los border de filas entre ellos (upper de unos es lower de otros)
         zonasFilaBorderDown = []
         zonasFilaBorderDown.append(dbc.Col('Limit Down', align="center"))
-        logging.info ('triggered_id %s', ctx.triggered_id)
+        logging.debug ('triggered_id %s', ctx.triggered_id)
         if 'role' in ctx.triggered_id:
-            logging.info ('role %s', ctx.triggered_id['role'])
-        logging.info ('triggered_prop_ids %s', ctx.triggered_prop_ids)
+            logging.debug ('role %s', ctx.triggered_id['role'])
+        logging.debug ('triggered_prop_ids %s', ctx.triggered_prop_ids)
         for i in range(len(inputsDowns) -1):
             zoneD = inputsDowns[i]
             val = inputsUps[i+1]['value']

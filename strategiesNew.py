@@ -43,10 +43,13 @@ class Strategies():
     
     # Este es el loop que mira todas las estrategias
     def strategyIndexCheckAll (self):
+        toWrite = {}
         for strategy in self.stratList_:
             ret = strategy['classObject'].strategyLoopCheck()
             if ret:
-                pass # Hay que acualizar el fichero
+                    toWrite[strategy['type']] = True
+
+        self.strategyWriteFile(toWrite)
 
     def strategyReload (self, stratType, symbol):
         for strategy in self.stratList_:
@@ -120,7 +123,7 @@ class Strategies():
         executionObj = data ['executionObj']
         exec_contract = data['contractObj']
         orderId = executionObj.orderId
-        logging.info ('Orden Ejecutada : %d', orderId)
+        logging.info ('[Orden (%d)] Ejecutada', orderId)
 
         toWrite = {}
 
@@ -193,7 +196,7 @@ class Strategies():
         commissionReport = data ['CommissionReport']
         ExecId = data['CommissionReport'].execId
 
-        logging.info ('Comision recibida : %s', ExecId)
+        logging.info ('[Comision (%s)] recibida', ExecId)
 
         execFound = False
 
@@ -204,7 +207,7 @@ class Strategies():
                 execFound = True
         
         if not execFound:
-            logging.error ('Comision sin ExecId [%s] reconocido', ExecId)
+            logging.error ('[Comision (%s)] sin ExecId reconocido', ExecId)
 
     def strategyUpdateZones (self, symbol, strategyType, zones, onlyNOP=False):
 

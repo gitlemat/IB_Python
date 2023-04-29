@@ -182,7 +182,7 @@ def cancelOrder (n_button_open, n_button_close, open_status):
     responseHeader = ''
     responseBody = ''
 
-    logging.info('Trigger %s', ctx.triggered_id)
+    logging.debug('Trigger %s', ctx.triggered_id)
 
     if ctx.triggered_id == "modal_boton_close":
         return responseHeader, responseBody, False
@@ -190,7 +190,7 @@ def cancelOrder (n_button_open, n_button_close, open_status):
     orderId = ctx.triggered_id['orderId'] 
 
     #ahora hay que borrarla
-    logging.info('CANCEL orderId: %s', str(orderId))
+    logging.info('[Orden (%s)] CANCEL esta orden desde GUI', str(orderId))
     #return no_update, no_update, no_update
 
     

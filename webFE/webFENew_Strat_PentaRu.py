@@ -145,7 +145,7 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
     )
 
     rannn = str(random.randint(0,1000))
-    logging.info ('Grafico actualizado con %s', rannn)
+    logging.debug ('Grafico actualizado con %s', rannn)
     fig2.update_layout(showlegend=False, 
                        title_text='Datos Tiempo Real Hoy', 
                        title_x = 0.5,
@@ -339,7 +339,23 @@ def actualizarTablaOrdenesStrategiesPenRu (n_intervals):
 
     return resp
 
+#Callback para actualizar grafica today
+@callback(
+    Output({'role': 'graphDetailsToday', 'strategy':'PentagramaRu', 'symbol': MATCH}, 'figure'),
+    Input({'role': 'IntervalgraphToday', 'strategy':'PentagramaRu', 'symbol': MATCH}, 'n_intervals'),
+    prevent_initial_call = True,
+)
+def actualizarFiguraTodayPenRu (n_intervals):
+    if not ctx.triggered_id:
+        raise PreventUpdate
 
+    symbol = ctx.triggered_id['symbol']
+    estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
+
+    fig1 = layout_getFigureTodayPenRu (estrategia, True)
+
+    #return  zonasFilaBorderDown, no_update, no_update
+    return  fig1
 
 
 # Callback para grabar info de zonas
