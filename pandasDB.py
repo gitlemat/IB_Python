@@ -158,14 +158,14 @@ class dbPandasStrategy():
             logging.debug('[Comision (%s)] Esta comissionReport no es de esta strategia [%s]. ExecId: %s', self.symbol_, self.strategyType, dataCommission.execId)
             return False
 
-        logging.info ('[Comision (%s)] Actualizamos Commission en Estrategia %s: %s', self.symbol_, self.strategyType, dataCommission)
+        logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. Comission: %s. RealizedPnL: %s', dataCommission.execId, self.strategyType, self.symbol_, dataCommission.commission, dataCommission.realizedPNL)
 
         for exec in self.ExecsList[index]['data']:
             if  dataCommission.execId == exec['ExecId']:
                 dataExec = exec
                 break
         if not dataExec:
-            logging.error ('[Comision (%s)] Comision sin tener la info de la Orden ExecId (%s) anteriormente.', self.symbol_, dataCommission.execId)
+            logging.error ('[Comision (%s)] Comision sin tener la info de la Orden ExecId anteriormente. Estrategia %s [%s]', dataCommission.execId, self.strategyType, self.symbol_)
             return False
 
         self.ExecsList[index]['realizadPnL'] += dataCommission.realizedPNL
