@@ -123,7 +123,7 @@ class Strategies():
         executionObj = data ['executionObj']
         exec_contract = data['contractObj']
         orderId = executionObj.orderId
-        logging.info ('[Orden (%d)] Ejecutada', orderId)
+        logging.info ('[Execution (%d)] Orden Ejecutada. ExecId: %s, Number/Price: %s at %s, Cumulative: %s,  Side: %s, Type: %s', orderId,executionObj.execId, executionObj.shares, executionObj.price,  executionObj.cumQty, exec_contract.side, exec_contract.secType)
 
         toWrite = {}
 
@@ -168,6 +168,7 @@ class Strategies():
         lRemaining = order['order'].totalQuantity - executionObj.cumQty
 
         if lRemaining > 0:
+            logging.info ('[Execution (%d)] ExecId: %s. Aun no hemos cerrado todas las posciones. Vamos %d de %d', orderId,executionObj.execId, executionObj.cumQty, order['order'].totalQuantity)
             return
 
         numLegs = len(contract['contractReqIdLegs'])
