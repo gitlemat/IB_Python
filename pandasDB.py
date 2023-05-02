@@ -130,6 +130,7 @@ class dbPandasStrategy():
             self.ExecsList[index]['legsDone'] = 0
             self.ExecsList[index]['Side'] = None
             self.ExecsList[index]['Quantity'] = 0
+            self.ExecsList[index]['Cumulative'] = 0
             self.ExecsList[index]['lastFillPrice'] = 0
             self.ExecsList[index]['data'] = [] # Aquí guardamos cada una de las legs que me llegan, para luego recibir la commision
         
@@ -137,6 +138,7 @@ class dbPandasStrategy():
         if data['contractSecType'] == data['execSecType']:
             self.ExecsList[index]['Side'] = data['Side']
             self.ExecsList[index]['Quantity'] = data['Quantity']
+            self.ExecsList[index]['Cumulative'] = data['Cumulative']
         else:
             # Estos son los de cada leg. Aqui llenamos la lista, y la vaciamos en Commissiones
             self.ExecsList[index]['data'].append(data)

@@ -78,6 +78,12 @@ class Strategies():
                 return {'strategy':strategy['type'], 'symbol':strategy['symbol']}
         return None
 
+    def strategyGetStrategyObjByOrderId(self, orderId):
+        for strategy in self.stratList_:
+            if strategy['classObject'].strategyGetIfOrderId(orderId):
+                return strategy
+        return None
+
     def strategyWriteFile (self, toWrite):
             
         if 'PentagramaRu' in toWrite and toWrite['PentagramaRu'] == True:
@@ -179,7 +185,8 @@ class Strategies():
         data_new['ExecId'] = executionObj.execId
         data_new['OrderId'] = executionObj.orderId
         data_new['PermId'] = executionObj.permId
-        data_new['Quantity'] = executionObj.cumQty
+        data_new['Quantity'] = executionObj.shares
+        data_new['Cumulative'] = executionObj.cumQty
         data_new['Side'] = executionObj.side
         data_new['numLegs'] = numLegs
         data_new['contractSecType'] = contract_secType

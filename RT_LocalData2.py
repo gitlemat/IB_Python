@@ -994,6 +994,7 @@ class DataLocalRT():
         orden['Executed'] = False
         orden['toPrint'] = False
         orden['toCancel'] = False
+        orden['ExecsList'] = {}
         str_o = self.orderSummary(orden)
         logging.info (str_o)
         
@@ -1088,6 +1089,186 @@ class DataLocalRT():
                 return True
         return None
 
+    def orderAddExecData (self, data):
+
+        if not 'executionObj' in data:
+            return
+        executionObj = data['executionObj']
+        exec_contract = data['contractObj']
+        orderId = executionObj.orderId
+        logging.info ('[Execution (%d)] Orden Ejecutada. ExecId: %s, Number/Price: %s at %s, Cumulative: %s,  Side: %s, Type: %s', orderId,executionObj.execId, executionObj.shares, executionObj.price,  executionObj.cumQty, exec_contract.side, exec_contract.secType)
+
+        # Localizo si pertenece una estrategia
+        strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
+        
+        if not strategy or 'classObject' not in strategy:
+            logging.error ('[Execution (%d)] Orden Ejecutada. Pero no pertenece a ninguna estrategia', orderId)
+            return False     
+
+        currentSymbolStrategy = strategy['classObject']
+
+        # Miramos que la estrategia esté activada (debería)
+        if currentSymbolStrategy.stratEnabled_ == False:
+            logging.error ('[Execution (%d)] Orden Ejecutada es estrategia %s [%s]. Pero la estrategia está disabled', orderId, strategy['type'], strategy['symbol'])
+            return False
+        
+        orden = self.orderGetByOrderId(data['OrderId'])
+        
+        # Esto es por asegurar, por si solo llega el exec. No debería pasar
+        if orden['Executed'] == False:
+            data2 = {'orderId': orderId, 'contractObj': exec_contract, 'orderObj': orden['order'], 'paramsDict':None }
+            currentSymbolStrategy.strategyOrderUpdated (data2)  
+        
+        # Info de debug
+        logging.debug ('Order Executed:')
+        logging.debug ('  Symbol: %s (%s)', exec_contract.symbol, exec_contract.secType)
+        logging.debug ('  ExecId: %s', executionObj.execId)
+        logging.debug ('  OrderId/PermId: %s/%s', executionObj.orderId, executionObj.permId)
+        logging.debug ('  Number/Price: %s at %s', executionObj.shares, executionObj.price)
+        logging.debug ('  Cumulative: %s', executionObj.cumQty)
+        logging.debug ('  Liquidity: %s',executionObj.lastLiquidity)
+        
+        # Pillamos el contrato para que Pandas y generamos el dict con los datos que ncesita Pandas
+        gConId = orden['contractId']
+        contract = self.contractGetContractbyGconId(gConId)
+
+        lRemaining = orden['order'].totalQuantity - executionObj.cumQty
+
+        if lRemaining > 0:
+            logging.info ('[Execution (%d)] ExecId: %s. Aun no hemos cerrado todas las posciones. Vamos %d de %d', orderId,executionObj.execId, executionObj.cumQty, orden['order'].totalQuantity)
+            #return
+        else:
+            logging.info ('[Execution (%d)] ExecId: %s. Todas las posiciones (%d) cerradas', orderId,executionObj.execId, executionObj.cumQty)
+
+        # Guardo los datos para que luego sea facil tratarlos. 
+        # Cada index tiene una ejecución, y cada orden puede tener varias ejecuciones
+        # luego, cada index tiene cada leg independiente.
+
+        data_new = {}
+        data_new['ExecId'] = executionObj.execId
+        data_new['OrderId'] = executionObj.orderId
+        data_new['PermId'] = executionObj.permId
+        data_new['Quantity'] = executionObj.shares
+        data_new['Cumulative'] = executionObj.cumQty
+        data_new['Side'] = executionObj.side
+        data_new['execSecType'] = exec_contract.secType     # Solo guardamos las de la BAG (o el que sea el que lancé)
+        data_new['numLegs'] = len(contract['contractReqIdLegs'])
+        data_new['contractSecType'] = contract['contract'].secType
+        data_new['strategy_type'] = strategy_type
+        data_new['lastFillPrice'] = orden['params']['lastFillPrice']
+        
+        # Nos quedamos con la parte mas significativa del index
+        index1 = executionObj.execId[:executionObj.execId.index('.')]
+        rest = executionObj.execId[executionObj.execId.index('.') + 1:]
+        index2 = rest[:rest.index('.')]
+        index = index1 + '.' + index2
+
+        # Si el index recibido no está en la lista, lo añado
+        if not index in orden['ExecsList']:
+            orden['ExecsList'][index] = {}
+            orden['ExecsList'][index]['realizadPnL'] = 0
+            orden['ExecsList'][index]['Commission'] = 0
+            orden['ExecsList'][index]['numLegs'] = data_new['numLegs']
+            orden['ExecsList'][index]['legsDone'] = 0
+            orden['ExecsList'][index]['Side'] = None
+            orden['ExecsList'][index]['Quantity'] = 0
+            orden['ExecsList'][index]['Cumulative'] = 0
+            orden['ExecsList'][index]['lastFillPrice'] = 0
+            orden['ExecsList'][index]['data'] = [] # Aquí guardamos cada una de las legs que me llegan, para luego recibir la commision
+        
+        # El qty/side lo pillo del index de la spread (me va a llegar uno de la spread y luego por cada leg)
+        if data_new['contractSecType'] == data_new['execSecType']:
+            orden['ExecsList'][index]['Side'] = data_new['Side']
+            orden['ExecsList'][index]['Quantity'] = data_new['Quantity']
+            orden['ExecsList'][index]['Cumulative'] = data_new['Cumulative']
+        else:
+            # Estos son los de cada leg. Aqui llenamos la lista, y la vaciamos en Commissiones
+            orden['ExecsList'][index]['data'].append(data_new)
+
+        if data_new['lastFillPrice'] != 0:
+            orden['ExecsList'][index]['lastFillPrice'] = data_new['lastFillPrice']
+    
+    def orderAddCommissionData (self, dataCommission):
+
+        index1 = dataCommission.execId[:dataCommission.execId.index('.')]
+        rest = dataCommission.execId[dataCommission.execId.index('.')+1:]
+        index2 = rest[:rest.index('.')]
+        index = index1 + '.' + index2
+
+        orden = self.orderGetOrderbyExecId(index)
+        if not orden:
+            logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden mia', dataCommission.execId)
+            return False
+
+        orderId = orden['order'].orderId
+        strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
+        if not strategy or 'classObject' not in strategy:
+            logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden que tenga estrategia. ExecId: %s', orderId, dataCommission.execId)
+
+        logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s. Comission: %s. RealizedPnL: %s', orderId, strategy['type'], strategy['symbol'], dataCommission.execId, dataCommission.commission, dataCommission.realizedPNL)
+
+        # Cada orden puede tener varios ExecId. Uno por cada partial fill
+        dataExec = None
+        for exec in orden['ExecsList'][index]['data']: 
+            if  dataCommission.execId == exec['ExecId']:
+                dataExec = exec
+                break
+        if not dataExec:
+            logging.error ('[Comision (%s)] Comision sin tener la info de la Orden ExecId (%s) anteriormente. Estrategia %s [%s]', orderId, dataCommission.execId, strategy['type'], strategy['symbol'])
+            return False
+
+        orden['ExecsList'][index]['realizadPnL'] += dataCommission.realizedPNL
+        orden['ExecsList'][index]['Commission'] += dataCommission.commission
+        orden['ExecsList'][index]['legsDone'] += 1
+
+        logging.info ('    Comision acumulada: [%s]', orden['ExecsList'][index]['Commission'])
+        logging.info ('    RealizedPnL acumulada: [%s]', orden['ExecsList'][index]['realizadPnL'])
+
+        orden['ExecsList'][index]['data'].remove(dataExec) # por si llegan dos comisiones al mismo Exec (no deberia)
+
+        # Miro a ver si tengo todos los legs de todos los index
+        for execList in orden['ExecsList']:
+            if execList['legsDone'] < execList['numLegs']:
+                logging.info ('    El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]', orden['ExecsList'][index]['legsDone'], dataExec['numLegs'])
+                return True
+        '''
+
+        time = datetime.datetime.now()
+        time = utils.date2local (time)
+        dataFlux = {}
+        dataFlux['timestamp'] = time
+        dataFlux['ExecId'] = index + '01.01'
+        dataFlux['OrderId'] = dataExec['OrderId']
+        dataFlux['PermId'] = dataExec['PermId']
+        dataFlux['Quantity'] = orden['ExecsList'][index]['Quantity'] 
+        dataFlux['Side'] = orden['ExecsList'][index]['Side'] 
+        dataFlux['RealizedPnL'] = orden['ExecsList'][index]['realizadPnL'] 
+        dataFlux['Commission'] = orden['ExecsList'][index]['Commission'] 
+        dataFlux['FillPrice'] = orden['ExecsList'][index]['lastFillPrice'] 
+        # Aqui seguimos con le escritura a Flux
+        # Y borrar todo el orden['ExecsList'][index]
+
+        self.dbUpdateInfluxCommission (dataFlux)
+        
+        logging.info ('    Commission Order Finalizada [100%]')
+        
+        newlineL = []
+        newlineL.append (dataFlux)
+        dfDelta = pd.DataFrame.from_records(newlineL)
+        dfDelta.set_index('timestamp', inplace=True)
+        self.dfExecs_ = pd.concat([self.dfExecs_, dfDelta]) #, ignore_index=True
+        self.dbAddExecToCount() 
+
+        self.toPrint = True
+
+        orden['ExecsList'].pop(index)
+
+        return True
+    '''
+
+    def orderGetOrderbyExecId(self, ExecId):
+        pass
+    
     def orderGetStatusbyOrderId (self, orderId):
         if not orderId:
             return None
