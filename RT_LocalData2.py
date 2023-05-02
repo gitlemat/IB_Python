@@ -1154,7 +1154,7 @@ class DataLocalRT():
         data_new['execSecType'] = exec_contract.secType     # Solo guardamos las de la BAG (o el que sea el que lancé)
         data_new['numLegs'] = len(contract['contractReqIdLegs'])
         data_new['contractSecType'] = contract['contract'].secType
-        data_new['strategy_type'] = strategy_type
+        data_new['strategy_type'] = strategy['type']
         data_new['lastFillPrice'] = orden['params']['lastFillPrice']
         
         # Nos quedamos con la parte mas significativa del index
@@ -1228,9 +1228,11 @@ class DataLocalRT():
 
         # Miro a ver si tengo todos los legs de todos los index
         for execList in orden['ExecsList']:
-            if execList['legsDone'] < execList['numLegs']:
-                logging.info ('    El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]', orden['ExecsList'][index]['legsDone'], dataExec['numLegs'])
+            if orden['ExecsList'][execList]['legsDone'] < orden['ExecsList'][execList]['numLegs']:
+                logging.info ('    El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]. Esperamos el resto.', orden['ExecsList'][execList]['legsDone'], orden['ExecsList'][execList]['numLegs'])
                 return True
+
+        # Si llegamos aquí, es que tenemos todos los Commissions de todos los legs y partial fills
         '''
 
         time = datetime.datetime.now()
