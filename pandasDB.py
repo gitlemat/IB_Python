@@ -214,6 +214,18 @@ class dbPandasStrategy():
         self.ExecsList.pop(index)
 
         return True
+    
+    def dbAddCommissionsOrderFill(self, dataFlux):
+        newlineL = []
+        newlineL.append (dataFlux)
+        dfDelta = pd.DataFrame.from_records(newlineL)
+        dfDelta.set_index('timestamp', inplace=True)
+        self.dfExecs_ = pd.concat([self.dfExecs_, dfDelta]) #, ignore_index=True
+        self.dbAddExecToCount() 
+
+        self.dbUpdateInfluxCommission (dataFlux)
+
+        self.toPrint = True
 
     def dbUpdateInfluxCommission (self, data):
         keys_comission = ['ExecId', 'PermId', 'OrderId', 'Quantity', 'Side', 'RealizedPnL', 'Commission', 'FillPrice']

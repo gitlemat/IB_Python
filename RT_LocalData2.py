@@ -8,6 +8,7 @@ import pandasDB
 import logging
 import datetime
 import influxAPI
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -1228,13 +1229,13 @@ class DataLocalRT():
 
         # Miro a ver si tengo todos los legs de todos los index
         if orden['ExecsList'][index]['legsDone'] < orden['ExecsList'][index]['numLegs']:
-            logging.info ('    El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]. Esperamos el resto.', orden['ExecsList'][execList]['legsDone'], orden['ExecsList'][execList]['numLegs'])
+            logging.info ('    El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]. Esperamos el resto.', orden['ExecsList'][index]['legsDone'], orden['ExecsList'][index]['numLegs'])
             return True
 
         # Si llegamos aquí, es que tenemos las Commissions de este fill
         # Pude haber varios por cada orden
         # Los mando todos a pandas/influx
-        '''
+        
 
         time = datetime.datetime.now()
         time = utils.date2local (time)
@@ -1250,24 +1251,13 @@ class DataLocalRT():
         dataFlux['FillPrice'] = orden['ExecsList'][index]['lastFillPrice'] 
         # Aqui seguimos con le escritura a Flux
         # Y borrar todo el orden['ExecsList'][index]
-
-        self.dbUpdateInfluxCommission (dataFlux)
-        
         logging.info ('    Commission Order Finalizada [100%]')
-        
-        newlineL = []
-        newlineL.append (dataFlux)
-        dfDelta = pd.DataFrame.from_records(newlineL)
-        dfDelta.set_index('timestamp', inplace=True)
-        self.dfExecs_ = pd.concat([self.dfExecs_, dfDelta]) #, ignore_index=True
-        self.dbAddExecToCount() 
 
-        self.toPrint = True
-
+        strategy['classObject'].pandas_.dbAddCommissionsOrderFill(dataFlux)
+      
         orden['ExecsList'].pop(index)
 
         return True
-    '''
 
     def orderGetOrderbyExecId(self, ExecId):
         pass
