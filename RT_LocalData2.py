@@ -1227,12 +1227,13 @@ class DataLocalRT():
         orden['ExecsList'][index]['data'].remove(dataExec) # por si llegan dos comisiones al mismo Exec (no deberia)
 
         # Miro a ver si tengo todos los legs de todos los index
-        for execList in orden['ExecsList']:
-            if orden['ExecsList'][execList]['legsDone'] < orden['ExecsList'][execList]['numLegs']:
-                logging.info ('    El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]. Esperamos el resto.', orden['ExecsList'][execList]['legsDone'], orden['ExecsList'][execList]['numLegs'])
-                return True
+        if orden['ExecsList'][index]['legsDone'] < orden['ExecsList'][index]['numLegs']:
+            logging.info ('    El numero de legs de comision recibidas [%s] es inferior al del contrato [%s]. Esperamos el resto.', orden['ExecsList'][execList]['legsDone'], orden['ExecsList'][execList]['numLegs'])
+            return True
 
-        # Si llegamos aquí, es que tenemos todos los Commissions de todos los legs y partial fills
+        # Si llegamos aquí, es que tenemos las Commissions de este fill
+        # Pude haber varios por cada orden
+        # Los mando todos a pandas/influx
         '''
 
         time = datetime.datetime.now()
