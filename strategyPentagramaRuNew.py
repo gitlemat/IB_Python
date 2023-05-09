@@ -532,13 +532,13 @@ class strategyPentagramaRu(strategyBaseClass):
         contract = self.RTLocalData_.contractGetBySymbol(symbol)  
         secType = contract['contract'].secType
         action1 = 'BUY' if zone['B_S'] == 'B' else 'SELL'
-        action2 = "SELL" if action1 == "BUY" else "BUY"
+        action2 = action1 # Es un SL , tiene que ser igual al TP
         qty = zone['Qty']
         takeProfitLimitPrice = zone['PrecioTP']
         stopLossPrice = zone['PrecioSL']
 
         try:
-            logging.info ('[Estrategia PentagramaRu (%s)] Vamos a crear las ordenes SL/TP como OCA', symbol)
+            logging.info ('[Estrategia PentagramaRu (%s)]. Vamos a crear las ordenes SL/TP como OCA', symbol)
             logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
             logging.info ('     Precio SL : %.3f', stopLossPrice)
             orderIds = self.RTLocalData_.orderPlaceOCA (symbol, secType, action1, action2, qty, takeProfitLimitPrice, stopLossPrice)

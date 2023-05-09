@@ -652,6 +652,7 @@ class IBI_App(EWrapper, EClient):
         tpOrder = self.orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
         tpOrder.ocaGroup = "OCA_" + str(tpOrder)
         tpOrder.ocaType = 3
+        tpOrder.transmit = False
 
         try:
             tpOrderId = self.placeOrder (contract_symbol, contract, tpOrder) 
@@ -662,6 +663,7 @@ class IBI_App(EWrapper, EClient):
         slOrder = self.orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
         slOrder.ocaGroup = "OCA_" + str(tpOrder)
         slOrder.ocaType = 3
+        slOrder.transmit = True
 
         try:
             slOrderId = self.placeOrder (contract_symbol, contract, slOrder) 

@@ -1097,7 +1097,7 @@ class DataLocalRT():
         executionObj = data['executionObj']
         exec_contract = data['contractObj']
         orderId = executionObj.orderId
-        logging.info ('[Execution (%d)] Orden Ejecutada. ExecId: %s, Number/Price: %s at %s, Cumulative: %s,  Side: %s, Type: %s', orderId,executionObj.execId, executionObj.shares, executionObj.price,  executionObj.cumQty, exec_contract.side, exec_contract.secType)
+        logging.info ('[Execution (%d)] Orden Ejecutada. ExecId: %s, Number/Price: %s at %s, Cumulative: %s,  Side: %s, Type: %s', orderId,executionObj.execId, executionObj.shares, executionObj.price,  executionObj.cumQty, executionObj.side, exec_contract.secType)
 
         # Localizo si pertenece una estrategia
         strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
