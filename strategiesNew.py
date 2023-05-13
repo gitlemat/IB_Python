@@ -123,6 +123,7 @@ class Strategies():
     # Se ha ejecutado una orden y hay que ver si corresponde a alguna estrategia para temas de influx
     # Cada vez que se llega una ejecución la guardamos, y despues cuando llegan las comisiones, lo analizamos y mandamos a influx
     # Las comisiones no traen el orderId, por lo que hay que guardar las exec para enlazar la comission con la ordenId
+    '''
     def strategyIndexOrderExecuted (self, data):
         if not 'executionObj' in data:
             return
@@ -197,7 +198,7 @@ class Strategies():
         # Pandas va a guardar cada execId para cuando llegue la comission 
         currentSymbolStrategy.pandas_.dbAddExecOrder(data_new)
         
-
+    
     def strategyIndexOrderCommission (self, data):
         if not 'CommissionReport' in data:
             return
@@ -216,6 +217,7 @@ class Strategies():
         
         if not execFound:
             logging.error ('[Comision (%s)] sin ExecId reconocido', ExecId)
+    '''
 
     def strategyUpdateZones (self, symbol, strategyType, zones, onlyNOP=False):
 

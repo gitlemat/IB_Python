@@ -72,12 +72,14 @@ class DataLocalRT():
     def executionAnalisys (self, data):
         #Podemos hacer más cosas, de momento solo informamos a las estrategias
         
-        self.strategies_.strategyIndexOrderExecuted(data)   # Esto entra a traves de la orden
+        #self.strategies_.strategyIndexOrderExecuted(data)   # Esto entra a traves de la orden
+        self.orderAddExecData(data)
 
     def commissionAnalisys (self, data):
         #Podemos hacer más cosas, de momento solo informamos a las estrategias
         
-        self.strategies_.strategyIndexOrderCommission(data)   # Esto entra a traves de la orden
+        #self.strategies_.strategyIndexOrderCommission(data)   # Esto entra a traves de la orden
+        self.orderAddCommissionData (data)
 
     ########################################
     # Account
@@ -1090,6 +1092,10 @@ class DataLocalRT():
                 return True
         return None
 
+    # Se ha ejecutado una orden y hay que ver si corresponde a alguna estrategia para temas de influx
+    # Cada vez que se llega una ejecución la guardamos, y despues cuando llegan las comisiones, lo analizamos y mandamos a influx
+    # Las comisiones no traen el orderId, por lo que hay que guardar las exec para enlazar la comission con la ordenId
+
     def orderAddExecData (self, data):
 
         if not 'executionObj' in data:
@@ -1113,7 +1119,7 @@ class DataLocalRT():
             logging.error ('[Execution (%d)] Orden Ejecutada es estrategia %s [%s]. Pero la estrategia está disabled', orderId, strategy['type'], strategy['symbol'])
             return False
         
-        orden = self.orderGetByOrderId(data['OrderId'])
+        orden = self.orderGetByOrderId(orderId)
         
         # Esto es por asegurar, por si solo llega el exec. No debería pasar
         if orden['Executed'] == False:
@@ -1189,7 +1195,12 @@ class DataLocalRT():
         if data_new['lastFillPrice'] != 0:
             orden['ExecsList'][index]['lastFillPrice'] = data_new['lastFillPrice']
     
-    def orderAddCommissionData (self, dataCommission):
+    def orderAddCommissionData (self, data):
+
+        if not 'CommissionReport' in data:
+            return
+
+        dataCommission = data ['CommissionReport']
 
         index1 = dataCommission.execId[:dataCommission.execId.index('.')]
         rest = dataCommission.execId[dataCommission.execId.index('.')+1:]
@@ -1203,9 +1214,10 @@ class DataLocalRT():
 
         orderId = orden['order'].orderId
         strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
+        logging.info ('Strategia: %s', strategy)
         if not strategy or 'classObject' not in strategy:
             logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden que tenga estrategia. ExecId: %s', orderId, dataCommission.execId)
-
+            return
         logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s. Comission: %s. RealizedPnL: %s', orderId, strategy['type'], strategy['symbol'], dataCommission.execId, dataCommission.commission, dataCommission.realizedPNL)
 
         # Cada orden puede tener varios ExecId. Uno por cada partial fill
@@ -1259,8 +1271,10 @@ class DataLocalRT():
 
         return True
 
-    def orderGetOrderbyExecId(self, ExecId):
-        pass
+    def orderGetOrderbyExecId(self, index):
+        for orden in self.orderList_:
+            if index in orden['ExecsList']:
+                return orden
     
     def orderGetStatusbyOrderId (self, orderId):
         if not orderId:

@@ -111,7 +111,7 @@ class dbPandasStrategy():
             dfDelta.set_index('timestamp', inplace=True)
             self.dfExecCount_ = pd.concat([self.dfExecCount_, dfDelta])
 
-
+    '''
     def dbAddExecOrder(self, data):
         logging.info ('[Execution (%s)] Actualizamos Exec Order de %s[%s]. ExedId: %s. Qty: %s, Side: %s, Type: %s', data['OrderId'],self.strategyType, self.symbol_, data['ExecId'], data['Quantity'], data['Side'], data['execSecType'])
 
@@ -214,6 +214,7 @@ class dbPandasStrategy():
         self.ExecsList.pop(index)
 
         return True
+    '''
     
     def dbAddCommissionsOrderFill(self, dataFlux):
         newlineL = []

@@ -229,6 +229,7 @@ class strategyPentagramaRu(strategyBaseClass):
         for iter in range(len(self.zones_)):
             bRehacerNoError = False
             zone = self.zones_[iter]
+            err_msg = ""
             bParentOrderError = False
             bParentOrderExists = self.RTLocalData_.orderCheckIfExistsByOrderId(zone['OrderId'])
             bParentOrderStatus = self.RTLocalData_.orderGetStatusbyOrderId (zone['OrderId'])
@@ -240,12 +241,21 @@ class strategyPentagramaRu(strategyBaseClass):
             bTPOrderStatus = self.RTLocalData_.orderGetStatusbyOrderId (zone['OrderIdTP'])
             # Si no tengo constancia de que se halla comprado la parent, si no existe es error
             if zone['BracketOrderFilledState'] == None:
-                if zone['OrderId'] == None or not bParentOrderExists or bParentOrderStatus in orderInactiveStatus:
+                if zone['OrderId'] == None:
+                    err_msg += "    \nEl parentId es None"
+                    bParentOrderError = True
+                elif not bParentOrderExists:
+                    err_msg += "    \nEl parentId [%s] no existe segun IB" % zone['OrderId']
+                    bParentOrderError = True
+                elif bParentOrderStatus in orderInactiveStatus:
+                    err_msg += "    \nEl parentId [%s] tiene un estado inválido: %s" % (zone['OrderId'], bParentOrderStatus)
                     bParentOrderError = True
                 # Parent no ejecutada, y error en child
                 elif bSLOrderStatus in orderChildInvalidExecStatusParentNotFilled:
+                    err_msg += "    \nEl SLOrder [%s] tiene un estado inválido: %s" % (zone['OrderIdSL'],bSLOrderStatus)
                     bSLOrderError = True
                 elif bTPOrderStatus in orderChildInvalidExecStatusParentNotFilled:
+                    err_msg += "    \nEl TPOrder [%s] tiene un estado inválido: %s" % (zone['OrderIdTP'],bTPOrderStatus)
                     bTPOrderError = True
             elif zone['BracketOrderFilledState'] in ['ParentFilled+F']:
                 bRehacerNoError = True
@@ -256,17 +266,29 @@ class strategyPentagramaRu(strategyBaseClass):
                 if bSLOrderStatus == 'Cancelled' and bTPOrderStatus == 'Filled':
                     bRehacerNoError = True
                 if bSLOrderStatus not in orderChildValidExecStatusParentFilled:
+                    err_msg += "    \nEl SLOrder [%s] tiene un estado inválido: %s, y la parent [%s] está ejecutada" % (zone['OrderIdSL'],bSLOrderStatus, zone['OrderId'])
                     bSLOrderError = True
                 if bTPOrderStatus not in orderChildValidExecStatusParentFilled:
+                    err_msg += "    \nEl TPOrder [%s] tiene un estado inválido: %s, y la parent [%s] está ejecutada" % (zone['OrderIdTP'],bTPOrderStatus, zone['OrderId'])
                     bTPOrderError = True
             # Si la OrderSL no existe: error siempre
-            if zone['OrderIdSL'] == None or not bSLOrderExists:
+            if zone['OrderIdSL'] == None:
                 #logging.error ('Estrategia %s [PentagramaRu]. Error en SLOrder. OrderId %s', self.symbol_ ,zone['OrderIdSL'])
+                err_msg += "    \nEl SLOrderId es None"
+                bSLOrderError = True
+            elif not bSLOrderExists:
+                #logging.error ('Estrategia %s [PentagramaRu]. Error en SLOrder. OrderId %s', self.symbol_ ,zone['OrderIdSL'])
+                err_msg += "    \nEl SLOrder [%s] no existe segun IB" % zone['OrderIdSL']
                 bSLOrderError = True
             # Si la OrderTP no existe: error siempre
             if zone['OrderIdTP'] == None or not bTPOrderExists:
                 #logging.error ('Estrategia %s [PentagramaRu]. Error en TPOrder. OrderId %s', self.symbol_ ,zone['OrderIdTP'])
-                bTPOrderError = True                
+                err_msg += "    \nEl TPOrderId es None"
+                bTPOrderError = True   
+            elif not bTPOrderExists:
+                #logging.error ('Estrategia %s [PentagramaRu]. Error en TPOrder. OrderId %s', self.symbol_ ,zone['OrderIdTP'])
+                err_msg += "    \nEl TPOrder [%s] no existe segun IB" % zone['OrderIdTP']
+                bTPOrderError = True              
 
             # Ahora vemos qué se hace por cada error
             #
@@ -285,6 +307,7 @@ class strategyPentagramaRu(strategyBaseClass):
                     continue
                 parentOrderId = None
                 logging.error ('[Estrategia PentagramaRu (%s)]. Error en parentId', self.symbol_)
+                logging.error (err_msg)
                 if bParentOrderExists:
                     logging.error ('    Cancelamos la Parent OrderId %s', zone['OrderId'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderId'])  
@@ -304,6 +327,7 @@ class strategyPentagramaRu(strategyBaseClass):
                 if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
                     continue
                 logging.error ('[Estrategia PentagramaRu (%s)]. Error en childOrder', self.symbol_)
+                logging.error (err_msg)
                 if bSLOrderExists:
                     logging.error ('    Cancelamos la SLOrder OrderId %s', zone['OrderIdSL'])
                     self.RTLocalData_.orderCancelByOrderId (zone['OrderIdSL'])  
