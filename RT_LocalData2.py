@@ -1103,21 +1103,23 @@ class DataLocalRT():
         executionObj = data['executionObj']
         exec_contract = data['contractObj']
         orderId = executionObj.orderId
-        logging.info ('[Execution (%d)] Orden Ejecutada. ExecId: %s, Number/Price: %s at %s, Cumulative: %s,  Side: %s, Type: %s', orderId,executionObj.execId, executionObj.shares, executionObj.price,  executionObj.cumQty, executionObj.side, exec_contract.secType)
+        logging.info ('[Execution (%d)] Orden Ejecutada. ExecId: %s, Number/Price: %s at %s, Cumulative: %s,  AvgPrice: %s, Side: %s, Type: %s', orderId,executionObj.execId, executionObj.shares, executionObj.price,  executionObj.cumQty, executionObj.AvgPrice, executionObj.side, exec_contract.secType)
 
         # Localizo si pertenece una estrategia
         strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
         
         if not strategy or 'classObject' not in strategy:
             logging.error ('[Execution (%d)] Orden Ejecutada. Pero no pertenece a ninguna estrategia', orderId)
-            return False     
+            return False   
+        logging.info ('    Estrategia: %s [%s]', strategy['type'], strategy['symbol'])
+  
 
         currentSymbolStrategy = strategy['classObject']
 
         # Miramos que la estrategia esté activada (debería)
         if currentSymbolStrategy.stratEnabled_ == False:
-            logging.error ('[Execution (%d)] Orden Ejecutada es estrategia %s [%s]. Pero la estrategia está disabled', orderId, strategy['type'], strategy['symbol'])
-            return False
+            logging.error ('    Pero la estrategia está disabled!!!!')
+            #return False
         
         orden = self.orderGetByOrderId(orderId)
         
@@ -1138,15 +1140,7 @@ class DataLocalRT():
         # Pillamos el contrato para que Pandas y generamos el dict con los datos que ncesita Pandas
         gConId = orden['contractId']
         contract = self.contractGetContractbyGconId(gConId)
-
-        lRemaining = orden['order'].totalQuantity - executionObj.cumQty
-
-        if lRemaining > 0:
-            logging.info ('[Execution (%d)] ExecId: %s. Aun no hemos cerrado todas las posciones. Vamos %d de %d', orderId,executionObj.execId, executionObj.cumQty, orden['order'].totalQuantity)
-            #return
-        else:
-            logging.info ('[Execution (%d)] ExecId: %s. Todas las posiciones (%d) cerradas', orderId,executionObj.execId, executionObj.cumQty)
-
+        
         # Guardo los datos para que luego sea facil tratarlos. 
         # Cada index tiene una ejecución, y cada orden puede tener varias ejecuciones
         # luego, cada index tiene cada leg independiente.
@@ -1162,7 +1156,8 @@ class DataLocalRT():
         data_new['numLegs'] = len(contract['contractReqIdLegs'])
         data_new['contractSecType'] = contract['contract'].secType
         data_new['strategy_type'] = strategy['type']
-        data_new['lastFillPrice'] = orden['params']['lastFillPrice']
+        #data_new['lastFillPrice'] = orden['params']['lastFillPrice']
+        data_new['lastFillPrice'] = executionObj.Price
         
         # Nos quedamos con la parte mas significativa del index
         index1 = executionObj.execId[:executionObj.execId.index('.')]
@@ -1185,15 +1180,21 @@ class DataLocalRT():
         
         # El qty/side lo pillo del index de la spread (me va a llegar uno de la spread y luego por cada leg)
         if data_new['contractSecType'] == data_new['execSecType']:
+            lRemaining = orden['order'].totalQuantity - executionObj.cumQty
+            if lRemaining > 0:
+                logging.info ('[Execution (%d)] ExecId: %s. Aun no hemos cerrado todas las posciones. Vamos %d de %d', orderId,executionObj.execId, executionObj.cumQty, orden['order'].totalQuantity)
+            else:
+                logging.info ('[Execution (%d)] ExecId: %s. Todas las posiciones (%d) cerradas', orderId,executionObj.execId, executionObj.cumQty)
             orden['ExecsList'][index]['Side'] = data_new['Side']
             orden['ExecsList'][index]['Quantity'] = data_new['Quantity']
             orden['ExecsList'][index]['Cumulative'] = data_new['Cumulative']
+            orden['ExecsList'][index]['lastFillPrice'] = float(data_new['lastFillPrice'])
         else:
             # Estos son los de cada leg. Aqui llenamos la lista, y la vaciamos en Commissiones
             orden['ExecsList'][index]['data'].append(data_new)
 
-        if data_new['lastFillPrice'] != 0:
-            orden['ExecsList'][index]['lastFillPrice'] = data_new['lastFillPrice']
+        #if data_new['lastFillPrice'] != 0:
+        #    orden['ExecsList'][index]['lastFillPrice'] = float(data_new['lastFillPrice'])
     
     def orderAddCommissionData (self, data):
 
@@ -1214,7 +1215,7 @@ class DataLocalRT():
 
         orderId = orden['order'].orderId
         strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
-        logging.info ('Strategia: %s', strategy)
+        logging.debug ('Strategia: %s', strategy)
         if not strategy or 'classObject' not in strategy:
             logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden que tenga estrategia. ExecId: %s', orderId, dataCommission.execId)
             return
@@ -1230,8 +1231,10 @@ class DataLocalRT():
             logging.error ('[Comision (%s)] Comision sin tener la info de la Orden ExecId (%s) anteriormente. Estrategia %s [%s]', orderId, dataCommission.execId, strategy['type'], strategy['symbol'])
             return False
 
-        orden['ExecsList'][index]['realizadPnL'] += dataCommission.realizedPNL
-        orden['ExecsList'][index]['Commission'] += dataCommission.commission
+        if dataCommission.realizedPNL != UNSET_DOUBLE:  # Este valor lo usa IB para indicar empty cell.
+            orden['ExecsList'][index]['realizadPnL'] += dataCommission.realizedPNL
+        if dataCommission.commission != UNSET_DOUBLE:
+            orden['ExecsList'][index]['Commission'] += dataCommission.commission
         orden['ExecsList'][index]['legsDone'] += 1
 
         logging.info ('    Comision acumulada: [%s]', orden['ExecsList'][index]['Commission'])

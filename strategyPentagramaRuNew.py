@@ -478,13 +478,62 @@ class strategyPentagramaRu(strategyBaseClass):
             if zone['OrderId'] == orderId and orderStatus == 'Filled':
                 zone['BracketOrderFilledState'] = 'ParentFilled'
                 bChanged = True
-            if (zone['OrderIdSL'] == orderId or zone['OrderIdTP'] == orderId) and orderStatus == 'Filled':
+            if zone['OrderIdTP'] == orderId and orderStatus == 'Filled':
                 zone['BracketOrderFilledState'] = 'ParentFilled+F'
                 bChanged = True
+            if zone['OrderIdSL'] == orderId and orderStatus == 'Filled':
+                zone['BracketOrderFilledState'] = 'ParentFilled+F'
+                logging.info ('###################################################')
+                logging.info ('ALARMA !!!!!!!')
+                logging.info ('Estrategia: PentagramaRu [%s]', self.symbol_)
+                logging.info ('Nos hemos salido por SL. Caquita')
+                logging.info ('Paramos la estrategia porque estamos fuera de rango')
+                self.stratEnabled_ = False
+                bChanged = True
+
+        new_pos = self.strategyCalcularPosiciones()
+
+        zero_crossing = False
+
+        if self.currentPos_ != new_pos:
+            if new_pos == 0 or (new_pos * self.currentPos_ < 0):
+                zero_crossing = True
+            self.currentPos_ = new_pos
+            bChanged = True
 
         return bChanged
         
 
+    def strategyCalcularPosiciones (self):
+        pos = 0
+        for zone in self.zones_:
+            BS = 1
+            if zone['B_S'] == 'S':
+                BS = -1
+
+            orderParent = self.RTLocalData_.orderGetByOrderId(zone['OrderId'])
+            qty = 0
+            if not orderParent:
+                if zone['BracketOrderFilledState'] == 'ParentFilled':
+                    qty = zone['Qty']
+            elif 'filled' in orderParent['params']:
+                qty = orderParent['params']['filled']
+            pos += qty * BS
+
+            orderTP = self.RTLocalData_.orderGetByOrderId(zone['OrderIdTP'])
+            qty = 0
+            if orderTP and 'filled' in orderTP['params']:
+                qty = orderTP['params']['filled']
+            pos += qty * BS * (-1) # Las SL y TP tienen direccion contraria al parent
+
+            orderSL = self.RTLocalData_.orderGetByOrderId(zone['OrderIdSL'])
+            qty = 0
+            if orderSL and 'filled' in orderSL['params']:
+                qty = orderSL['params']['filled']
+            pos += qty * BS * (-1) # Las SL y TP tienen direccion contraria al parent
+
+        return pos
+   
     def strategyOrderIdUpdated (self, ordenObj):
         bChanged = False
         symbol = self.symbol_
