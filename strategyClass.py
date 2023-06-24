@@ -29,6 +29,10 @@ class strategyBaseClass():
         # To override
         return None
 
+    def strategySubscribeOrdersInit (self): 
+        # To override
+        return None
+
     def strategyReloadFromFile (self): 
         # To override
         return None

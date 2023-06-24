@@ -84,6 +84,11 @@ class Strategies():
                 return strategy
         return None
 
+    def strategySubscribeOrdersInit(self):
+        for strategy in self.stratList_:
+            strategy['classObject'].strategySubscribeOrdersInit():
+        return None
+
     def strategyWriteFile (self, toWrite):
             
         if 'PentagramaRu' in toWrite and toWrite['PentagramaRu'] == True:

@@ -179,6 +179,16 @@ class strategyPentagramaRu(strategyBaseClass):
         self.ordersUpdated_ = data['ordersUpdated']
         self.pandas_ = pandasDB.dbPandasStrategy (self.symbol_, 'PentagramaRu', self.RTLocalData_.influxIC_)  
         self.timelasterror_ = datetime.datetime.now()
+
+    def strategySubscribeOrdersInit (self): 
+        for zone in self.zones_:
+            if zone['OrderId'] != None:
+                self.RTLocalData_.orderSetStrategy (zone['OrderId'], 'PentagramaRu')
+            if zone['OrderIdSL'] != None:
+                self.RTLocalData_.orderSetStrategy (zone['OrderIdSL'], 'PentagramaRu')
+            if zone['OrderIdTP'] != None:
+                self.RTLocalData_.orderSetStrategy (zone['OrderIdTP'], 'PentagramaRu')
+        return None
     
     def strategyGetIfOrderId(self, orderId):
         for zone in self.zones_:

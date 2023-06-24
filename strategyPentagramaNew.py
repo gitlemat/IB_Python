@@ -219,6 +219,13 @@ class strategyPentagrama(strategyBaseClass):
         #zonesNOP sirve como No Operativa. Por si queremos hacer cambios con confirmacion
         self.ordersUpdated_ = True
 
+    def strategySubscribeOrdersInit (self):       
+        if self.UpperOrderId_ != None:
+            self.RTLocalData_.orderSetStrategy (self.UpperOrderId_, 'Pentagrama')
+        if self.LowerOrderId_ != None:
+            self.RTLocalData_.orderSetStrategy (self.LowerOrderId_, 'Pentagrama')
+        return False
+    
     def strategyGetIfOrderId(self, orderId):
         if self.UpperOrderId_ == orderId or self.LowerOrderId_ == orderId:
             return True

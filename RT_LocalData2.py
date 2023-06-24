@@ -1056,6 +1056,7 @@ class DataLocalRT():
         orden['Executed'] = False
         orden['toPrint'] = False
         orden['toCancel'] = False
+        orden['strategy'] = None
         orden['ExecsList'] = {}
         str_o = self.orderSummary(orden)
         logging.info (str_o)
@@ -1139,6 +1140,13 @@ class DataLocalRT():
                 return True
         return None
 
+    del orderSetStrategy (self, orderId, strategyName):
+        for orden in self.orderList_: 
+            if orden['order'].orderId == orderId:
+                orden['strategy'] = strategyName
+                return True
+        return None
+    
     # Se ha ejecutado una orden y hay que ver si corresponde a alguna estrategia para temas de influx
     # Cada vez que se llega una ejecución la guardamos, y despues cuando llegan las comisiones, lo analizamos y mandamos a influx
     # Las comisiones no traen el orderId, por lo que hay que guardar las exec para enlazar la comission con la ordenId
