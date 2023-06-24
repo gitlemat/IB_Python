@@ -222,6 +222,8 @@ def main():
                 app.initReady_ = True             # Si llegamos aquí es que todo bien
                 globales.G_RTlocalData_.contractLoadFixedWatchlist()
 
+            strategyIns.strategyIndexCheckAll() # Compruebo las strategias
+
             while app.CallbacksQueue_.empty() == False:
                 callbackItem = app.CallbacksQueue_.get()
                 if 'type' not in callbackItem:
@@ -245,7 +247,6 @@ def main():
                 if callbackItem['type'] == 'account':
                     globales.G_RTlocalData_.accountTagUpdate(callbackItem['data'])
 
-            strategyIns.strategyIndexCheckAll() # Compruebo las strategias
 
 
     except KeyboardInterrupt:

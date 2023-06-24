@@ -47,7 +47,7 @@ class Strategies():
         for strategy in self.stratList_:
             ret = strategy['classObject'].strategyLoopCheck()
             if ret:
-                    toWrite[strategy['type']] = True
+                toWrite[strategy['type']] = True
 
         self.strategyWriteFile(toWrite)
 
