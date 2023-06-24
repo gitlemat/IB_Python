@@ -3,7 +3,7 @@ import webFE.webFENew_Layout
 import dash_bootstrap_components as dbc
 import logging
 
-logging.getLogger('werkzeug').setLevel(logging.ERROR)
+logging.getLogger('werkzeug').setLevel(logging.DEBUG)
 
 external_stylesheets = [dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP]
 appDashFE_ = Dash(

@@ -59,7 +59,7 @@ class dbPandasStrategy():
         today = datetime.datetime.today()
         today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         today = utils.date2local (today)
-        
+
         ret = self.dfExecs_[(self.dfExecs_.index > today)]
 
         return ret
@@ -266,6 +266,8 @@ class dbPandasContrato():
         self.dfPnl_ = None
         self.symbol_ = symbol
         self.influxIC_ = influxIC
+        self.toSaveComp = False
+        self.dateRanges = [] # aqui guardo el rango de fechas que he metido en pandas pero sin venir de influx. 
         self.toPrint = True
         self.toPrintPnL = True
 
@@ -294,6 +296,44 @@ class dbPandasContrato():
     def dbGetDataframeComp(self):
         return self.dfcomp_
 
+    def dbGetFirstCompDate(self):
+        a = self.dfcomp_.first_valid_index()
+        b = self.df_.first_valid_index()
+
+        if not a and not b:
+            return None
+
+        if not a:
+            return b
+        if not b:
+            return a
+
+        if a < b:
+            return a
+        else:
+            return b
+        
+    def dbAddCompDataFrame (self, data_df):
+        logging.info ('Lo que voy a añadir:\n%s', data_df)
+        try:
+            self.dfcomp_ = pd.concat([data_df, self.dfcomp_]) 
+        except:
+            logging.error ('Error añadiendo datos a dfcomp_')
+            return None
+        else:
+            logging.info ('Lo que tengo ahora:\n%s', self.dfcomp_)
+
+        self.toSaveComp = True
+
+        start_date = data_df.index.min()
+        end_date = data_df.index.max()
+
+        rango = {'start': start_date, 'end': end_date}
+        self.dateRanges.append(rango)
+        logging.info('Añado fechas. Start: %s. End: %s', start_date, end_date)
+
+        #Todo lo que se meta por aquí no está en influx. Hay que indicar las fechas.
+
     def dbGetLastPrices(self):
         lastPrices = {}
         lastPrices['ASK'] = None
@@ -306,6 +346,27 @@ class dbPandasContrato():
             lastPrices = self.df_.iloc[-1]
         except:
             logging.error ('El df_ está vacio para %s', self.symbol_)
+            lastPrices = {}
+            lastPrices['ASK'] = None
+            lastPrices['BID'] = None
+            lastPrices['LAST'] = None
+            lastPrices['ASK_SIZE'] = None
+            lastPrices['BID_SIZE'] = None
+            lastPrices['LAST_SIZE'] = None
+
+        if not 'ASK' in lastPrices:
+            lastPrices['ASK'] = None
+        if not 'BID' in lastPrices:
+            lastPrices['BID'] = None
+        if not 'LAST' in lastPrices:
+            lastPrices['LAST'] = None
+        if not 'ASK_SIZE' in lastPrices:
+            lastPrices['ASK_SIZE'] = None
+        if not 'BID_SIZE' in lastPrices:
+            lastPrices['BID_SIZE'] = None
+        if not 'LAST_SIZE' in lastPrices:
+            lastPrices['LAST_SIZE'] = None
+            
         return (lastPrices)
 
     def dbGetLastPnL(self):
@@ -468,6 +529,47 @@ class dbPandasContrato():
 
         if len(fields_prices) > 0:
             self.influxIC_.write_data(records, 'precios')
+
+
+    def dbUpdateInfluxCompPrices (self):
+
+        pdcomp = None
+
+        if not self.toSaveComp:
+            return
+
+        self.toSaveComp = False
+
+        for lrange in self.dateRanges:
+            lpdcomp = self.dfcomp_[lrange['start'] : lrange['end']]
+            if not pdcomp:
+                pdcomp = lpdcomp
+            else:
+                pdcomp = pd.concat([pdcomp, lpdcomp])
+
+        if len(pdcomp) < 1:
+            return
+
+        pdcomp.sort_index(inplace=True)
+        pdcomp.index.names = ['_time']
+        pdcomp['symbol'] = self.symbol_
+
+        record_params = {
+            "type": "comp",
+            "measurement": "precios", 
+            "tags": "symbol",
+        }
+
+        #logging.info ('Escribo valor para %s: %s', self.symbol_, records)
+
+        ret = self.influxIC_.write_dataframe(pdcomp, record_params)
+
+        if not ret:
+            self.toSaveComp = True
+            logging.error ('Problema guardando las Comp en influx')
+        else:
+            self.dateRanges = []   # Borramos
+
         
 
 

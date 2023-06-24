@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 # You can generate an API token from the "API Tokens Tab" in the UI
 # influx delete --bucket "ib_prices_1h_prod" --org "rodsic.com" --predicate '_measurement="precios"' --start "2020-12-23T21:37:00Z" --stop "2023-12-23T21:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
+# influx delete --bucket "ib_prices_1h_lab" --org "rodsic.com" --predicate '_measurement="precios"' --start "2020-12-23T21:37:00Z" --stop "2023-04-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
+# influx delete --bucket "ib_prices_1h_lab" --org "rodsic.com" --predicate '_measurement="precios" AND symbol="HEZ3-2HEG4+HEJ4"' --start "2020-12-23T21:37:00Z" --stop "2023-04-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 
 # Buscar zeros:
 # influx query 'from(bucket:"ib_prices_lab") |> range(start:-130d) |> filter(fn: (r) => r["_measurement"] == "precios") |> filter(fn: (r) => r["_field"] == "LAST") |> filter(fn: (r) => r["symbol"] == "LEQ3") |> filter(fn: (r) => r["_value"] == 0)'
@@ -42,16 +44,11 @@ class InfluxClient:
         self._client = InfluxDBClient(url="http://localhost:8086", token=token)
         
 
-    def write_data(self,data, type='precios', write_option=SYNCHRONOUS):
-        # measurementName,tagKey=tagValue fieldKey1="fieldValue1",fieldKey2=fieldValue2 timestamp
-        # There’s a space between the tagValue and the first fieldKey, and another space between the last fieldValue and timeStamp
-        # timestamp is optional
-        # IC.write_data(["MSFT,stock=MSFT Open=62.79,High=63.84,Low=62.13"])
-
-        
-        write_api = self._client.write_api(write_option)
+    def get_bucket (self, type):
         if type == 'precios':
             lbucket = self._bucket_prices
+        if type == 'comp':
+            lbucket = self._bucket_ohcl
         elif type == 'pnl':
             lbucket = self._bucket_pnl
         elif type == 'executions':
@@ -59,11 +56,51 @@ class InfluxClient:
         else:
             lbucket = self._bucket_prices
 
-        try:
-            logging.debug ('Escribiendo en influx esto: %s', data)
-            write_api.write(bucket=lbucket, org=self._org, record=data)
-        except:
-            logging.error ("Exception occurred", exc_info=True)
+        return lbucket
+
+    def write_data(self,data, type='precios', write_option=SYNCHRONOUS):
+        # measurementName,tagKey=tagValue fieldKey1="fieldValue1",fieldKey2=fieldValue2 timestamp
+        # There’s a space between the tagValue and the first fieldKey, and another space between the last fieldValue and timeStamp
+        # timestamp is optional
+        # IC.write_data(["MSFT,stock=MSFT Open=62.79,High=63.84,Low=62.13"])
+
+        
+        #write_api = self._client.write_api(write_option)
+        lbucket = self.get_bucket(type)
+
+        with self._client.write_api(write_option) as write_api:
+            try:
+                logging.debug ('Escribiendo en influx esto: %s', data)
+                write_api.write(bucket=lbucket, org=self._org, record=data)
+            except:
+                logging.error ("Exception occurred", exc_info=True)
+
+    def write_dataframe(self,dataframe, params, write_option=SYNCHRONOUS):
+        # measurementName,tagKey=tagValue fieldKey1="fieldValue1",fieldKey2=fieldValue2 timestamp
+        # There’s a space between the tagValue and the first fieldKey, and another space between the last fieldValue and timeStamp
+        # timestamp is optional
+        # IC.write_data(["MSFT,stock=MSFT Open=62.79,High=63.84,Low=62.13"])
+
+        
+        #write_api = self._client.write_api(write_option)
+
+        type = params['type']
+        meassurement = params['measurement']
+        tags = params['tags']
+        
+        lbucket = self.get_bucket(type)
+
+        with self._client.write_api(write_option) as write_api:
+
+            try:
+                logging.debug ('Escribiendo en influx esto: %s', dataframe)
+                write_api.write(bucket=lbucket, org=self._org, record=dataframe, 
+                    data_frame_measurement_name=meassurement, data_frame_tag_columns=[tags])
+            except:
+                logging.error ("Exception occurred", exc_info=True)
+                return False
+            else:
+                return True
 
     def influxGetTodayDataFrame (self, symbol):
         logging.info('Leyendo precios de hoy de Influx para: %s', symbol)

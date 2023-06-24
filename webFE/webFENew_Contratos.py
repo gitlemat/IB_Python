@@ -67,13 +67,31 @@ def layout_contratos_tab ():
         )
 
         insideDetailsData, graphColumn = contratosObtenerInsideDetails (contrato, data, False)
+        #insideDetailsBotonesZonas.append(dbc.Row())
+
+        
+        bSaveEn = not contrato['dbPandas'].toSaveComp
+        buttonExpandYFinance = dbc.Button("yFinance", id={'role': 'yFinanceButton', 'gConId':str(gConId)}, className="me-2", n_clicks=0)
+        buttonSaveYFinance = dbc.Button("Guardar", id={'role': 'yFinanceSaveButton', 'gConId':str(gConId)}, className="me-2", n_clicks=0, disabled=bSaveEn)
+        buttonRefresh = dbc.Button("Refresh", id={'role': 'RefreshButton', 'gConId':str(gConId)}, className="me-2", n_clicks=0)
+        
 
         # Todo lo que se oculta junto
         collapseDetails = dbc.Collapse(
             dbc.Row(
                 [
                     dbc.Col(insideDetailsData, width = 5),
-                    dbc.Col(graphColumn, width = 7),
+                    dbc.Col(
+                        [
+                            dbc.Row(graphColumn),
+                            dbc.Row(
+                                [
+                                    dbc.Col(buttonExpandYFinance),
+                                    dbc.Col(buttonSaveYFinance),
+                                    dbc.Col(buttonRefresh),
+                                ],
+                            ),
+                        ], width = 7)
                 ],
             ),
             id={'role': 'colapseContract', 'gConId': str(gConId)},
@@ -164,6 +182,21 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
     # El grafico
     #fig = px.line(contrato['dbPandas'].dbGetDataframe(), x="timestamp", y="LAST", title="LAST Evolution") 
     #fig.update_layout(xaxis = dict(type="category")) # Para que no deje los vacios de fecha de cierre
+
+    fig = getFiguraComp (contrato)
+    
+                       
+    graphColumn = html.Div(
+        dcc.Graph(
+                id={'role': 'graphDetails', 'gConId': str(gConId)},
+                figure = fig 
+        )
+    )
+
+    return insideDetailsData, graphColumn
+
+def getFiguraComp (contrato):
+    
     fig = go.Figure()
     
     if contrato['dbPandas']:
@@ -184,15 +217,8 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
                        title_text='Historico (15min)', 
                        title_x = 0.5,
                        title_xanchor = 'center')
-                       
-    graphColumn = html.Div(
-        dcc.Graph(
-                id={'role': 'graphDetails', 'gConId': str(gConId)},
-                figure = fig 
-        )
-    )
 
-    return insideDetailsData, graphColumn
+    return fig
 
 def contratosEditWatchList ():
     contractsWL = globales.G_RTlocalData_.contractReturnFixedWatchlist()
@@ -434,3 +460,49 @@ def guardarContractWL(n_button):
     n_rows = len (contractsWL)
 
     return text, n_rows
+
+# Callback para cargar Finance
+@callback(
+    Output({'role': 'yFinanceButton', 'gConId': MATCH}, "n_clicks"),
+    Input({'role': 'yFinanceButton', 'gConId': MATCH}, "n_clicks"),
+    prevent_initial_call = True,
+)
+def yFinanceExpand(n_button):
+        # Esto es por si las moscas
+    if not ctx.triggered_id or n_button == None:
+        raise PreventUpdate
+
+    logging.info ('Id: %s', ctx.triggered_id)
+
+    eso = globales.G_RTlocalData_.contractYFinanceExpand(ctx.triggered_id['gConId'])
+
+    return n_button
+
+
+# Callback para refresh y grabar contrato
+@callback(
+    Output({'role': 'yFinanceSaveButton', 'gConId': MATCH}, "disabled"),
+    Output({'role': 'graphDetails', 'gConId': MATCH}, "figure"),
+    Input({'role': 'RefreshButton', 'gConId': MATCH}, "n_clicks"),
+    Input({'role': 'yFinanceSaveButton', 'gConId': MATCH}, "n_clicks"),
+    prevent_initial_call = True,
+)
+def contractRefreshSave(n_button1, n_button2):
+        # Esto es por si las moscas
+    if not ctx.triggered_id or (n_button1 == None and n_button2 == None):
+        raise PreventUpdate
+
+    logging.info ('Id: %s', ctx.triggered_id)
+    contrato = globales.G_RTlocalData_.contractGetContractbyGconId (ctx.triggered_id['gConId'])
+
+    if not contrato:
+        raise PreventUpdate 
+    
+    if ctx.triggered_id['role'] == 'yFinanceSaveButton':
+        eso = globales.G_RTlocalData_.contractCompDataSave(ctx.triggered_id['gConId'])
+    
+    fig = getFiguraComp (contrato)
+
+    bSaveEn = not contrato['dbPandas'].toSaveComp
+
+    return bSaveEn, fig

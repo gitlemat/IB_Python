@@ -9,6 +9,7 @@ import logging
 import datetime
 import influxAPI
 import utils
+import tools.yfinance_grab as yf
 
 logger = logging.getLogger(__name__)
 
@@ -349,6 +350,7 @@ class DataLocalRT():
         contrato['pnl']['value'] = None
         contrato['pnl']['updated'] = None
         contrato['hasContractSymbols'] = False
+        contrato['semaforoYfinance'] = False
 
         self.contractDict_[gConId] = contrato    
 
@@ -418,7 +420,12 @@ class DataLocalRT():
         return missing
         
     def contractLoadFixedWatchlist (self):
-        file1 = open('strategies/ContractsWatchList.conf', 'r')
+        try:
+            file1 = open('strategies/ContractsWatchList.conf', 'r')
+        except:
+            logging.error ('Fichero ContractsWatchList.conf no existe')
+            return
+
         Lines = file1.readlines()
   
         for line in Lines:
@@ -433,10 +440,13 @@ class DataLocalRT():
                 f.writelines(line + '\n')
 
     def contractReturnFixedWatchlist (self):
-        file1 = open('strategies/ContractsWatchList.conf', 'r')
-        Lines = file1.readlines()
         contractList = []
-  
+        try:
+            file1 = open('strategies/ContractsWatchList.conf', 'r')
+        except:
+            return contractList
+        
+        Lines = file1.readlines()
         for line in Lines:
             contractList.append(line.rstrip())
 
@@ -697,6 +707,12 @@ class DataLocalRT():
         return gConId in self.contractDict_
 
     def contractGetContractbyGconId (self, gConId):
+        try:
+            gConId = int(gConId)
+        except:
+            logging.error ('Error en gCondId: [%s]', gConId)
+            return None
+
         if gConId in self.contractDict_:
             return self.contractDict_[gConId]
         else:
@@ -787,6 +803,49 @@ class DataLocalRT():
                 simbolo = {'conId': contrato['contract'].conId, 'reqId': None, 'ratio': 1, 'action': 'BUY', 'lSymbol': contrato['contract'].localSymbol}
                 simbolos.append(simbolo)
         return simbolos
+
+
+
+    def contractYFinanceExpand(self, gConId):
+
+        contrato = self.contractGetContractbyGconId (gConId)
+
+        if not contrato:
+            logging.error ('El gCondId [%s] no existe', gConId)
+            return None
+
+        symbol = contrato['fullSymbol']
+
+        if contrato['semaforoYfinance']:
+            logging.error ('Ya estamos descargando los datos de este contrato: %s', symbol)
+            return
+
+        firstDate = contrato['dbPandas'].dbGetFirstCompDate()
+        logging.info('Sacamos yFinance de Contrato [%s] desde [%s]', symbol, firstDate)
+        contrato['semaforoYfinance'] = True
+        data = yf.yfinanceGetDelta1h (symbol, firstDate)
+
+        for cont_data in data:
+            contrato_l = self.contractGetBySymbol (cont_data)
+            if not contrato_l:
+                logging.error ('No he encontrado el contrato para symbol %s', cont_data)
+                continue
+            contrato_l['dbPandas'].dbAddCompDataFrame (data[cont_data])
+
+        contrato['semaforoYfinance'] = False
+        return True
+
+    def contractCompDataSave(self, gConId):
+        
+        contrato = self.contractGetContractbyGconId (gConId)
+
+        if not contrato:
+            logging.error ('El gCondId [%s] no existe', gConId)
+            return None
+
+        symbol = contrato['fullSymbol']
+
+        contrato['dbPandas'].dbUpdateInfluxCompPrices()
 
 
     def contractSummaryAllFull (self):
@@ -1006,8 +1065,6 @@ class DataLocalRT():
             result = True
         except:
             self.error(900, "Error añadiendo orden")
-
-        self.orderCheckIfRemove(orden) # No deberia ser necesario nunca aqui
             
         return (result)
 
@@ -1064,8 +1121,6 @@ class DataLocalRT():
                 else:
                     logging.debug (str_o)
 
-                self.orderCheckIfRemove(orden)
-
                 break
                 
         if not exists:
@@ -1075,15 +1130,7 @@ class DataLocalRT():
 
     def orderReturnListAll(self):
         return self.orderList_
-    
-    def orderCheckIfRemove (self, orden):
-        # Despues de un update, mirar si hay que borrarla
-        return
-        if 'status' in orden['params']:
-            if orden['params']['status'] == 'Cancelled':
-                self.orderList_.remove(orden)
-            if orden['params']['status'] == 'Filled':
-                self.orderList_.remove(orden)
+
 
     def orderSetExecutedStatus (self, orderId, bExec):
         for orden in self.orderList_: 
@@ -1103,7 +1150,11 @@ class DataLocalRT():
         executionObj = data['executionObj']
         exec_contract = data['contractObj']
         orderId = executionObj.orderId
-        logging.info ('[Execution (%d)] Orden Ejecutada. ExecId: %s, Number/Price: %s at %s, Cumulative: %s,  AvgPrice: %s, Side: %s, Type: %s', orderId,executionObj.execId, executionObj.shares, executionObj.price,  executionObj.cumQty, executionObj.AvgPrice, executionObj.side, exec_contract.secType)
+        logging.info ('[Execution (%d)] Orden Ejecutada. ExecId: %s', orderId,executionObj.execId)
+        logging.info ('    Number/Price: %s at %s, Cumulative: %s,  AvgPrice: %s', executionObj.shares, executionObj.price,  executionObj.cumQty, executionObj.avgPrice)
+        logging.info ('    Side: %s, Type: %s', executionObj.side, exec_contract.secType)
+
+
 
         # Localizo si pertenece una estrategia
         strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
@@ -1118,7 +1169,7 @@ class DataLocalRT():
 
         # Miramos que la estrategia esté activada (debería)
         if currentSymbolStrategy.stratEnabled_ == False:
-            logging.error ('    Pero la estrategia está disabled!!!!')
+            logging.error ('    Pero la estrategia esta disabled!!!!')
             #return False
         
         orden = self.orderGetByOrderId(orderId)
@@ -1157,7 +1208,7 @@ class DataLocalRT():
         data_new['contractSecType'] = contract['contract'].secType
         data_new['strategy_type'] = strategy['type']
         #data_new['lastFillPrice'] = orden['params']['lastFillPrice']
-        data_new['lastFillPrice'] = executionObj.Price
+        data_new['lastFillPrice'] = executionObj.price
         
         # Nos quedamos con la parte mas significativa del index
         index1 = executionObj.execId[:executionObj.execId.index('.')]
@@ -1182,9 +1233,9 @@ class DataLocalRT():
         if data_new['contractSecType'] == data_new['execSecType']:
             lRemaining = orden['order'].totalQuantity - executionObj.cumQty
             if lRemaining > 0:
-                logging.info ('[Execution (%d)] ExecId: %s. Aun no hemos cerrado todas las posciones. Vamos %d de %d', orderId,executionObj.execId, executionObj.cumQty, orden['order'].totalQuantity)
+                logging.info ('    Aun no hemos cerrado todas las posciones. Vamos %d de %d', executionObj.cumQty, orden['order'].totalQuantity)
             else:
-                logging.info ('[Execution (%d)] ExecId: %s. Todas las posiciones (%d) cerradas', orderId,executionObj.execId, executionObj.cumQty)
+                logging.info ('    Todas las posiciones (%d) cerradas', executionObj.cumQty)
             orden['ExecsList'][index]['Side'] = data_new['Side']
             orden['ExecsList'][index]['Quantity'] = data_new['Quantity']
             orden['ExecsList'][index]['Cumulative'] = data_new['Cumulative']
@@ -1219,7 +1270,9 @@ class DataLocalRT():
         if not strategy or 'classObject' not in strategy:
             logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden que tenga estrategia. ExecId: %s', orderId, dataCommission.execId)
             return
-        logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s. Comission: %s. RealizedPnL: %s', orderId, strategy['type'], strategy['symbol'], dataCommission.execId, dataCommission.commission, dataCommission.realizedPNL)
+        logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s', orderId, strategy['type'], strategy['symbol'], dataCommission.execId)
+        logging.info ('    Comission: %s. RealizedPnL: %s', dataCommission.commission, dataCommission.realizedPNL)
+
 
         # Cada orden puede tener varios ExecId. Uno por cada partial fill
         dataExec = None
@@ -1239,6 +1292,7 @@ class DataLocalRT():
 
         logging.info ('    Comision acumulada: [%s]', orden['ExecsList'][index]['Commission'])
         logging.info ('    RealizedPnL acumulada: [%s]', orden['ExecsList'][index]['realizadPnL'])
+        logging.info ('    Order price: [%s]', orden['ExecsList'][index]['lastFillPrice'])
 
         orden['ExecsList'][index]['data'].remove(dataExec) # por si llegan dos comisiones al mismo Exec (no deberia)
 

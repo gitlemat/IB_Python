@@ -47,6 +47,7 @@ def strategyReadFile (RTlocalData):
     
     lineSymbol = None
     lineStratEnabled = False
+    lineStratCerrar = False
     lineCurrentPos = None 
     zones = []
 
@@ -105,7 +106,7 @@ def strategyReadFile (RTlocalData):
         elif fields[0].strip() == '%':
             zones = sorted(zones, key=lambda d: d['Price'], reverse=True)
             ahora = datetime.datetime.now() - datetime.timedelta(seconds=15)
-            datafields = {'stratEnabled': lineStratEnabled, 'currentPos': lineCurrentPos, 'zones': zones, 'ordersUpdated': True}
+            datafields = {'stratEnabled': lineStratEnabled, 'cerrarPos': lineStratCerrar, 'currentPos': lineCurrentPos, 'zones': zones, 'ordersUpdated': True}
             if not bError:
                 classObject = strategyPentagramaRu (RTlocalData, lineSymbol, datafields)
                 lineFields = {'symbol': lineSymbol, 'type': 'PentagramaRu', 'classObject': classObject}
@@ -117,10 +118,14 @@ def strategyReadFile (RTlocalData):
                 lineStratEnabled = False
             else:
                 lineStratEnabled = True
-            if fields[2].strip() == '':
+            if fields[2].strip() == '' or fields[2].strip() == '0' or fields[2].strip() == 'False' :
+                lineStratCerrar = False
+            else:
+                lineStratCerrar = True
+            if fields[3].strip() == '':
                 lineCurrentPos = None   
             else:
-                lineCurrentPos = int (fields[2].strip())
+                lineCurrentPos = int (fields[3].strip())
 
     logging.info ('Estrategias Pentagrama cargadas')
 
@@ -137,6 +142,7 @@ def strategyWriteFile (strategies):
     for strategyItem in strategies:
         line = str(strategyItem['symbol']) + ','
         line += 'True,' if strategyItem['classObject'].stratEnabled_ == True else 'False,'
+        line += 'True,' if strategyItem['classObject'].cerrarPos_ == True else 'False,'
         line += ' \n' if strategyItem['classObject'].currentPos_ == None else str(int(strategyItem['classObject'].currentPos_)) + '\n'
         lines.append(line)
         for zone in strategyItem['classObject'].zones_:
@@ -167,6 +173,7 @@ class strategyPentagramaRu(strategyBaseClass):
 
         self.symbol_ = symbol
         self.stratEnabled_ = data['stratEnabled']
+        self.cerrarPos_ = data['cerrarPos']
         self.currentPos_ = data['currentPos']
         self.zones_ = data['zones']
         self.ordersUpdated_ = data['ordersUpdated']
@@ -300,7 +307,8 @@ class strategyPentagramaRu(strategyBaseClass):
 
             # Hay que rehacer, pero no es error
             if bRehacerNoError:
-                pass
+                if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
+                    continue
             # Si hemos detectado error en parent, borramos todas si no existen
             elif bParentOrderError: # La parentId no está, y no está ejecutada. Borramos todas y rehacemos
                 if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
@@ -364,10 +372,11 @@ class strategyPentagramaRu(strategyBaseClass):
         with open(STRAT_File) as f:
             lines = f.readlines()
         
-        logging.info ('Leyendo Estrategia %s [PentagramaRu] de fichero', self.symbol_)
+        logging.info ('[Estrategia PentagramaRu (%s)] Leyendo Estrategia de fichero', self.symbol_)
         
         lineSymbol = None
         lineStratEnabled = False
+        lineStratCerrar = False
         lineCurrentPos = None 
         zones = []
 
@@ -424,12 +433,13 @@ class strategyPentagramaRu(strategyBaseClass):
                     if not bError:
                         zones = sorted(zones, key=lambda d: d['Price'], reverse=True)
                         self.stratEnabled_ = lineStratEnabled
+                        self.cerrarPos_ = lineStratCerrar
                         self.currentPos_ = lineCurrentPos
                         self.zones_ = zones
                         self.ordersUpdated_ = True
-                        logging.info ('Estrategia %s [PentagramaRu] recargada de fichero', self.symbol_)
+                        logging.info ('[Estrategia PentagramaRu (%s)] Recargada de fichero', self.symbol_)
                     else:
-                        logging.error ('Error leyendo los valores de la estrategia %s [PentagramaRu]', self.symbol_)
+                        logging.error ('[Estrategia PentagramaRu (%s)] Error leyendo los valores de la estrategia', self.symbol_)
                         return False
                     break # No hace falta seguir
                 zones = []
@@ -439,20 +449,25 @@ class strategyPentagramaRu(strategyBaseClass):
                     lineStratEnabled = False
                 else:
                     lineStratEnabled = True
-                if fields[2].strip() == '':
+                if fields[2].strip() == '' or fields[2].strip() == '0' or fields[2].strip() == 'False' :
+                    lineStratCerrar = False
+                else:
+                    lineStratCerrar = True
+                if fields[3].strip() == '':
                     lineCurrentPos = None   
                 else:
-                    lineCurrentPos = int (fields[2].strip())
+                    lineCurrentPos = int (fields[3].strip())
 
         if bFound == False:
-            logging.error ('No he encontrado la linea en el fichero que actualiza esta estrategia %s', self.symbol_)
+            logging.error ('[Estrategia PentagramaRu (%s)] No he encontrado la linea en el fichero que actualiza esta estrategia', self.symbol_)
             return False
 
 
     def strategyOrderUpdated (self, data):
 
-        if self.stratEnabled_ == False:
-            return False
+        if self.stratEnabled_ == False:   # Es mejor que continue para procesar cosas pendientes. Bloqueamos ordenes nuevas
+            pass
+            #return False
 
         bChanged = False
         
@@ -466,7 +481,7 @@ class strategyPentagramaRu(strategyBaseClass):
         order = self.RTLocalData_.orderGetByOrderId(orderId) # Nos va a dar su permId que usaremos para los datos guardados
 
         if not order:
-            logging.error ('Error leyendo la orderId %s', str(orderId))
+            logging.error ('[Estrategia PentagramaRu (%s)] Error leyendo la orderId %s', self.symbol_, str(orderId))
             return bChanged
 
         if not 'status' in order['params']:
@@ -483,12 +498,13 @@ class strategyPentagramaRu(strategyBaseClass):
                 bChanged = True
             if zone['OrderIdSL'] == orderId and orderStatus == 'Filled':
                 zone['BracketOrderFilledState'] = 'ParentFilled+F'
-                logging.info ('###################################################')
-                logging.info ('ALARMA !!!!!!!')
-                logging.info ('Estrategia: PentagramaRu [%s]', self.symbol_)
-                logging.info ('Nos hemos salido por SL. Caquita')
-                logging.info ('Paramos la estrategia porque estamos fuera de rango')
-                self.stratEnabled_ = False
+                if self.stratEnabled_:
+                    logging.info ('###################################################')
+                    logging.info ('ALARMA !!!!!!!')
+                    logging.info ('Estrategia: PentagramaRu [%s]', self.symbol_)
+                    logging.info ('Nos hemos salido por SL. Caquita')
+                    logging.info ('Paramos la estrategia porque estamos fuera de rango')
+                    self.stratEnabled_ = False
                 bChanged = True
 
         new_pos = self.strategyCalcularPosiciones()
@@ -498,6 +514,10 @@ class strategyPentagramaRu(strategyBaseClass):
         if self.currentPos_ != new_pos:
             if new_pos == 0 or (new_pos * self.currentPos_ < 0):
                 zero_crossing = True
+            if self.cerrarPos_ and zero_crossing:
+                logging.info ('')
+                logging.info ('[Estrategia PentagramaRu (%s)] Hemos pasado por Cero y estrategio disabled por parametro: %s', self.symbol_, str(self.cerrarPos_))
+                self.stratEnabled_ = False
             self.currentPos_ = new_pos
             bChanged = True
 
@@ -570,6 +590,9 @@ class strategyPentagramaRu(strategyBaseClass):
 
     def strategyCreateBracketOrder (self, zone):
 
+        if self.stratEnabled_ == False:   
+            return None
+
         symbol = self.symbol_
         contract = self.RTLocalData_.contractGetBySymbol(symbol)  
         secType = contract['contract'].secType
@@ -595,11 +618,17 @@ class strategyPentagramaRu(strategyBaseClass):
         zone['OrderId'] = orderIds['parentOrderId']
         zone['OrderIdTP'] = orderIds['tpOrderId']
         zone['OrderIdSL'] = orderIds['slOrderId']
+        zone['OrderPermId'] = None
+        zone['OrderPermIdTP'] = None
+        zone['OrderPermIdSL'] = None
         zone['BracketOrderFilledState'] = None
 
         return zone
 
     def strategyCreateChildOca (self, zone):
+
+        if self.stratEnabled_ == False:   
+            return None
 
         symbol = self.symbol_
         contract = self.RTLocalData_.contractGetBySymbol(symbol)  
