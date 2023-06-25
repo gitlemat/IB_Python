@@ -1140,10 +1140,10 @@ class DataLocalRT():
                 return True
         return None
 
-    del orderSetStrategy (self, orderId, strategyName):
+    def orderSetStrategy (self, orderId, strategyObj):
         for orden in self.orderList_: 
             if orden['order'].orderId == orderId:
-                orden['strategy'] = strategyName
+                orden['strategy'] = strategyObj
                 return True
         return None
     
@@ -1165,22 +1165,26 @@ class DataLocalRT():
 
 
         # Localizo si pertenece una estrategia
-        strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
+        orden = self.orderGetByOrderId(orderId)
+        currentSymbolStrategy = orden['strategy']
+        #strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
         
-        if not strategy or 'classObject' not in strategy:
+        #if not strategy or 'classObject' not in strategy:
+        if not currentSymbolStrategy:
             logging.error ('[Execution (%d)] Orden Ejecutada. Pero no pertenece a ninguna estrategia', orderId)
             return False   
-        logging.info ('    Estrategia: %s [%s]', strategy['type'], strategy['symbol'])
+        #logging.info ('    Estrategia: %s [%s]', strategy['type'], strategy['symbol'])
+        logging.info ('    Estrategia: %s [%s]', currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_)
   
 
-        currentSymbolStrategy = strategy['classObject']
+        #currentSymbolStrategy = strategy['classObject']
 
         # Miramos que la estrategia esté activada (debería)
         if currentSymbolStrategy.stratEnabled_ == False:
             logging.error ('    Pero la estrategia esta disabled!!!!')
             #return False
         
-        orden = self.orderGetByOrderId(orderId)
+        #orden = self.orderGetByOrderId(orderId)
         
         # Esto es por asegurar, por si solo llega el exec. No debería pasar
         if orden['Executed'] == False:
@@ -1214,7 +1218,8 @@ class DataLocalRT():
         data_new['execSecType'] = exec_contract.secType     # Solo guardamos las de la BAG (o el que sea el que lancé)
         data_new['numLegs'] = len(contract['contractReqIdLegs'])
         data_new['contractSecType'] = contract['contract'].secType
-        data_new['strategy_type'] = strategy['type']
+        #data_new['strategy_type'] = strategy['type']
+        data_new['strategy_type'] = currentSymbolStrategy.straType_
         #data_new['lastFillPrice'] = orden['params']['lastFillPrice']
         data_new['lastFillPrice'] = executionObj.price
         
@@ -1272,13 +1277,16 @@ class DataLocalRT():
             logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden mia', dataCommission.execId)
             return False
 
+        currentSymbolStrategy = orden['strategy']
+
         orderId = orden['order'].orderId
-        strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
+        #strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
         logging.debug ('Strategia: %s', strategy)
-        if not strategy or 'classObject' not in strategy:
+        #if not strategy or 'classObject' not in strategy:
+        if not currentSymbolStrategy:
             logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden que tenga estrategia. ExecId: %s', orderId, dataCommission.execId)
             return
-        logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s', orderId, strategy['type'], strategy['symbol'], dataCommission.execId)
+        logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s', orderId, currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_, dataCommission.execId)
         logging.info ('    Comission: %s. RealizedPnL: %s', dataCommission.commission, dataCommission.realizedPNL)
 
 
@@ -1289,7 +1297,7 @@ class DataLocalRT():
                 dataExec = exec
                 break
         if not dataExec:
-            logging.error ('[Comision (%s)] Comision sin tener la info de la Orden ExecId (%s) anteriormente. Estrategia %s [%s]', orderId, dataCommission.execId, strategy['type'], strategy['symbol'])
+            logging.error ('[Comision (%s)] Comision sin tener la info de la Orden ExecId (%s) anteriormente. Estrategia %s [%s]', orderId, dataCommission.execId, currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_)
             return False
 
         if dataCommission.realizedPNL != UNSET_DOUBLE:  # Este valor lo usa IB para indicar empty cell.
@@ -1330,7 +1338,8 @@ class DataLocalRT():
         # Y borrar todo el orden['ExecsList'][index]
         logging.info ('    Commission Order Finalizada [100%]')
 
-        strategy['classObject'].pandas_.dbAddCommissionsOrderFill(dataFlux)
+        #strategy['classObject'].pandas_.dbAddCommissionsOrderFill(dataFlux)
+        currentSymbolStrategy.pandas_.dbAddCommissionsOrderFill(dataFlux)
       
         orden['ExecsList'].pop(index)
 

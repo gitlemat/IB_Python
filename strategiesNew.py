@@ -86,7 +86,7 @@ class Strategies():
 
     def strategySubscribeOrdersInit(self):
         for strategy in self.stratList_:
-            strategy['classObject'].strategySubscribeOrdersInit():
+            strategy['classObject'].strategySubscribeOrdersInit()
         return None
 
     def strategyWriteFile (self, toWrite):

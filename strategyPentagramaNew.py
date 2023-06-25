@@ -177,7 +177,7 @@ def strategyWriteFile (strategies):
     for strategyItem in strategies:
         line = str(strategyItem['symbol']) + ','  
         line += 'True,' if strategyItem['classObject'].stratEnabled_ == True else 'False,'
-        line += 'True,' if strategyItem['classObject'].cerrarPosiciones_ == True else 'False,'
+        line += 'True,' if strategyItem['classObject'].cerrarPos_ == True else 'False,'
         line += ' ,' if strategyItem['classObject'].UpperOrderId_ == None else str(strategyItem['classObject'].UpperOrderId_) + ','
         line += ' ,' if strategyItem['classObject'].UpperOrderPermId_ == None else str(strategyItem['classObject'].UpperOrderPermId_) + ','
         line += ' ,' if strategyItem['classObject'].LowerOrderId_ == None else str(strategyItem['classObject'].LowerOrderId_) + ','
@@ -201,9 +201,13 @@ class strategyPentagrama(strategyBaseClass):
         self.RTLocalData_ = RTlocalData
 
         self.symbol_ = data['symbol']
+        self.straType_ = 'Pentagrama'
         self.stratEnabled_ = data['stratEnabled']
-        self.cerrarPosiciones_ = data['cerrarPosiciones']
+        self.cerrarPos_ = data['cerrarPosiciones']
         self.currentPos_ = data['currentPos']
+        self.ordersUpdated_ = True
+        self.pandas_ = pandasDB.dbPandasStrategy (self.symbol_, 'Pentagrama', self.RTLocalData_.influxIC_) 
+
         self.UpperOrderId_ = data['UpperOrderId']
         self.UpperOrderPermId_ = data['UpperOrderPermId']
         self.LowerOrderId_ = data['LowerOrderId']
@@ -215,15 +219,14 @@ class strategyPentagrama(strategyBaseClass):
         self.lastCurrentZoneBufferPriceUp_ = None
         self.lastCurrentZoneBufferPriceDown_ = None
         self.timelasterror_ = datetime.datetime.now()
-        self.pandas_ = pandasDB.dbPandasStrategy (self.symbol_, 'Pentagrama', self.RTLocalData_.influxIC_)  
         #zonesNOP sirve como No Operativa. Por si queremos hacer cambios con confirmacion
-        self.ordersUpdated_ = True
+        
 
     def strategySubscribeOrdersInit (self):       
         if self.UpperOrderId_ != None:
-            self.RTLocalData_.orderSetStrategy (self.UpperOrderId_, 'Pentagrama')
+            self.RTLocalData_.orderSetStrategy (self.UpperOrderId_, self)
         if self.LowerOrderId_ != None:
-            self.RTLocalData_.orderSetStrategy (self.LowerOrderId_, 'Pentagrama')
+            self.RTLocalData_.orderSetStrategy (self.LowerOrderId_, self)
         return False
     
     def strategyGetIfOrderId(self, orderId):
@@ -409,7 +412,7 @@ class strategyPentagrama(strategyBaseClass):
     
         #lineFields = {'symbol': lineSymbol, 'stratEnabled': lineStratEnabled, 'cerrarPosiciones': lineCerrarPosiciones,'currentPos': lineCurrentPos, 'lastCurrentZone': None, 'lastCurrentZoneBufferPriceUp': None, 'lastCurrentZoneBufferPriceDown': None, 'UpperOrderId': lineUpperOrderId, 'UpperOrderPermId': lineUpperOrderPermId, 'LowerOrderId': lineLowerOrderId, 'LowerOrderPermId': lineLowerOrderPermId, 'OverlapMargin': lineOverlapMargin, 'zones': zones, 'zonesNOP': zones, 'timelasterror': ahora}
         self.stratEnabled_ = lineStratEnabled
-        self.cerrarPosiciones_ = lineCerrarPosiciones
+        self.cerrarPos_ = lineCerrarPosiciones
         self.currentPos_ = lineCurrentPos
         self.UpperOrderId_ = lineUpperOrderId
         self.UpperOrderPermId_ = lineUpperOrderPermId
