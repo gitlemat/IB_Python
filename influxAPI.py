@@ -17,11 +17,14 @@ logger = logging.getLogger(__name__)
 # influx delete --bucket "ib_prices_1h_prod" --org "rodsic.com" --predicate '_measurement="precios"' --start "2020-12-23T21:37:00Z" --stop "2023-12-23T21:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 # influx delete --bucket "ib_prices_1h_lab" --org "rodsic.com" --predicate '_measurement="precios"' --start "2020-12-23T21:37:00Z" --stop "2023-04-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 # influx delete --bucket "ib_prices_1h_lab" --org "rodsic.com" --predicate '_measurement="precios" AND symbol="HEZ3-2HEG4+HEJ4"' --start "2020-12-23T21:37:00Z" --stop "2023-04-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
+# influx delete --bucket "ib_prices_lab" --org "rodsic.com" --predicate '_measurement="executions" AND symbol="HEZ3-2HEG4+HEJ4"' --start "2020-12-23T21:37:00Z" --stop "2023-09-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 
 # Buscar zeros:
 # influx query 'from(bucket:"ib_prices_lab") |> range(start:-130d) |> filter(fn: (r) => r["_measurement"] == "precios") |> filter(fn: (r) => r["_field"] == "LAST") |> filter(fn: (r) => r["symbol"] == "LEQ3") |> filter(fn: (r) => r["_value"] == 0)'
 # Borrar rango
 # influx delete --bucket "ib_prices_lab" --predicate '_measurement="precios" AND symbol="LEQ3"' --start 2023-02-24T15:10:01.944930000Z --stop 2023-02-24T15:40:05.447333000Z 
+# Work
+# influx query 'from(bucket:"ib_prices_lab") |> range(start:-130d) |> filter(fn: (r) => r["_measurement"] == "executions") |> filter(fn: (r) => r["_field"] == "LAST") |> filter(fn: (r) => r["symbol"] == "LEQ3") |> filter(fn: (r) => r["_value"] == 0)'
 
 
 class InfluxClient:

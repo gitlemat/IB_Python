@@ -121,12 +121,36 @@ def main():
         _port = 4002
     elif _mode == 'Prod':
         _port = 4011 # En realidad es 4011 para prod
-        logging.info ('# SISTEMA EN PRISUCCION !!!!!')
+        logging.info ('# SISTEMA EN PRODUCCION !!!!!')
     else:
         _port = 4002 # En realidad es 4011 para prod
 
     logging.info ('#')
     logging.info ('Abriendo conexion con 127.0.0.1:%d', _port)
+
+    #####################
+    #
+    # El orden es el siguiente:
+    #   0.- RT es global
+    #   1.- app de API
+    #   2.- Cargar Estrategias. Para que cuando arranquemos Orders ya estén, y se pueda actualizar la estrategia.
+    #   3.- Los web servers, pero pueden ir despues
+    #   4.- Esperamos a confirmar conexion
+    #   5.- Pedimos posiciones, ordenes y accountInfo
+    #   6.- Esperamos a tener toda la info de lo anterior
+    #   7.- Procesamos Ordenes y AccountInfo
+    #   8.- Pedimos a las estrategia que registren la ordenes que usan
+    #   9.- Cargamos watchlist de contratos
+    #   10.- Loop:
+    #       a.- Comprobar conexion
+    #       b.- Comprobar que tenemos ordenes. Si no-> se piden
+    #       c.- Comprobar que tenemos posiciones. Si no-> se piden
+    #       d.- Comprobar sin contratos incompletos. Si hay-> se piden datos
+    #       e.- Comprobar si hay que cargar watchlist
+    #       f.- Comprobar loop de strategias
+    #       g.- Recorrer queue
+
+
 
     app = IB_API_Client.IBI_App("127.0.0.1", _port, client_id, globales.G_RTlocalData_)
     t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)

@@ -165,7 +165,7 @@ class DataLocalRT():
                 # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
                 if pos_min != 0: # Hay algo
                     logging.info("[Posicion] Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
-                    avgPrice = 0
+                    avgPrice = 0.0
                     for contractLegInfo in contrato['contractReqIdLegs']:
                         conId = contractLegInfo['conId']
                         ratio = contractLegInfo['ratio']
@@ -178,7 +178,7 @@ class DataLocalRT():
                         deltaPos = pos_min * ratio
                         self.contractDict_[conId]['pos'] -= int(deltaPos)
                         if self.contractDict_[conId]['pos'] == 0:
-                            self.contractDict_[conId]['posAvgPrice'] = 0
+                            self.contractDict_[conId]['posAvgPrice'] = 0.0
 
                         logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
                     #Finalmente, pongo pos_min al BAG
@@ -499,9 +499,9 @@ class DataLocalRT():
                 if conReqLeg['reqId'] == reqId:
                     updated = True
             if updated:
-                price2sell = 0
-                price2buy = 0
-                price2last = 0
+                price2sell = 0.0
+                price2buy = 0.0
+                price2last = 0.0
                 size2sell = None
                 size2buy = None
                 size2last = None
@@ -626,10 +626,10 @@ class DataLocalRT():
                 if ('reqIdPnL' in conReqLeg) and (conReqLeg['reqIdPnL'] == reqIdPnL):
                     updated = True
             if updated:
-                dailyPnL = 0
-                unrealizedPnL = 0
+                dailyPnL = 0.0
+                unrealizedPnL = 0.0
                 realizedPnL =  0
-                value = 0
+                value = 0.0
 
                 allReady = True
 
@@ -1232,14 +1232,14 @@ class DataLocalRT():
         # Si el index recibido no está en la lista, lo añado
         if not index in orden['ExecsList']:
             orden['ExecsList'][index] = {}
-            orden['ExecsList'][index]['realizadPnL'] = 0
-            orden['ExecsList'][index]['Commission'] = 0
+            orden['ExecsList'][index]['realizedPnL'] = float(0)
+            orden['ExecsList'][index]['Commission'] = float(0)
             orden['ExecsList'][index]['numLegs'] = data_new['numLegs']
             orden['ExecsList'][index]['legsDone'] = 0
             orden['ExecsList'][index]['Side'] = None
             orden['ExecsList'][index]['Quantity'] = 0
             orden['ExecsList'][index]['Cumulative'] = 0
-            orden['ExecsList'][index]['lastFillPrice'] = 0
+            orden['ExecsList'][index]['lastFillPrice'] = float(0)
             orden['ExecsList'][index]['data'] = [] # Aquí guardamos cada una de las legs que me llegan, para luego recibir la commision
         
         # El qty/side lo pillo del index de la spread (me va a llegar uno de la spread y luego por cada leg)
@@ -1301,13 +1301,13 @@ class DataLocalRT():
             return False
 
         if dataCommission.realizedPNL != UNSET_DOUBLE:  # Este valor lo usa IB para indicar empty cell.
-            orden['ExecsList'][index]['realizadPnL'] += dataCommission.realizedPNL
+            orden['ExecsList'][index]['realizedPnL'] += dataCommission.realizedPNL
         if dataCommission.commission != UNSET_DOUBLE:
             orden['ExecsList'][index]['Commission'] += dataCommission.commission
         orden['ExecsList'][index]['legsDone'] += 1
 
         logging.info ('    Comision acumulada: [%s]', orden['ExecsList'][index]['Commission'])
-        logging.info ('    RealizedPnL acumulada: [%s]', orden['ExecsList'][index]['realizadPnL'])
+        logging.info ('    RealizedPnL acumulada: [%s]', orden['ExecsList'][index]['realizedPnL'])
         logging.info ('    Order price: [%s]', orden['ExecsList'][index]['lastFillPrice'])
 
         orden['ExecsList'][index]['data'].remove(dataExec) # por si llegan dos comisiones al mismo Exec (no deberia)
@@ -1331,7 +1331,7 @@ class DataLocalRT():
         dataFlux['PermId'] = dataExec['PermId']
         dataFlux['Quantity'] = orden['ExecsList'][index]['Quantity'] 
         dataFlux['Side'] = orden['ExecsList'][index]['Side'] 
-        dataFlux['RealizedPnL'] = orden['ExecsList'][index]['realizadPnL'] 
+        dataFlux['RealizedPnL'] = orden['ExecsList'][index]['realizedPnL'] 
         dataFlux['Commission'] = orden['ExecsList'][index]['Commission'] 
         dataFlux['FillPrice'] = orden['ExecsList'][index]['lastFillPrice'] 
         # Aqui seguimos con le escritura a Flux
