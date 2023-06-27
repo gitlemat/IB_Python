@@ -97,7 +97,8 @@ def ordenesObtenerFilas (orden, update = False):
     lFillState = str(lQty) + '/' + str(lFilled) + '/' + str(lRemaining)
 
     strategy = globales.G_RTlocalData_.strategies_.strategyGetStrategyByOrderId (lOrderId)
-    strategy['strategy'] = orden['strategy'].straType_
+    if strategy != None and 'strategy' in orden and orden['strategy'] != None:
+        strategy['strategy'] = orden['strategy'].straType_
     if strategy == None:
         lStrategy = 'N/A'
     else:

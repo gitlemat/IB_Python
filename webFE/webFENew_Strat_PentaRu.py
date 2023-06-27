@@ -360,7 +360,7 @@ def actualizarFiguraTodayPenRu (n_intervals):
 
 # Callback para grabar info de zonas
 @callback(
-    Output({'role': 'TableStrategyOrderDetails', 'strategy':'PentagramaRu', 'symbol': MATCH, 'index': ALL}, "value"),   # Dash obliga a poner un output. Uno que no se use
+    Output({'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': MATCH}, "n_clicks"),   # Dash obliga a poner un output. Uno que no se use
     Input({'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': MATCH}, "n_clicks"),
     prevent_initial_call = True,
 )

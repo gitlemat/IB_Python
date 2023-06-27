@@ -233,6 +233,11 @@ class strategyPentagrama(strategyBaseClass):
         if self.UpperOrderId_ == orderId or self.LowerOrderId_ == orderId:
             return True
         return False
+
+    def strategyGetIfOrderPermId(self, orderPermId):
+        if self.UpperOrderPermId_ == orderPermId or self.LowerOrderPermId_ == orderPermId:
+            return True
+        return False
     
     def strategyEnableDisable (self, state):
         self.stratEnabled_ = state
@@ -568,11 +573,13 @@ class strategyPentagrama(strategyBaseClass):
                 logging.error ('Fallo en kickoff: Error al generar orden inicial')
                 self.timelasterror_ = datetime.datetime.now()
                 return True # Hay que actualizar
+            
             # Marco con un flag(KO) en el fichero para que cuando llegue el evento lo reconozca y sepa que estamos en KickOff
             self.UpperOrderId_ = 'KO'
             self.LowerOrderId_ = newreqId 
             self.currentPos_ = 0
             self.ordersUpdated_ = True
+            #self.RTLocalData_.orderSetStrategy (self.LowerOrderId_, self)
         else: # Si es cero creo directamente las borders y quitamos el KO ya que no esperamos orden de KickOff
             ret = self.strategyCreateBorderOrders (contract, None)
             if ret == False:
@@ -609,6 +616,10 @@ class strategyPentagrama(strategyBaseClass):
             logging.error ('Error leyendo la orderId %s', str(orderId))
             return bChanged
 
+        # Grabamos que sea de esta estrategia
+        if not order['strategy']:
+            self.RTLocalData_.orderSetStrategy (orderId, self)
+
         if not 'status' in order['params']:
             return bChanged
         
@@ -638,10 +649,12 @@ class strategyPentagrama(strategyBaseClass):
         elif self.UpperOrderPermId_ == ordenObj.permId and self.UpperOrderId_ != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
             logging.info ('Orden actualizada en estrategia (o inicializamos) %s. Nueva UpperOrderId: %s', symbol, ordenObj.orderId)
             self.UpperOrderId_ = ordenObj.orderId
+            #self.RTLocalData_.orderSetStrategy (self.UpperOrderId_, self)
             bChanged = True
         elif self.LowerOrderPermId_ == ordenObj.permId and self.LowerOrderId_ != ordenObj.orderId:
             logging.info ('Orden actualizada en estrategia (o inicializamos)  %s. Nueva LowerOrderId: %s', symbol, ordenObj.orderId)
             self.LowerOrderId_ = ordenObj.orderId
+            #self.RTLocalData_.orderSetStrategy (self.LowerOrderId_, self)
             bChanged = True
         
         if bChanged:
@@ -933,6 +946,9 @@ class strategyPentagrama(strategyBaseClass):
             else:
                 self.LowerOrderId_ = newreqDownId
             self.LowerOrderPermId_ = None
+
+        #self.RTLocalData_.orderSetStrategy (self.UpperOrderId_, self)
+        #self.RTLocalData_.orderSetStrategy (self.LowerOrderId_, self)
     
         # Actualizar fichero con nuevas ordenes limite
         self.ordersUpdated_ = True

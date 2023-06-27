@@ -198,6 +198,12 @@ class strategyPentagramaRu(strategyBaseClass):
                 return True
         return False
 
+    def strategyGetIfOrderPermId(self, orderPermId):
+        for zone in self.zones_:
+            if zone['OrderPermId'] == orderPermId or zone['OrderPermIdSL'] == orderPermId or zone['OrderPermIdTP'] == orderPermId:
+                return True
+        return False
+
     def strategyEnableDisable (self, state):
         self.stratEnabled_ = state
         return True # La strategies new tiene que actualizar fichero!!!
@@ -490,11 +496,16 @@ class strategyPentagramaRu(strategyBaseClass):
                 bChanged = True
 
         orderId = data['orderId']
+        
         order = self.RTLocalData_.orderGetByOrderId(orderId) # Nos va a dar su permId que usaremos para los datos guardados
 
         if not order:
             logging.error ('[Estrategia PentagramaRu (%s)] Error leyendo la orderId %s', self.symbol_, str(orderId))
             return bChanged
+
+        # Grabamos que sea de esta estrategia
+        if not order['strategy']:
+            self.RTLocalData_.orderSetStrategy (orderId, self)
 
         if not 'status' in order['params']:
             return bChanged
@@ -585,14 +596,17 @@ class strategyPentagramaRu(strategyBaseClass):
             elif zone['OrderPermId'] == ordenObj.permId and zone['OrderId'] != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
                 logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderId: %s', symbol, ordenObj.orderId)
                 zone['OrderId'] = ordenObj.orderId
+                #self.RTLocalData_.orderSetStrategy (zone['OrderId'], self)
                 bChanged = True
             elif zone['OrderPermIdSL'] == ordenObj.permId and zone['OrderIdSL'] != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
                 logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderIdSL: %s', symbol, ordenObj.orderId)
                 zone['OrderIdSL'] = ordenObj.orderId
+                #self.RTLocalData_.orderSetStrategy (zone['OrderIdSL'], self)
                 bChanged = True
             elif zone['OrderPermIdTP'] == ordenObj.permId and zone['OrderIdTP'] != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
                 logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderIdTP: %s', symbol, ordenObj.orderId)
                 zone['OrderIdTP'] = ordenObj.orderId
+                #self.RTLocalData_.orderSetStrategy (zone['OrderIdTP'], self)
                 bChanged = True
         
         if bChanged:
@@ -634,6 +648,13 @@ class strategyPentagramaRu(strategyBaseClass):
         zone['OrderPermIdTP'] = None
         zone['OrderPermIdSL'] = None
         zone['BracketOrderFilledState'] = None
+        logging.info ('[Estrategia PentagramaRu (%s)]. Estas son las ordenes nuevas', symbol)
+        logging.info ('     Orden Pt: %s', zone['OrderId'])
+        logging.info ('     Orden TP: %s', zone['OrderIdTP'])
+        logging.info ('     Orden SL: %s', zone['OrderIdSL'])
+        #self.RTLocalData_.orderSetStrategy (zone['OrderId'], self)
+        #self.RTLocalData_.orderSetStrategy (zone['OrderIdTP'], self)
+        #self.RTLocalData_.orderSetStrategy (zone['OrderIdSL'], self)
 
         return zone
 
@@ -665,6 +686,8 @@ class strategyPentagramaRu(strategyBaseClass):
 
         zone['OrderIdTP'] = orderIds['tpOrderId']
         zone['OrderIdSL'] = orderIds['slOrderId']
+        #self.RTLocalData_.orderSetStrategy (zone['OrderIdTP'], self)
+        #self.RTLocalData_.orderSetStrategy (zone['OrderIdSL'], self)
 
         return zone
 

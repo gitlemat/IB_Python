@@ -112,13 +112,16 @@ class Strategies():
         order = self.RTLocalData_.orderGetByOrderId(orderId) # Nos va a dar su permId que usaremos para los datos guardados        
         if not order:
             return
+            
+        orderPermId = order['permId']
         gConId = order['contractId'] 
         symbol = self.RTLocalData_.contractSummaryBrief(gConId)
 
         toWrite = {}
 
         for strategy in self.stratList_:
-            if strategy['symbol'] == symbol:  # Podria identificar mirando si la orderId es de esta Strategia, pero puede que lo que coincida sea permdId
+            if strategy['classObject'].strategyGetIfOrderId(orderId) or strategy['classObject'].strategyGetIfOrderPermId(orderPermId):
+            #if strategy['symbol'] == symbol:  # Podria identificar mirando si la orderId es de esta Strategia, pero puede que lo que coincida sea permdId
                 ret = strategy['classObject'].strategyOrderUpdated(data)
                 if ret:
                     toWrite[strategy['type']] = True

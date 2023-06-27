@@ -16,6 +16,10 @@ class strategyBaseClass():
         # To override
         return None
 
+    def strategyGetIfOrderPermId (self, orderPermId = None):
+        # To override
+        return None
+
     def strategyEnableDisable (self, symbol = None, state = None):
         # To override
         return None

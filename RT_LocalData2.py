@@ -1281,7 +1281,7 @@ class DataLocalRT():
 
         orderId = orden['order'].orderId
         #strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
-        logging.debug ('Strategia: %s', strategy)
+        logging.debug ('Strategia: %s', currentSymbolStrategy)
         #if not strategy or 'classObject' not in strategy:
         if not currentSymbolStrategy:
             logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden que tenga estrategia. ExecId: %s', orderId, dataCommission.execId)

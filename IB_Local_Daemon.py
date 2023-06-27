@@ -78,7 +78,7 @@ def webFE_loop(_mode):
         port_ = 5000
     else:
         port_ = 5500
-    webFE.webFENew_App.appDashFE_.run_server(port=port_, debug=False, threaded=True)
+    webFE.webFENew_App.appDashFE_.run_server(port=port_, debug=False, threaded=True, host= '0.0.0.0')
     
 def run_loop(app):
 	app.run()
