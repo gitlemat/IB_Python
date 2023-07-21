@@ -1,7 +1,7 @@
 import logging
 import datetime
 import strategyPentagramaNew
-import strategyPentagramaRuNew
+import strategyPentagramaRuNew2
 
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class Strategies():
 
         self.stratList_ = [] 
         self.stratList_ += strategyPentagramaNew.strategyReadFile(self.RTLocalData_)
-        self.stratList_ += strategyPentagramaRuNew.strategyReadFile(self.RTLocalData_)
+        self.stratList_ += strategyPentagramaRuNew2.strategyReadFile(self.RTLocalData_)
 
         # Hay que asegurarse qe todos los contratos estan en la lista:
         for strategy in self.stratList_: 
@@ -97,7 +97,7 @@ class Strategies():
                 if strategy['type'] == 'PentagramaRu':
                     strategyList.append (strategy)
             
-            strategyPentagramaRuNew.strategyWriteFile(strategyList)
+            strategyPentagramaRuNew2.strategyWriteFile(strategyList)
         if 'Pentagrama' in toWrite and toWrite['Pentagrama'] == True:
             strategyList = []
             for strategy in self.stratList_:
@@ -123,32 +123,40 @@ class Strategies():
 
         for strategy in self.stratList_:
             if strategy['classObject'].strategyGetIfOrderId(orderId) or strategy['classObject'].strategyGetIfOrderPermId(orderPermId):
-                '''
-                if strategy['classObject'].stratEnabled_ == False:   # Es mejor que continue para procesar cosas pendientes. Bloqueamos ordenes nuevas
+                # Es mejor que continue para procesar cosas pendientes. Bloqueamos ordenes nuevas. Lo dejo para acrdarme de porque es mejor aí
+                if strategy['classObject'].stratEnabled_ == False:   
                     pass
+
                 bChanged = False
+
+                # Miramos todos los orderBlocks para ver si hay cambio del orderId o permId
                 if ordenObj != "":
                     for orderBlock in strategy['classObject'].self.orderBlocks_:
                         ret = orderBlock.orderBlockOrderIdUpdated(ordenObj)
                         if ret:
                             bChanged = True
 
+                # Si la orden que acaba de cambiar no está asociada a la strat: se pone
                 if not order['strategy']:
-                    self.RTLocalData_.orderSetStrategy (orderId, self)
+                    self.RTLocalData_.orderSetStrategy (orderId, strategy['classObject'])
 
-                if not 'status' in order['params']:
-                    return bChanged
+                # Comprobamos lo que tiene que hacer el order block de la orden que ha cambiado
+                if 'status' in order['params']:
+                    dataBlock = {}
+                    dataBlock ['orderId'] = orderId
+                    dataBlock ['orderStatus'] = order['params']['status']
+    
+                    for orderBlock in strategy['classObject'].self.orderBlocks_:
+                        ret = orderBlock.orderBlockOrderUpdated(dataBlock)
+                        if ret:
+                            bChanged = True
 
-                dataBlock = {}
-                dataBlock ['orderId'] = orderId
-                dataBlock ['orderStatus'] = order['params']['status']
-
-                for orderBlock in strategy['classObject'].self.orderBlocks_:
-                    orderBlock.orderBlockOrderUpdated(dataBlock)
-
-                '''
+                # Por ultimo, llamamos a las strat por si tiene que hacer algo
                 ret = strategy['classObject'].strategyOrderUpdated(data)
                 if ret:
+                    bChanged = True
+
+                if bChanged:
                     toWrite[strategy['type']] = True
 
         self.strategyWriteFile(toWrite)

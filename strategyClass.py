@@ -56,4 +56,4 @@ class strategyBaseClass():
     def strategyOrderCommission (symbol = None, commissionReport = None):
         #To override
         return None
-
+        
