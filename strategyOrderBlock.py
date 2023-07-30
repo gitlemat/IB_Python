@@ -1,3 +1,8 @@
+import logging
+import datetime
+
+logger = logging.getLogger(__name__)
+
 orderChildErrorStatus = ['Inactive']
 orderChildValidExecStatusParentFilled = ['Filled', 'Submitted', 'Cancelled', 'PreSubmitted', 'PendingCancel', 'ApiCancelled']
 orderChildInvalidExecStatusParentNotFilled = ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
@@ -68,7 +73,7 @@ def bracketOrderParseToFile(bracketOrder):
 
 class bracketOrderClass():
 
-    def __init__(self, data = None, RTlocalData = None):
+    def __init__(self, data , straType, RTlocalData):
         self.symbol_ = None
         self.orderId_ = None
         self.orderIdSL_ = None
@@ -82,8 +87,10 @@ class bracketOrderClass():
         self.Price_ = None
         self.PrecioTP_ = None
         self.PrecioSL_ = None
+        self.strategyType_ = straType
 
         self.RTLocalData_ = RTlocalData
+        self.timelasterror_ = datetime.datetime.now()
 
         if data and 'symbol' in data:
             self.symbol_ = data['symbol']
@@ -112,9 +119,6 @@ class bracketOrderClass():
             self.PrecioTP_ = data['PrecioTP']
         if data and 'PrecioSL' in data:
             self.PrecioSL_ = data['PrecioSL']
-        
-        
-        
 
         # To override
         return None
@@ -134,7 +138,7 @@ class bracketOrderClass():
             return True
         return False
 
-    def strategyGetIfOrderPermId(self, orderPermId):
+    def orderBlockGetIfOrderPermId(self, orderPermId):
         if self.orderPermId_ == orderPermId or self.orderPermIdSL_ == orderPermId or self.orderPermIdTP_ == orderPermId:
             return True
         return False
@@ -189,15 +193,15 @@ class bracketOrderClass():
         # Si no tengo constancia de que se halla comprado la parent, si no existe es error
         if self.BracketOrderFilledState_ == None:
             if self.orderId_ == None:
-                err_msg += "\n[Estrategia PentagramaRu (%s)]. Error en parentId" % self.symbol_
+                err_msg += "\n[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
                 err_msg += "    \nEl parentId es None"
                 bRehacerConError = True
             elif not bParentOrderExists:
-                err_msg += "\n[Estrategia PentagramaRu (%s)]. Error en parentId" % self.symbol_
+                err_msg += "\n[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
                 err_msg += "    \nEl parentId [%s] no existe segun IB" % self.orderId_
                 bRehacerConError = True
             elif bParentOrderStatus in orderInactiveStatus:
-                err_msg += "\n[Estrategia PentagramaRu (%s)]. Error en parentId" % self.symbol_
+                err_msg += "\n[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
                 err_msg += "    \nEl parentId [%s] tiene un estado invalido: %s" % (self.orderId_, bParentOrderStatus)
                 bRehacerConError = True
             # Parent no ejecutada y está perfectamente, y error en child
@@ -299,13 +303,13 @@ class bracketOrderClass():
             self.timelasterror_ = datetime.datetime.now()
             ret = None
             if bRehacerNoError:
-                logging.info ('[Estrategia PentagramaRu (%s)]. Todo ejecutado rehacemos', self.symbol_)
+                logging.info ('[Estrategia %s (%s)]. Todo ejecutado rehacemos', self.strategyType_, self.symbol_)
                 ret = self.orderBlockCreateBracketOrder ()
             elif bRehacerTodo:
-                logging.error ('[Estrategia PentagramaRu (%s)]. Rehacemos todo', self.symbol_)
+                logging.error ('[Estrategia %s (%s)]. Rehacemos todo', self.strategyType_, self.symbol_)
                 ret = self.orderBlockCreateBracketOrder ()
             elif bGenerarOCA:
-                logging.error ('[Estrategia PentagramaRu (%s)]. Rehacemos OCA para childs', self.symbol_)
+                logging.error ('[Estrategia %s (%s)]. Rehacemos OCA para childs', self.strategyType_, self.symbol_)
                 ret = self.orderBlockCreateChildOca ()
             if ret != None:
                 bBracketUpdated = True
@@ -315,6 +319,8 @@ class bracketOrderClass():
     def orderBlockOrderUpdated (self, data):
         #data['orderId']
         #data['orderStatus']
+
+        bChanged = False
 
         orderId = data['orderId']
         orderStatus = data['orderStatus']
@@ -327,16 +333,7 @@ class bracketOrderClass():
             bChanged = True
         if self.orderIdSL_ == orderId and orderStatus == 'Filled':
             self.BracketOrderFilledState_ = 'ParentFilled+F'
-            '''
-            if self.stratEnabled_:
-                logging.info ('###################################################')
-                logging.info ('ALARMA !!!!!!!')
-                logging.info ('Estrategia: PentagramaRu [%s]', self.symbol_)
-                logging.info ('Nos hemos salido por SL. Caquita')
-                logging.info ('Paramos la estrategia porque estamos fuera de rango')
-                self.stratEnabled_ = False
-            '''
-            bChanged = True
+            bChanged = -1 # Es el error de salir por SL
         
         return bChanged
 
@@ -345,27 +342,27 @@ class bracketOrderClass():
         symbol = self.symbol_
 
         if self.orderPermId_ == None and self.orderId_ == ordenObj.orderId:
-            logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada. Nueva OrderPermId: %s', symbol, ordenObj.permId)
+            logging.info ('[Estrategia %s (%s)] Orden actualizada. Nueva OrderPermId: %s', self.strategyType_, symbol, ordenObj.permId)
             self.orderPermId_ = ordenObj.permId
             bChanged = True
         elif self.orderPermIdSL_ == None and self.orderIdSL_ == ordenObj.orderId:
-            logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada. Nueva OrderPermIdSL: %s', symbol, ordenObj.permId)
+            logging.info ('[Estrategia %s (%s)] Orden actualizada. Nueva OrderPermIdSL: %s', self.strategyType_, symbol, ordenObj.permId)
             self.orderPermIdSL_ = ordenObj.permId
             bChanged = True
         elif self.orderPermIdTP_ == None and self.orderIdTP_ == ordenObj.orderId:
-            logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada. Nueva OrderPermIdTP: %s', symbol, ordenObj.permId)
+            logging.info ('[Estrategia %s (%s)] Orden actualizada. Nueva OrderPermIdTP: %s', self.strategyType_, symbol, ordenObj.permId)
             self.orderPermIdTP_ = ordenObj.permId
             bChanged = True
         elif self.orderPermId_ == ordenObj.permId and self.orderId_ != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
-            logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderId: %s', symbol, ordenObj.orderId)
+            logging.info ('[Estrategia %s (%s)] Orden actualizada (o inicializamos). Nueva OrderId: %s', self.strategyType_, symbol, ordenObj.orderId)
             self.orderId_ = ordenObj.orderId
             bChanged = True
         elif self.orderPermIdSL_ == ordenObj.permId and self.orderIdSL_ != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
-            logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderIdSL: %s', symbol, ordenObj.orderId)
+            logging.info ('[Estrategia %s (%s)] Orden actualizada (o inicializamos). Nueva OrderIdSL: %s', self.strategyType_, symbol, ordenObj.orderId)
             self.orderIdSL_ = ordenObj.orderId
             bChanged = True
         elif self.orderPermIdTP_ == ordenObj.permId and self.orderIdTP_ != ordenObj.orderId:  # Esto es por si el orderId cambia (el permId no puede cambiar)
-            logging.info ('[Estrategia PentagramaRu (%s)] Orden actualizada (o inicializamos). Nueva OrderIdTP: %s', symbol, ordenObj.orderId)
+            logging.info ('[Estrategia %s (%s)] Orden actualizada (o inicializamos). Nueva OrderIdTP: %s', self.strategyType_, symbol, ordenObj.orderId)
             self.orderIdTP_ = ordenObj.orderId
             bChanged = True
 
@@ -413,7 +410,7 @@ class bracketOrderClass():
         stopLossPrice = self.PrecioSL_
 
         try:
-            logging.info ('[Estrategia PentagramaRu (%s)]. Vamos a crear la triada de ordenes bracket', symbol)
+            logging.info ('[Estrategia %s (%s)]. Vamos a crear la triada de ordenes bracket', self.strategyType_, symbol)
             logging.info ('     Precio LMT: %.3f', lmtPrice)
             logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
             logging.info ('     Precio SL : %.3f', stopLossPrice)
@@ -440,7 +437,7 @@ class bracketOrderClass():
         self.orderPermIdSL_ = None
         self.orderPermIdTP_ = None
         self.BracketOrderFilledState_ = None
-        logging.info ('[Estrategia PentagramaRu (%s)]. Estas son las ordenes nuevas', symbol)
+        logging.info ('[Estrategia %s (%s)]. Estas son las ordenes nuevas', self.strategyType_, symbol)
         logging.info ('     Orden Pt: %s', self.orderId_)
         logging.info ('     Orden TP: %s', self.orderIdTP_)
         logging.info ('     Orden SL: %s', self.orderIdSL_)
@@ -459,7 +456,7 @@ class bracketOrderClass():
         stopLossPrice = self.PrecioSL_
 
         try:
-            logging.info ('[Estrategia PentagramaRu (%s)]. Vamos a crear las ordenes SL/TP como OCA', symbol)
+            logging.info ('[Estrategia %s (%s)]. Vamos a crear las ordenes SL/TP como OCA', self.strategyType_,  symbol)
             logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
             logging.info ('     Precio SL : %.3f', stopLossPrice)
             orderIds = self.RTLocalData_.orderPlaceOCA (symbol, secType, action1, action2, qty, takeProfitLimitPrice, stopLossPrice)

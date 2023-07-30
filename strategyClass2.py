@@ -29,7 +29,7 @@ class strategyBaseClass():
     
     def strategyGetIfOrderPermId(self, orderPermId):
         for orderBlock in self.orderBlocks_:
-            ret = orderBlock.strategyGetIfOrderPermId(orderPermId)
+            ret = orderBlock.orderBlockGetIfOrderPermId(orderPermId)
             if ret:
                 return True
         return False

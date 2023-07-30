@@ -16,6 +16,8 @@ class Strategies():
 
         self.RTLocalData_.strategies_ = self
 
+        self.stratTypes_ = {'PentagramaRu', 'Pentagrama'}
+
         # Como respuesta de la lectura me llega un dict con esto:
         #  {'symbol': lineSymbol, 'type': 'Pentagrama', 'classObject': classObject}
 
@@ -27,8 +29,6 @@ class Strategies():
         for strategy in self.stratList_: 
             contractN = self.appObj_.contractFUTcreate(strategy['symbol'])
             self.RTLocalData_.contractAdd(contractN)
-
-        self.stratTypes_ = {'PentagramaRu', 'Pentagrama'}
 
     def strategyGetAll (self):
         return self.stratList_
@@ -96,8 +96,8 @@ class Strategies():
             for strategy in self.stratList_:
                 if strategy['type'] == 'PentagramaRu':
                     strategyList.append (strategy)
-            
             strategyPentagramaRuNew2.strategyWriteFile(strategyList)
+            
         if 'Pentagrama' in toWrite and toWrite['Pentagrama'] == True:
             strategyList = []
             for strategy in self.stratList_:
@@ -131,7 +131,7 @@ class Strategies():
 
                 # Miramos todos los orderBlocks para ver si hay cambio del orderId o permId
                 if ordenObj != "":
-                    for orderBlock in strategy['classObject'].self.orderBlocks_:
+                    for orderBlock in strategy['classObject'].orderBlocks_:
                         ret = orderBlock.orderBlockOrderIdUpdated(ordenObj)
                         if ret:
                             bChanged = True
@@ -146,9 +146,20 @@ class Strategies():
                     dataBlock ['orderId'] = orderId
                     dataBlock ['orderStatus'] = order['params']['status']
     
-                    for orderBlock in strategy['classObject'].self.orderBlocks_:
+                    for orderBlock in strategy['classObject'].orderBlocks_:
                         ret = orderBlock.orderBlockOrderUpdated(dataBlock)
-                        if ret:
+                        # ret:
+                        #   True or False por si ha cambiado
+                        #   -1 Indica que hay que parar la estrategia por salida de SL
+                        if ret == -1:
+                            logging.info ('###################################################')
+                            logging.info ('ALARMA !!!!!!!')
+                            logging.info ('Estrategia: %s [%s]', strategy['classObject'].straType_, symbol)
+                            logging.info ('Nos hemos salido por SL. Caquita')
+                            logging.info ('Paramos la estrategia (si no lo esta ya) porque estamos fuera de rango')
+                            strategy['classObject'].stratEnabled_ = False
+                            bChanged = True
+                        elif ret:
                             bChanged = True
 
                 # Por ultimo, llamamos a las strat por si tiene que hacer algo

@@ -137,7 +137,7 @@ class strategyPentagramaRu(strategyBaseClass):
 
         # Da la casualidad que cada zona corresponde a un BracketOrder. Es innecesario mantener zones_, pero por si mas adelante hace falta
         for zoneItem in data['zones']:
-            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.RTLocalData_)
+            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.straType_, self.RTLocalData_)
             zone = {'orderBlock': orderBlock}
             self.zones_.append(zone)
             # En todas las strats tiene que haber una lista con todos los orderBlocks
@@ -147,6 +147,34 @@ class strategyPentagramaRu(strategyBaseClass):
         # Nada fuera de lo normal. Hacemos solo lo standard de la clase base
         super().strategyLoopCheck()
 
+
+    def strategyOrderUpdated (self, data):
+
+        new_pos = self.strategyCalcularPosiciones()
+
+        zero_crossing = False
+
+        if self.currentPos_ != new_pos:
+            if new_pos == 0 or (new_pos * self.currentPos_ < 0):
+                zero_crossing = True
+            if self.cerrarPos_ and zero_crossing:
+                logging.info ('')
+                logging.info ('[Estrategia PentagramaRu (%s)] Hemos pasado por Cero y estrategio disabled por parametro: %s', self.symbol_, str(self.cerrarPos_))
+                self.stratEnabled_ = False
+            self.currentPos_ = new_pos
+            bChanged = True
+
+        return bChanged
+        
+
+    def strategyCalcularPosiciones (self):
+        pos = 0
+        for zone in self.zones_:
+            # Cada zone solo tiene 1 orderBlock:
+            orderBlock = zone['orderBlock']
+            pos += orderBlock.orderBlockPosiciones()
+        return pos
+   
 
     def strategyReloadFromFile(self):
         with open(STRAT_File) as f:
@@ -211,35 +239,6 @@ class strategyPentagramaRu(strategyBaseClass):
         if bFound == False:
             logging.error ('[Estrategia PentagramaRu (%s)] No he encontrado la linea en el fichero que actualiza esta estrategia', self.symbol_)
             return False
-
-
-    def strategyOrderUpdated (self, data):
-
-        new_pos = self.strategyCalcularPosiciones()
-
-        zero_crossing = False
-
-        if self.currentPos_ != new_pos:
-            if new_pos == 0 or (new_pos * self.currentPos_ < 0):
-                zero_crossing = True
-            if self.cerrarPos_ and zero_crossing:
-                logging.info ('')
-                logging.info ('[Estrategia PentagramaRu (%s)] Hemos pasado por Cero y estrategio disabled por parametro: %s', self.symbol_, str(self.cerrarPos_))
-                self.stratEnabled_ = False
-            self.currentPos_ = new_pos
-            bChanged = True
-
-        return bChanged
-        
-
-    def strategyCalcularPosiciones (self):
-        pos = 0
-        for zone in self.zones_:
-            # Cada zone solo tiene 1 orderBlock:
-            orderBlock = zone['orderBlock']
-            pos += orderBlock.orderBlockPosiciones()
-        return pos
-   
 
     
 
