@@ -34,16 +34,29 @@ class InfluxClient:
         self._mode = os.getenv('MODE')
         self._org = 'rodsic.com'
         if self._mode == 'Lab':
+            self._bucket_prices = 'ib_prices'
+            self._bucket_ohcl = 'ib_prices_1h'
+            self._bucket_pnl = 'ib_data_lab'
+            self._bucket_execs = 'ib_data_lab'
+
+            '''
             self._bucket_prices = 'ib_prices_lab'
             self._bucket_ohcl = 'ib_prices_1h_lab'
             self._bucket_pnl = 'ib_prices_lab'
             self._bucket_execs = 'ib_prices_lab'
+            '''
 
         else:
-            self._bucket_prices = 'ib_prices_lab' #Utilizo lab para tener todos. Asi están juntos
-            self._bucket_ohcl = 'ib_prices_1h_lab'
+            self._bucket_prices = 'ib_prices' 
+            self._bucket_ohcl = 'ib_prices_1h'
+            self._bucket_pnl = 'ib_data_prod'
+            self._bucket_execs = 'ib_data_prod'
+            '''
+            self._bucket_prices = 'ib_prices_prod' #Utilizo lab para tener todos. Asi están juntos
+            self._bucket_ohcl = 'ib_prices_1h_prod'
             self._bucket_pnl = 'ib_prices_prod'
             self._bucket_execs = 'ib_prices_prod'
+            '''
         self._client = InfluxDBClient(url="http://localhost:8086", token=token)
         
 

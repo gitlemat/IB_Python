@@ -37,12 +37,11 @@ def layout_strategies_tab():
             ),
             dbc.Row(
                 [
-                    dbc.Col(html.Div("Symbol"), className = 'bg-primary mr-1', width = 4),
+                    dbc.Col(html.Div("Symbol"), className = 'bg-primary mr-1', width = 3),
                     dbc.Col(html.Div("Pos"), className = 'bg-primary mr-1', width = 1),
-                    dbc.Col(html.Div("dailyPnL"), className = 'bg-primary mr-1', width = 1),
-                    dbc.Col(html.Div("realizedPnL"), className = 'bg-primary mr-1', width = 1),
-                    dbc.Col(html.Div("unrealizedPnL"), className = 'bg-primary mr-1', width = 1),
-                    dbc.Col(html.Div("Exec (Hoy/Total)"), className = 'bg-primary', width = 3),
+                    dbc.Col(html.Div("Buy/Sell/Last"), className = 'bg-primary mr-1', width = 2),
+                    dbc.Col(html.Div("PnL (daily/real/unreal)"), className = 'bg-primary mr-1', width = 3),
+                    dbc.Col(html.Div("Exec (Hoy/Total)"), className = 'bg-primary', width = 2),
                     dbc.Col(html.Div("Enabled"), className = 'bg-primary', width = 1),
                 ], className = 'mb-3 text-white'
                 ),
@@ -150,13 +149,22 @@ def layout_getStrategyHeader (estrategia, update = False):
         return no_update
     
     if update == True:
-        if contrato['dbPandas'].toPrintPnL == False and estrategia['classObject'].pandas_.toPrint == False:
+        # contrato['dbPandas'].toPrint Es el precio del contrato
+        # contrato['dbPandas'].toPrintPnL Es el PnL del contrato
+        # estrategia['classObject'].pandas_.toPrint Es el numero de Execs
+        if contrato['dbPandas'].toPrint == False and contrato['dbPandas'].toPrintPnL == False and estrategia['classObject'].pandas_.toPrint == False:
             logging.debug ('Header estrategia no actualizado. No hay datos nuevos')
             return no_update
 
     dailyPnL = ''
     realizedPnL = ''
     unrealizedPnL = ''
+    totalPnl = ''
+    priceBuy = ''
+    priceSell = ''
+    priceLast = ''
+    priceTotal = ''
+
     if contrato != None:
         lastPnL = contrato['dbPandas'].dbGetLastPnL()
         if lastPnL['dailyPnL'] != None:
@@ -165,30 +173,36 @@ def layout_getStrategyHeader (estrategia, update = False):
             realizedPnL = formatCurrency(lastPnL['realizedPnL'])
         if lastPnL['unrealizedPnL'] != None:
             unrealizedPnL = formatCurrency(lastPnL['unrealizedPnL'])
+        totalPnl = dailyPnL + '/' + realizedPnL + '/' + unrealizedPnL
+        
+        priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
+        priceSell = formatCurrency(contrato['currentPrices']['SELL'])
+        priceLast = formatCurrency(contrato['currentPrices']['LAST'])
+        priceTotal = priceBuy + '/' + priceSell + '/' + priceLast
 
     execToday = 'Na'
     execTotal = 'Na'
-    if strategyType == 'Pentagrama':
-        execToday = estrategia['classObject'].pandas_.dbGetExecCountToday()
-        execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
-        estrategia['classObject'].pandas_.toPrint = False
+    #if strategyType == 'Pentagrama':
+    execToday = estrategia['classObject'].pandas_.dbGetExecCountToday()
+    execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
+    estrategia['classObject'].pandas_.toPrint = False
     execString = str(execToday) + '/' + str(execTotal)
 
     # Cabecera para cada contrato con estrategia
     
     headerRow = dbc.Row(
         [
-            dbc.Col(dbc.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), className = 'bg-primary mr-1', width = 4),
+            dbc.Col(dbc.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), className = 'bg-primary mr-1', width = 3),
             dbc.Col(html.Div(posQty), className = 'bg-primary mr-1', width = 1),
-            dbc.Col(html.Div(dailyPnL), className = 'bg-primary mr-1', width = 1),
-            dbc.Col(html.Div(realizedPnL), className = 'bg-primary mr-1', width = 1),
-            dbc.Col(html.Div(unrealizedPnL), className = 'bg-primary mr-1', width = 1),
-            dbc.Col(html.Div(execString), className = 'bg-primary mr-1', width = 3),
+            dbc.Col(html.Div(priceTotal), className = 'bg-primary mr-1', width = 2),
+            dbc.Col(html.Div(totalPnl), className = 'bg-primary mr-1', width = 3),
+            dbc.Col(html.Div(execString), className = 'bg-primary mr-1', width = 2),
             dbc.Col(dbc.Switch(id={'role': 'switchStratEnabled', 'strategy':strategyType, 'symbol': symbol}, value = stratEnabled), className = 'bg-primary mr-1', width = 1),
         ], className = 'text-white mb-1'
     )
     
     contrato['dbPandas'].toPrintPnL = False
+    contrato['dbPandas'].toPrint = False
     
     return headerRow
 

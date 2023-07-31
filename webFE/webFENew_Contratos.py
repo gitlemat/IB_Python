@@ -395,7 +395,7 @@ def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderT
                 result = globales.G_RTlocalData_.orderPlaceBrief (s_symbol, secType, s_action, s_orderType, n_LmtPrice, n_qty)
                 result = True
             except:
-                pass
+                logging.error ("Exception occurred", exc_info=True)
 
             return contractText, False
         else:
@@ -424,7 +424,7 @@ def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderT
     Input({'role': 'contratosInputWatchList'}, "value"),
     prevent_initial_call = True,
 )
-def actualizarContractWL(n_button, textWL):
+def guardarContractWL(n_button, textWL):
         # Esto es por si las moscas
     if not ctx.triggered_id or n_button == None:
         raise PreventUpdate
@@ -447,7 +447,7 @@ def actualizarContractWL(n_button, textWL):
     Input({'role': 'ContractWLButtonReload'}, "n_clicks"),
     prevent_initial_call = True,
 )
-def guardarContractWL(n_button):
+def reloadContractWL(n_button):
         # Esto es por si las moscas
     if not ctx.triggered_id or n_button == None:
         raise PreventUpdate

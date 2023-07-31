@@ -102,6 +102,9 @@ class IBI_App(EWrapper, EClient):
             self.initPositions_ = False
             self.initAccount_ = False
             self.initReady_ = False
+        elif errorCode == 10197:
+            queueEntry = {'type':'error', 'data': errorCode}
+            self.CallbacksQueue_.put(queueEntry)
         else:
             errormessage = "[%d] %s" % (errorCode, errorString)
 

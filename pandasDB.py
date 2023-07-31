@@ -42,7 +42,6 @@ class dbPandasStrategy():
         self.influxIC_ = influxIC
         self.strategyType = strategyType
         self.toPrint = True
-        self.toPrintPnL = True
         
         self.dbReadInflux()
 
@@ -167,14 +166,21 @@ class dbPandasContrato():
         self.toPrint = True
         self.toPrintPnL = True
 
-        self.dbReadInflux()
-
-    def dbReadInflux(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes')
         
         self.df_ = self.influxIC_.influxGetTodayDataFrame (self.symbol_)        
         self.dfcomp_ = self.influxIC_.influxGetOchlDataFrame (self.symbol_)
         self.dfPnl_ = self.influxIC_.influxGetPnLDataFrame (self.symbol_)
+
+    def dbReadInfluxPrices(self):
+        logging.debug  ('Leemos de influx y cargamos los dataframes por si estoy en competing')
+        
+        self.df_ = self.influxIC_.influxGetTodayDataFrame (self.symbol_)        
+
+    def dbReadInfluxPricesComp(self):
+        logging.debug  ('Leemos de influx y cargamos los dataframes de comp')
+        
+        self.dfcomp_ = self.influxIC_.influxGetOchlDataFrame (self.symbol_)
 
     def dbGetDataframeToday(self):
         #otime = self.df_.index[0]

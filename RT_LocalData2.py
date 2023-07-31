@@ -64,6 +64,30 @@ class DataLocalRT():
 
         self.contractInconplete_ = False
 
+        self.dataFeed = True
+
+
+    ########################################
+    # Data feed
+
+    # Si es false quiere decir que no recibo datos
+    # Tendría que cargar de db
+
+    def dataFeedSetState (self, state):
+        if state == False or state == True:
+            self.dataFeed = state
+        else:
+            return
+
+        if state == False:
+            logging.error ("")
+            logging.error ("Estamos en conflicto con la sesion LIVE")
+            logging.error ("")
+
+    def dataFeedGetState (self):
+        return self.dataFeed
+    
+
     ########################################
     # Executions
 
@@ -342,13 +366,11 @@ class DataLocalRT():
         contrato['currentPrices']['BUY_SIZE'] = None
         contrato['currentPrices']['SELL_SIZE'] = None
         contrato['currentPrices']['LAST_SIZE'] = None
-        contrato['currentPrices']['updated'] = False # Para saber si hay que actualizar alguna presentacion de precios (web)
         contrato['pnl'] = {}
         contrato['pnl']['dailyPnL'] = None
         contrato['pnl']['unrealizedPnL'] = None
         contrato['pnl']['realizedPnL'] = None
         contrato['pnl']['value'] = None
-        contrato['pnl']['updated'] = None
         contrato['hasContractSymbols'] = False
         contrato['semaforoYfinance'] = False
 
@@ -438,6 +460,8 @@ class DataLocalRT():
         with open('strategies/ContractsWatchList.conf', 'w') as f:
             for line in contractList:
                 f.writelines(line + '\n')
+                contractN = self.appObj_.contractFUTcreate(line.rstrip())
+                self.contractAdd(contractN)
 
     def contractReturnFixedWatchlist (self):
         contractList = []
@@ -487,6 +511,11 @@ class DataLocalRT():
             contrato['currentPrices']['BUY_SIZE'] = lastPrices['ASK_SIZE']
             contrato['currentPrices']['SELL_SIZE'] = lastPrices['BID_SIZE']
             contrato['currentPrices']['LAST_SIZE'] = lastPrices['LAST_SIZE']
+            lastPnL = contrato['dbPandas'].dbGetLastPnL()
+            logging.info ('    dailyPnL: %s', lastPnL['dailyPnL'])
+            contrato['pnl']['dailyPnL'] = lastPnL['dailyPnL']
+            contrato['pnl']['unrealizedPnL'] = lastPnL['unrealizedPnL']
+            contrato['pnl']['realizedPnL'] = lastPnL['realizedPnL']
 
 
     def contractUpdateTicks(self, reqId):
@@ -581,32 +610,26 @@ class DataLocalRT():
                     data_args = {}
                     if contrato['currentPrices']['BUY'] != price2buy and size2buy > 0:
                         contrato['currentPrices']['BUY'] = price2buy
-                        contrato['currentPrices']['updated'] = True
                         data_args['ASK'] = price2buy
                         bUpdated = True
                     if contrato['currentPrices']['SELL'] != price2sell and size2sell > 0:
                         contrato['currentPrices']['SELL'] = price2sell
-                        contrato['currentPrices']['updated'] = True
                         data_args['BID'] = price2sell
                         bUpdated = True
                     if contrato['currentPrices']['LAST'] != price2last and size2last > 0:
                         contrato['currentPrices']['LAST'] = price2last
-                        contrato['currentPrices']['updated'] = True
                         data_args['LAST'] = price2last
                         bUpdated = True
                     if contrato['currentPrices']['BUY_SIZE'] != size2buy and size2buy > 0:
                         contrato['currentPrices']['BUY_SIZE'] = size2buy
-                        contrato['currentPrices']['updated'] = True
                         data_args['ASK_SIZE'] = size2buy
                         bUpdated = True
                     if contrato['currentPrices']['SELL_SIZE'] != size2sell and size2sell > 0:
                         contrato['currentPrices']['SELL_SIZE'] = size2sell
-                        contrato['currentPrices']['updated'] = True
                         data_args['BID_SIZE'] = size2sell
                         bUpdated = True
                     if contrato['currentPrices']['LAST_SIZE'] != size2last and size2last > 0:
                         contrato['currentPrices']['LAST_SIZE'] = size2last
-                        contrato['currentPrices']['updated'] = True
                         data_args['LAST_SIZE'] = size2last
                         bUpdated = True
 
@@ -670,19 +693,15 @@ class DataLocalRT():
                     bUpdated = False
                     if contrato['pnl']['dailyPnL'] != dailyPnL and dailyPnL != None:
                         contrato['pnl']['dailyPnL'] = dailyPnL
-                        contrato['pnl']['updated'] = True
                         bUpdated = True
                     if contrato['pnl']['realizedPnL'] != realizedPnL and realizedPnL != None:
                         contrato['pnl']['realizedPnL'] = realizedPnL
-                        contrato['pnl']['updated'] = True
                         bUpdated = True
                     if contrato['pnl']['unrealizedPnL'] != unrealizedPnL and unrealizedPnL != None:
                         contrato['pnl']['unrealizedPnL'] = unrealizedPnL
-                        contrato['pnl']['updated'] = True
                         bUpdated = True
                     if contrato['pnl']['value'] != value and value != None:
                         contrato['pnl']['value'] = value
-                        contrato['pnl']['updated'] = True
                         bUpdated = True
 
                     # Se actualiza la DB para el contrato['gConId'] con estos datos:
@@ -847,6 +866,13 @@ class DataLocalRT():
 
         contrato['dbPandas'].dbUpdateInfluxCompPrices()
 
+    def contractReloadCompPrices (self):
+        for gConId, contrato in self.contractDict_.items():
+            contrato['dbPandas'].dbReadInfluxPricesComp()
+
+    def contractReloadPrices (self):
+        for gConId, contrato in self.contractDict_.items():
+            contrato['dbPandas'].dbReadInfluxPrices()
 
     def contractSummaryAllFull (self):
         summaryStr = ''

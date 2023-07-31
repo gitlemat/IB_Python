@@ -46,6 +46,15 @@ def SetupLogger():
     # logging.basicConfig( level=logging.DEBUG,
     #                    format=recfmt, datefmt=timefmt)
     filenameToday = "log/ibapi_sic.%y%m%d.log"
+    path = 'log/'
+    pathOld = 'log/old/'
+    for i in sorted(os.listdir(path), reverse=True):
+        filename = os.path.join(path,i)
+        if os.path.isfile(filename) and i.startswith('ibapi_sic'):
+            if filename != filenameToday:
+                filename_mv = os.path.join(pathOld,i)
+                os.rename(filename, filename_mv)
+
     logging.basicConfig(filename=time.strftime(filenameToday),
                         filemode="a",
                         level=logging.INFO,
@@ -251,10 +260,12 @@ def main():
     
     ###########################################
     # Loop Principal
-    last_refresh_FE_time = datetime.datetime.now()
+    last_refresh_DB_time = datetime.datetime.now()
+    last_refresh_DBcomp_time = datetime.datetime.now()
     try:
         while True:
             time.sleep(loop_timer)
+            ahora = datetime.datetime.now()
             if app.initConnected_== False:
                 app.initReady_ = False
                 continue
@@ -305,8 +316,18 @@ def main():
                     globales.G_RTlocalData_.positionUpdate (callbackItem['data'])
                 if callbackItem['type'] == 'account':
                     globales.G_RTlocalData_.accountTagUpdate(callbackItem['data'])
+                if callbackItem['type'] == 'error':
+                    if callbackItem['data'] == 10197:
+                        globales.G_RTlocalData_.dataFeedSetState(False)
 
+            if (ahora - last_refresh_DBcomp_time > datetime.timedelta(minutes=15)):
+                last_refresh_DBcomp_time = ahora
+                globales.G_RTlocalData_.contractReloadCompPrices()
 
+            if (ahora - last_refresh_DB_time > datetime.timedelta(minutes=5)):
+                last_refresh_DB_time = ahora
+                if globales.G_RTlocalData_.dataFeedGetState()
+                    globales.G_RTlocalData_.contractReloadCompPrices()
 
     except KeyboardInterrupt:
         pass

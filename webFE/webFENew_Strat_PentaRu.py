@@ -131,7 +131,8 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
 
     # Valores de LAST
     fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["BID"], mode="lines", line_color="blue", connectgaps = True))
-    fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["ASK"], mode="lines", line_color="crimson", connectgaps = True))
+    fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["ASK"], mode="lines", line_color="green", connectgaps = True))
+    fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["LAST"], mode="lines", line_color="crimson", connectgaps = True))
     
     # Y las zonas
     ifig2 = addZonesLinesTodayRu (fig2, estrategia, dfToday)
