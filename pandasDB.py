@@ -31,6 +31,132 @@ plt.rcParams.update({'font.size': 10, 'figure.figsize': (10, 8)})
 df.plot(kind='scatter', x='timestamp', y='ASK', title='Titulo')
 plt.show()
 '''
+
+class dbPandasAccount():
+    #AccountType: INDIVIDUAL
+    #accountId: DU5853276
+    #Cushion: 0.99606
+    #LookAheadNextChange: 1690825800
+    #AccruedCash: 5173.46
+    #AvailableFunds: 1944731.12
+    #BuyingPower: 12964874.14
+    #EquityWithLoanValue: 1954356.26
+    #ExcessLiquidity: 1946747.00
+    #FullAvailableFunds: 1944731.12
+    #FullExcessLiquidity: 1946747.00
+    #FullInitMarginReq: 9625.14
+    #FullMaintMarginReq: 7700.11
+    #GrossPositionValue: 0.00
+    #InitMarginReq: 9625.14
+    #LookAheadAvailableFunds: 1944731.12
+    #LookAheadExcessLiquidity: 1946747.00
+    #LookAheadInitMarginReq: 9625.14
+    #LookAheadMaintMarginReq: 7700.11
+    #MaintMarginReq: 7700.11
+    #NetLiquidation: 1954447.11
+    #TotalCashValue: 1949273.65
+
+    def __init__(self, accountId, influxIC):
+        
+        self.dfAccountEvo_ = None
+        self.influxIC_ = influxIC
+        self.accountId_ = accountId
+        self.last_refresh_db_ = datetime.datetime.now()
+        self.toPrint = True
+
+        self.dbReadInflux()
+        
+    def dbReadInflux(self):
+        logging.debug  ('Leemos de influx y cargamos los dataframes')
+        self.dfAccountEvo_ = self.influxIC_.influxGetAccountDataFrame (self.accountId_)
+        if len (self.dfAccountEvo_) > 0:
+            self.last_refresh_db_ = self.dfAccountEvo_.iloc[-1]['timestamp']
+        else:
+            self.last_refresh_db_ = datetime.datetime.now() - timedelta(hours=48) # Por poner algo
+
+    def dbUpdateAddAccountData (self, data):
+        
+        keys_account = [
+            'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
+            'AvailableFunds', 'BuyingPower', 'EquityWithLoanValue', 'ExcessLiquidity', 'FullAvailableFunds',
+            'FullExcessLiquidity','FullInitMarginReq','FullMaintMarginReq','GrossPositionValue','InitMarginReq',
+            'LookAheadAvailableFunds','LookAheadExcessLiquidity','LookAheadInitMarginReq','LookAheadMaintMarginReq',
+            'MaintMarginReq','NetLiquidation','TotalCashValue'
+        ]
+        logging.debug ('Actulizamos Account Data %s: %s', self.accountId_, data)
+
+        try:
+            lastone = self.dfAccountEvo_.iloc[-1].to_dict()
+        except:     # self.dfAccountEvo_ es vacio. Se deja como incompleto para qie no escriba
+            different = True
+            for key in keys_account: # Todos los valores que no traiga, los pongo a None
+                if key not in data:
+                    data[key] = None
+        else:
+            different = False
+            logging.debug ('Comparo con %s', lastone)
+            for key in keys_account:  
+                if key not in data:
+                    if key in lastone: # Todos los valores que no tenga, los pillo de lastone, y si no None
+                        data[key] = lastone[key]
+                    else:
+                        data[key] = None
+                if key in lastone and (lastone[key] != data[key]):
+                    different = True
+                elif key not in lastone and data[key] != None:
+                    different = True
+
+        timestamp = datetime.datetime.now()
+        timestamp = utils.date2local (timestamp)
+        data['timestamp'] = timestamp
+
+        newlineL = []
+        newlineL.append (data)
+
+        if different and (timestamp - self.last_refresh_db_ > datetime.timedelta(hours=24)):
+            self.dbUpdateInfluxAccountData (data)
+            dfDelta = pd.DataFrame.from_records(newlineL)
+            dfDelta.set_index('timestamp', inplace=True)
+            #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
+            self.dfAccountEvo_ = pd.concat([self.dfAccountEvo_, dfDelta]) #, ignore_index=True
+            self.toPrint = True
+
+    def dbUpdateInfluxAccountData (self, data):
+        keys_account = [
+            'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
+            'AvailableFunds', 'BuyingPower', 'EquityWithLoanValue', 'ExcessLiquidity', 'FullAvailableFunds',
+            'FullExcessLiquidity','FullInitMarginReq','FullMaintMarginReq','GrossPositionValue','InitMarginReq',
+            'LookAheadAvailableFunds','LookAheadExcessLiquidity','LookAheadInitMarginReq','LookAheadMaintMarginReq',
+            'MaintMarginReq','NetLiquidation','TotalCashValue'
+        ]
+        
+        records = []
+        record = {}
+        tags = {'accountId': self.accountId_}
+        time = data['timestamp']
+        time = utils.date2UTC (time)
+        
+        fields_influx = {}
+
+        for key in keys_account:
+            if key in data:
+                if data[key] != None and data[key] != UNSET_DOUBLE:
+                    fields_influx[key] = data[key]
+
+
+        record = {
+            "measurement": "account", 
+            "tags": tags,
+            "fields": fields_influx,
+            "time": time,
+        }
+
+        records.append(record)
+
+        if len(fields_influx) > 0:
+            self.influxIC_.write_data(records, 'executions')
+    
+
 class dbPandasStrategy():
 
     def __init__(self, symbol, strategyType, influxIC):

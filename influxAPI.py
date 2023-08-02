@@ -38,6 +38,7 @@ class InfluxClient:
             self._bucket_ohcl = 'ib_prices_1h'
             self._bucket_pnl = 'ib_data_lab'
             self._bucket_execs = 'ib_data_lab'
+            self._bucket_account = 'ib_data_lab'
 
             '''
             self._bucket_prices = 'ib_prices_lab'
@@ -51,6 +52,7 @@ class InfluxClient:
             self._bucket_ohcl = 'ib_prices_1h'
             self._bucket_pnl = 'ib_data_prod'
             self._bucket_execs = 'ib_data_prod'
+            self._bucket_account = 'ib_data_prod'
             '''
             self._bucket_prices = 'ib_prices_prod' #Utilizo lab para tener todos. Asi están juntos
             self._bucket_ohcl = 'ib_prices_1h_prod'
@@ -189,7 +191,7 @@ class InfluxClient:
         return result
 
     def influxGetOchlDataFrame (self, symbol):
-        logging.info('Leyendo precios OCHL de Influx para: %s', symbol)
+        logging.debug('Leyendo precios OCHL de Influx para: %s', symbol)
         todayStart = datetime.datetime.today() - datetime.timedelta(days=180)
         todayStop = datetime.datetime.today()
         todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)
@@ -361,6 +363,52 @@ class InfluxClient:
         logging.debug('%s', result)
 
         return result
+
+    def influxGetAccountDataFrame (self, accountId):
+        logging.info('Leyendo Account Data de Influx para: %s', accountId)
+
+        keys_account = [
+            'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
+            'AvailableFunds', 'BuyingPower', 'EquityWithLoanValue', 'ExcessLiquidity', 'FullAvailableFunds',
+            'FullExcessLiquidity','FullInitMarginReq','FullMaintMarginReq','GrossPositionValue','InitMarginReq',
+            'LookAheadAvailableFunds','LookAheadExcessLiquidity','LookAheadInitMarginReq','LookAheadMaintMarginReq',
+            'MaintMarginReq','NetLiquidation','TotalCashValue'
+        ]
+
+        param = {"_bucket": self._bucket_account, "_accountId": accountId, "_desc": False}
+
+        query = '''
+        from(bucket: _bucket)
+        |> range(start: 0)
+        |> filter(fn: (r) => r["_measurement"] == "account")
+        |> filter(fn: (r) => r["accountId"] == _accountId)
+        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> drop(columns: ["_measurement", "_start", "_stop"])
+        |> sort(columns: ["_time"], desc: _desc)
+        '''
+
+        result = self.query_data_frame(query, param)
+
+        if len(result) == 0:
+            df_temp = pd.DataFrame(columns = keys_account)
+            df_temp.set_index('timestamp', inplace=True)
+            return df_temp
+    
+        result.rename(columns = {'_time':'timestamp'}, inplace = True)
+        result.drop(columns=['result','table'], inplace=True)
+        result.set_index('timestamp', inplace=True)
+
+        try:
+            result.index = result.index.tz_convert('Europe/Madrid')
+        except:
+            result.index = result.index.tz_localize(None)
+            result.index = result.index.tz_localize('Europe/Madrid')
+        #result.index = result.index + pd.DateOffset(hours=1)
+
+        logging.debug('%s', result)
+
+        return result
+    
 
     def query_data_frame(self,query, param):
 

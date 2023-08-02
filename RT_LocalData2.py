@@ -55,6 +55,7 @@ class DataLocalRT():
         self.influxIC_ = influxAPI.InfluxClient()
 
         self.accountData_ = {}
+        self.accountPandas_ = pandasDB.dbPandasAccount (self.symbol_, 'PentagramaRu', self.RTLocalData_.influxIC_) 
         self.orderList_ = []  # includes orders and contracts (hay que sacar los contracts a puntero externo, y los usan las posiciones)
         #self.contractList_ = []  # Directamente lista de contracts
         self.contractDict_ = {}  # Directamente dict de contracts
@@ -111,10 +112,15 @@ class DataLocalRT():
 
     def accountTagUpdate (self, data):
 
+        if self.accountPandas_ == None and 'accountId' in self.accountData_: 
+            self.accountPandas_ = pandasDB.dbPandasAccount (self.symbol_, self.accountData_['accountId']) 
+
         reqId = data['reqId']
         if 'end' in data:
             logging.info ("Ya tengo la account info:\n%s", self.accountSummary())
+            self.accountPandas_.dbUpdateAddAccountData (self.accountData_['accountId'], self.accountData_)
             return # no hay nada mas. Ha terminado y punto (mirar IB_API_Client)
+            
         account = data['account']
         tag = data['tag']
         value = data['value']

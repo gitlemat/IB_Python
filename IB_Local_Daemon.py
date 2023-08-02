@@ -326,8 +326,8 @@ def main():
 
             if (ahora - last_refresh_DB_time > datetime.timedelta(minutes=5)):
                 last_refresh_DB_time = ahora
-                if globales.G_RTlocalData_.dataFeedGetState()
-                    globales.G_RTlocalData_.contractReloadCompPrices()
+                if globales.G_RTlocalData_.dataFeedGetState() == False:
+                    globales.G_RTlocalData_.contractReloadPrices()
 
     except KeyboardInterrupt:
         pass

@@ -34,7 +34,7 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2):
     # El boton de recarga
 
     insideDetailsBotonesZonas = []
-    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0)))
+    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar desde Fichero", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0)))
 
 
     # Todo lo que se oculta junto
