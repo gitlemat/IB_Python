@@ -127,17 +127,19 @@ class strategyPentagramaRu(strategyBaseClass):
         #   self.stratEnabled_ = data['stratEnabled']
         #   self.cerrarPos_ = data['cerrarPos']
         #   self.currentPos_ = data['currentPos']
-        #   self.ordersUpdated_ = data['ordersUpdated']
-        #   self.pandas_ = pandasDB.dbPandasStrategy (self.symbol_, 'PentagramaRu', self.RTLocalData_.influxIC_)  
+        #   self.ordersUpdated_ = data['ordersUpdated']  
         #   self.orderBlocks_ = []
         #   self.timelasterror_ = datetime.datetime.now()
 
         self.straType_ = 'PentagramaRu'
+        self.pandas_ = pandasDB.dbPandasStrategy (self.symbol_, 'PentagramaRu', self.RTLocalData_.influxIC_)
         self.zones_ = [] # En realidad es innecesario. Podemos considerar zone=orderBlock
 
         # Da la casualidad que cada zona corresponde a un BracketOrder. Es innecesario mantener zones_, pero por si mas adelante hace falta
         for zoneItem in data['zones']:
-            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.straType_, self.RTLocalData_)
+            logging.debug('Zone Nueva:')
+            logging.debug('\n%s', zoneItem)
+            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.symbol_, self.straType_, self.RTLocalData_)
             zone = {'orderBlock': orderBlock}
             self.zones_.append(zone)
             # En todas las strats tiene que haber una lista con todos los orderBlocks
@@ -153,6 +155,7 @@ class strategyPentagramaRu(strategyBaseClass):
         new_pos = self.strategyCalcularPosiciones()
 
         zero_crossing = False
+        bChanged = False
 
         if self.currentPos_ != new_pos:
             if new_pos == 0 or (new_pos * self.currentPos_ < 0):

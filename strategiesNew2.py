@@ -1,11 +1,9 @@
 import logging
 import datetime
-import strategyPentagramaNew
 import strategyPentagramaRuNew2
 
 
 logger = logging.getLogger(__name__)
-Error_orders_timer_dt = datetime.timedelta(seconds=90)
 
 class Strategies():
 
@@ -22,7 +20,7 @@ class Strategies():
         #  {'symbol': lineSymbol, 'type': 'Pentagrama', 'classObject': classObject}
 
         self.stratList_ = [] 
-        self.stratList_ += strategyPentagramaNew.strategyReadFile(self.RTLocalData_)
+        #self.stratList_ += strategyPentagramaNew.strategyReadFile(self.RTLocalData_)
         self.stratList_ += strategyPentagramaRuNew2.strategyReadFile(self.RTLocalData_)
 
         # Hay que asegurarse qe todos los contratos estan en la lista:
@@ -97,13 +95,6 @@ class Strategies():
                 if strategy['type'] == 'PentagramaRu':
                     strategyList.append (strategy)
             strategyPentagramaRuNew2.strategyWriteFile(strategyList)
-            
-        if 'Pentagrama' in toWrite and toWrite['Pentagrama'] == True:
-            strategyList = []
-            for strategy in self.stratList_:
-                if strategy['type'] == 'Pentagrama':
-                    strategyList.append (strategy)
-            strategyPentagramaNew.strategyWriteFile(strategyList)
     
     # Para cuando haya que actualizar las ordenes (de orderId a PermId)
     def strategyIndexOrderUpdate (self, data):

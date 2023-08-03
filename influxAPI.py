@@ -368,7 +368,7 @@ class InfluxClient:
         logging.info('Leyendo Account Data de Influx para: %s', accountId)
 
         keys_account = [
-            'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
+            'timestamp', 'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
             'AvailableFunds', 'BuyingPower', 'EquityWithLoanValue', 'ExcessLiquidity', 'FullAvailableFunds',
             'FullExcessLiquidity','FullInitMarginReq','FullMaintMarginReq','GrossPositionValue','InitMarginReq',
             'LookAheadAvailableFunds','LookAheadExcessLiquidity','LookAheadInitMarginReq','LookAheadMaintMarginReq',
@@ -382,6 +382,7 @@ class InfluxClient:
         |> range(start: 0)
         |> filter(fn: (r) => r["_measurement"] == "account")
         |> filter(fn: (r) => r["accountId"] == _accountId)
+        |> drop(columns: ["accountId"])
         |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
         |> drop(columns: ["_measurement", "_start", "_stop"])
         |> sort(columns: ["_time"], desc: _desc)

@@ -57,11 +57,14 @@ class dbPandasAccount():
     #TotalCashValue: 1949273.65
 
     def __init__(self, accountId, influxIC):
+
+        timestamp = datetime.datetime.now()
+        timestamp = utils.date2local (timestamp)
         
         self.dfAccountEvo_ = None
         self.influxIC_ = influxIC
         self.accountId_ = accountId
-        self.last_refresh_db_ = datetime.datetime.now()
+        self.last_refresh_db_ = timestamp
         self.toPrint = True
 
         self.dbReadInflux()
@@ -70,9 +73,14 @@ class dbPandasAccount():
         logging.debug  ('Leemos de influx y cargamos los dataframes')
         self.dfAccountEvo_ = self.influxIC_.influxGetAccountDataFrame (self.accountId_)
         if len (self.dfAccountEvo_) > 0:
-            self.last_refresh_db_ = self.dfAccountEvo_.iloc[-1]['timestamp']
+            logging.info ('Este es el Account DF:')
+            logging.info ('%s', self.dfAccountEvo_)
+            logging.info ('%s', self.dfAccountEvo_.index[-1])
+            self.last_refresh_db_ = self.dfAccountEvo_.index[-1]
         else:
-            self.last_refresh_db_ = datetime.datetime.now() - timedelta(hours=48) # Por poner algo
+            timestamp = datetime.datetime.now()
+            timestamp = utils.date2local (timestamp)
+            self.last_refresh_db_ = timestamp - datetime.timedelta(hours=48) # Por poner algo
 
     def dbUpdateAddAccountData (self, data):
         

@@ -97,7 +97,8 @@ def layout_getFigureHistoricoPenRu (estrategia):
 
 def addZonesLinesHistoricoRu (fig1, estrategia, df_comp):
     limitList= []
-    for zone in estrategia['classObject'].zones_:   
+    for zone in estrategia['classObject'].zones_: 
+        '''  
         ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
         ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
         ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
@@ -114,6 +115,26 @@ def addZonesLinesHistoricoRu (fig1, estrategia, df_comp):
             zoneborder = [zone['PrecioTP']] * len (df_comp.index)
             fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
             limitList.append(zone['PrecioTP'])
+
+        '''
+        ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderId_)
+        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdSL_)
+        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdTP_)
+
+        if zone['orderBlock'].Price_ not in limitList:
+            zoneborder = [zone['orderBlock'].Price_] * len (df_comp.index)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+            limitList.append(zone['orderBlock'].Price_)
+        if zone['orderBlock'].PrecioSL_ not in limitList:
+            zoneborder = [zone['orderBlock'].PrecioSL_] * len (df_comp.index)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+            limitList.append(zone['orderBlock'].PrecioSL_)
+        if zone['orderBlock'].PrecioTP_ not in limitList:
+            zoneborder = [zone['orderBlock'].PrecioTP_] * len (df_comp.index)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+            limitList.append(zone['orderBlock'].PrecioTP_)
+
+
     return fig1
 
 def layout_getFigureTodayPenRu (estrategia, update = False):
@@ -158,7 +179,8 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
 
 def addZonesLinesTodayRu (fig2, estrategia, dfToday):
     limitList= []
-    for zone in estrategia['classObject'].zones_:   
+    for zone in estrategia['classObject'].zones_:  
+        ''' 
         ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
         ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
         ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
@@ -181,6 +203,30 @@ def addZonesLinesTodayRu (fig2, estrategia, dfToday):
                     zoneborder = [zone['PrecioTP']] * len (dfToday.index)
                     fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
                     limitList.append(zone['PrecioTP'])
+
+        '''
+        ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderId_)
+        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdSL_)
+        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdTP_)
+
+        if zone['orderBlock'].Price_ not in limitList:
+            if ordenMain != None and ordenMain['params'] != None and 'status' in ordenMain['params']:
+                if ordenMain['params']['status'] == 'Submitted':
+                    zoneborder = [zone['orderBlock'].Price_] * len (dfToday.index)
+                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    limitList.append(zone['orderBlock'].Price_)
+        if zone['orderBlock'].PrecioSL_ not in limitList:
+            if ordenSL != None and ordenSL['params'] != None and 'status' in ordenSL['params']:
+                if ordenSL['params']['status'] == 'Submitted':
+                    zoneborder = [zone['orderBlock'].PrecioSL_] * len (dfToday.index)
+                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    limitList.append(zone['orderBlock'].PrecioSL_)
+        if zone['orderBlock'].PrecioTP_ not in limitList:
+            if ordenTP != None and ordenTP['params'] != None and 'status' in ordenTP['params']:
+                if ordenTP['params']['status'] == 'Submitted':
+                    zoneborder = [zone['orderBlock'].PrecioTP_] * len (dfToday.index)
+                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    limitList.append(zone['orderBlock'].PrecioTP_)
 
     return fig2
 
@@ -212,7 +258,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
     insideDetailsTableBodyInside = []
 
     for zone in estrategia['classObject'].zones_:
-        ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
+        #ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
+        ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderId_)
         if ordenParent:
             posParent = ordenParent['order'].totalQuantity
             typeParent = ordenParent['order'].orderType
@@ -232,7 +279,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             typeParent = 'N/A'
             statusParent = 'N/A'
 
-        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
+        #ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
+        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdTP_)
         if ordenTP:
             posTP = ordenTP['order'].totalQuantity
             typeTP = ordenTP['order'].orderType
@@ -252,7 +300,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             typeTP = 'N/A'
             statusTP = 'N/A'
 
-        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
+        #ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
+        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdSL_)
         if ordenSL:
             posSL = ordenSL['order'].totalQuantity
             typeSL = ordenSL['order'].orderType
@@ -275,8 +324,10 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         insideDetailsStratParent = html.Tr(
             [
                 html.Td("Parent"), 
-                html.Td(str(zone['OrderId'])),
-                html.Td(str(zone['OrderPermId'])),
+                #html.Td(str(zone['OrderId'])),
+                #html.Td(str(zone['OrderPermId'])),
+                html.Td(str(zone['orderBlock'].orderId_)),
+                html.Td(str(zone['orderBlock'].orderPermId_)),
                 html.Td(str(lmtParent)),
                 html.Td(str(typeParent)),
                 html.Td(str(statusParent)),
@@ -287,8 +338,10 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         insideDetailsStratTP = html.Tr(
             [
                 html.Td("T Profit", style={"textAlign": "right"}), 
-                html.Td(str(zone['OrderIdTP'])),
-                html.Td(str(zone['OrderPermIdTP'])),
+                #html.Td(str(zone['OrderIdTP'])),
+                #html.Td(str(zone['OrderPermIdTP'])),
+                html.Td(str(zone['orderBlock'].orderIdTP_)),
+                html.Td(str(zone['orderBlock'].orderPermIdTP_)),
                 html.Td(str(lmtTP)),
                 html.Td(str(typeTP)),
                 html.Td(str(statusTP)),
@@ -299,8 +352,10 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         insideDetailsStratSL = html.Tr(
             [
                 html.Td("Stop Loss", style={"textAlign": "right"}), 
-                html.Td(str(zone['OrderIdSL'])),
-                html.Td(str(zone['OrderPermIdSL'])),
+                #html.Td(str(zone['OrderIdSL'])),
+                #html.Td(str(zone['OrderPermIdSL'])),
+                html.Td(str(zone['orderBlock'].orderIdSL_)),
+                html.Td(str(zone['orderBlock'].orderPermIdSL_)),
                 html.Td(str(lmtSL)),
                 html.Td(str(typeSL)),
                 html.Td(str(statusSL)),

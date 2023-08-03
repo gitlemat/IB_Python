@@ -7,6 +7,7 @@ orderChildErrorStatus = ['Inactive']
 orderChildValidExecStatusParentFilled = ['Filled', 'Submitted', 'Cancelled', 'PreSubmitted', 'PendingCancel', 'ApiCancelled']
 orderChildInvalidExecStatusParentNotFilled = ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
 orderInactiveStatus = ['Cancelled', 'PendingCancel', 'Inactive', 'ApiCancelled']
+Error_orders_timer_dt = datetime.timedelta(seconds=90)
 
 def bracketOrderParseFromFile(fields):
     bError = False
@@ -73,8 +74,8 @@ def bracketOrderParseToFile(bracketOrder):
 
 class bracketOrderClass():
 
-    def __init__(self, data , straType, RTlocalData):
-        self.symbol_ = None
+    def __init__(self, data , symbol, straType, RTlocalData):
+        self.symbol_ = symbol
         self.orderId_ = None
         self.orderIdSL_ = None
         self.orderIdTP_ = None
@@ -92,20 +93,18 @@ class bracketOrderClass():
         self.RTLocalData_ = RTlocalData
         self.timelasterror_ = datetime.datetime.now()
 
-        if data and 'symbol' in data:
-            self.symbol_ = data['symbol']
-        if data and 'orderId' in data:
-            self.orderId_ = data['orderId']
-        if data and 'orderIdSL' in data:
-            self.orderIdSL_ = data['orderIdSL']
-        if data and 'orderIdTP' in data:
-            self.orderIdTP_ = data['orderIdTP']
-        if data and 'orderPermId' in data:
-            self.orderPermId_ = data['orderPermId']
-        if data and 'orderPermIdSL' in data:
-            self.orderPermIdSL_ = data['orderPermIdSL']
-        if data and 'orderPermIdTP' in data:
-            self.orderPermIdTP_ = data['orderPermIdTP']
+        if data and 'OrderId' in data:
+            self.orderId_ = data['OrderId']
+        if data and 'OrderIdSL' in data:
+            self.orderIdSL_ = data['OrderIdSL']
+        if data and 'OrderIdTP' in data:
+            self.orderIdTP_ = data['OrderIdTP']
+        if data and 'OrderPermId' in data:
+            self.orderPermId_ = data['OrderPermId']
+        if data and 'OrderPermIdSL' in data:
+            self.orderPermIdSL_ = data['OrderPermIdSL']
+        if data and 'OrderPermIdTP' in data:
+            self.orderPermIdTP_ = data['OrderPermIdTP']
         if data and 'BracketOrderFilledState' in data:
             self.BracketOrderFilledState_ = data['BracketOrderFilledState']
 
@@ -119,6 +118,13 @@ class bracketOrderClass():
             self.PrecioTP_ = data['PrecioTP']
         if data and 'PrecioSL' in data:
             self.PrecioSL_ = data['PrecioSL']
+
+        logging.info ('Order Block:')
+        logging.info ('------------')
+        logging.info ('Symbol: %s', self.symbol_)
+        logging.info ('orderId: %s', self.orderId_)
+        logging.info ('orderIdSL: %s', self.orderIdSL_)
+        logging.info ('orderIdTP: %s', self.orderIdTP_)
 
         # To override
         return None
@@ -260,11 +266,11 @@ class bracketOrderClass():
         # Hay que rehacer, pero no es error
         if bRehacerNoError:
             if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
-                continue
+                return bBracketUpdated
         # Si hemos detectado error en parent, borramos todas si no existen
         elif bRehacerConError: # La parentId no está, y no está ejecutada. Borramos todas y rehacemos
             if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
-                continue
+                return bBracketUpdated
             parentOrderId = None
             logging.error (err_msg)
             if bParentOrderExists:
@@ -283,7 +289,7 @@ class bracketOrderClass():
         # Si ya esta exec: Hacemos a mano la TP y SL
         elif bSLOrderError or bTPOrderError:
             if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
-                continue
+                return bBracketUpdated
             logging.error ('[Estrategia PentagramaRu (%s)]. Error en childOrder', self.symbol_)
             logging.error (err_msg)
             if bSLOrderExists:
@@ -398,7 +404,7 @@ class bracketOrderClass():
 
         return pos
 
-    def orderBlockCreateBracketOrder (self, zone):
+    def orderBlockCreateBracketOrder (self):
 
         symbol = self.symbol_
         contract = self.RTLocalData_.contractGetBySymbol(symbol)  

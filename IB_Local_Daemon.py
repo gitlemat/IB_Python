@@ -12,8 +12,8 @@ import argparse
 import time
 import datetime
 import IB_API_Client
-import wsServer
-import strategiesNew
+#import wsServer
+import strategiesNew2
 import webFE.webFENew_App
 import os
 import utils
@@ -51,7 +51,7 @@ def SetupLogger():
     for i in sorted(os.listdir(path), reverse=True):
         filename = os.path.join(path,i)
         if os.path.isfile(filename) and i.startswith('ibapi_sic'):
-            if filename != filenameToday:
+            if filename != time.strftime(filenameToday):
                 filename_mv = os.path.join(pathOld,i)
                 os.rename(filename, filename_mv)
 
@@ -66,7 +66,7 @@ def SetupLogger():
     console_handler.setLevel(logging.INFO)
     logger.addHandler(console_handler)
     '''
-
+'''
 def wsServer_loop(wsServer1, _mode):
 
     #wsServer1 = wsServer.wsServer(appObj)
@@ -77,10 +77,10 @@ def wsServer_loop(wsServer1, _mode):
     else:
         port_ = 9998
     wsServer1.wsServerIB(port_)
+'''
 
 def webFE_loop(_mode):
 
-    #wsServer1 = wsServer.wsServer(appObj)
     if _mode == 'Lab':
         port_ = 5500
     elif _mode == 'Prod':
@@ -109,7 +109,7 @@ def main():
 
     #globales.G_RTlocalData_ = None
     app = None
-    wsServer1 = None
+    #wsServer1 = None
     strategyIns = None 
 
     # Parsing Parameters
@@ -165,7 +165,7 @@ def main():
     t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)
     t_api_thread.start()
 
-    strategyIns = strategiesNew.Strategies(globales.G_RTlocalData_, app)
+    strategyIns = strategiesNew2.Strategies(globales.G_RTlocalData_, app)
     
     # Init web page
     #webFE1 = webFE.webFE(globals.G_RTlocalData_)
@@ -174,9 +174,9 @@ def main():
     t_webFE.start()
 
     # Init de wsServer
-    wsServer1 = wsServer.wsServer(app, globales.G_RTlocalData_)
-    t_wsServerIB = threading.Thread(name='wsServerIB', target=wsServer_loop, args=(wsServer1,_mode,))
-    t_wsServerIB.start()
+    #wsServer1 = wsServer.wsServer(app, globales.G_RTlocalData_)
+    #t_wsServerIB = threading.Thread(name='wsServerIB', target=wsServer_loop, args=(wsServer1,_mode,))
+    #t_wsServerIB.start()
 
     # Esperamos que esté conectado
     

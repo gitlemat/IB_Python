@@ -36,7 +36,6 @@ class IBI_App(EWrapper, EClient):
         self.contract_details_end_flag = {}
         
         self.RTLocalData_ = RTlocalData
-        self.wsServerInt_ = None
         self.nextorderId = None
         
         self.initConnected_ = False

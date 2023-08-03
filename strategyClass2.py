@@ -1,3 +1,5 @@
+import datetime
+
 class strategyBaseClass():
 
     def __init__(self, RTlocalData, symbol, data):
@@ -9,7 +11,6 @@ class strategyBaseClass():
         self.cerrarPos_ = data['cerrarPos']
         self.currentPos_ = data['currentPos']
         self.ordersUpdated_ = data['ordersUpdated']
-        self.pandas_ = pandasDB.dbPandasStrategy (self.symbol_, 'PentagramaRu', self.RTLocalData_.influxIC_)  
         
         self.orderBlocks_ = []
         self.timelasterror_ = datetime.datetime.now()
