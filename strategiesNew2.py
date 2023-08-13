@@ -26,7 +26,8 @@ class Strategies():
         # Hay que asegurarse qe todos los contratos estan en la lista:
         for strategy in self.stratList_: 
             contractN = self.appObj_.contractFUTcreate(strategy['symbol'])
-            self.RTLocalData_.contractAdd(contractN)
+            gConId = self.RTLocalData_.contractAdd(contractN)
+            self.RTLocalData_.contractIndirectoSet (gConId, False)
 
     def strategyGetAll (self):
         return self.stratList_

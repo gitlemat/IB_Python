@@ -60,8 +60,11 @@ class strategyBaseClass():
 
         for orderBlock in self.orderBlocks_:
             ret = orderBlock.orderBlockLoopCheck()
-            if ret:
+            if ret == True:
                 bStrategyUpdated = True
+            if ret == -1:
+                ## Esto es cuando una bracket o OCA ha sido ejecutada entera, y no rehecha
+                pass
 
         return bStrategyUpdated
 

@@ -73,9 +73,9 @@ class dbPandasAccount():
         logging.debug  ('Leemos de influx y cargamos los dataframes')
         self.dfAccountEvo_ = self.influxIC_.influxGetAccountDataFrame (self.accountId_)
         if len (self.dfAccountEvo_) > 0:
-            logging.info ('Este es el Account DF:')
-            logging.info ('%s', self.dfAccountEvo_)
-            logging.info ('%s', self.dfAccountEvo_.index[-1])
+            logging.debug ('Este es el Account DF:')
+            logging.debug ('%s', self.dfAccountEvo_)
+            logging.debug ('%s', self.dfAccountEvo_.index[-1])
             self.last_refresh_db_ = self.dfAccountEvo_.index[-1]
         else:
             timestamp = datetime.datetime.now()
@@ -414,7 +414,7 @@ class dbPandasContrato():
         try:
             lastRecord = self.dfPnl_.iloc[-1]
         except:
-            logging.error ('El df_ está vacio para %s', self.symbol_)
+            logging.error ('El df_ esta vacio para %s', self.symbol_)
         else:
             if 'dailyPnL' in lastRecord:
                 lastPnL['dailyPnL'] = lastRecord['dailyPnL']

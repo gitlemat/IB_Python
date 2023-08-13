@@ -56,7 +56,7 @@ def strategyReadFile (RTlocalData):
             continue
         if line == '':
             continue
-        logging.info ('############## %s', line)
+        logging.debug ('############## %s', line)
 
         fields = line.split(',')
         if fields[0].strip() in ['B', 'S']:
@@ -89,7 +89,7 @@ def strategyReadFile (RTlocalData):
             else:
                 lineCurrentPos = int (fields[3].strip())
 
-    logging.info ('Estrategias Pentagrama cargadas')
+    logging.info ('Estrategias PentagramaRu cargadas')
 
     return lstrategyList
 
@@ -108,7 +108,7 @@ def strategyWriteFile (strategies):
         line += ' \n' if strategyItem['classObject'].currentPos_ == None else str(int(strategyItem['classObject'].currentPos_)) + '\n'
         lines.append(line)
         for zone in strategyItem['classObject'].zones_:
-            line = strategyOrderBlock.bracketOrderParseFromFile(zone['orderBlock'])
+            line = strategyOrderBlock.bracketOrderParseToFile(zone['orderBlock'])
             lines.append(line)
         line = '%\n'
         lines.append(line)
@@ -139,7 +139,7 @@ class strategyPentagramaRu(strategyBaseClass):
         for zoneItem in data['zones']:
             logging.debug('Zone Nueva:')
             logging.debug('\n%s', zoneItem)
-            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.symbol_, self.straType_, self.RTLocalData_)
+            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.symbol_, self.straType_, True, self.RTLocalData_)
             zone = {'orderBlock': orderBlock}
             self.zones_.append(zone)
             # En todas las strats tiene que haber una lista con todos los orderBlocks

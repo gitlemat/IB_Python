@@ -49,7 +49,7 @@ def bracketOrderParseFromFile(fields):
     else:
         bracketOrder['BracketOrderFilledState'] = None
     
-    logging.info ('############## %s', bracketOrder)
+    logging.debug ('############## %s', bracketOrder)
 
     if bError:
         return None
@@ -57,24 +57,24 @@ def bracketOrderParseFromFile(fields):
         return bracketOrder
 
 def bracketOrderParseToFile(bracketOrder):
-    line = bracketOrder['B_S'] + ','
-    line += str(bracketOrder['Price']) + ','
-    line += str(bracketOrder['Qty']) + ','
-    line += str(bracketOrder['PrecioSL']) + ','
-    line += str(bracketOrder['PrecioTP']) + ','
-    line += str(bracketOrder['OrderId']) + ','
-    line += str(bracketOrder['OrderPermId']) + ','
-    line += str(bracketOrder['OrderIdSL']) + ','
-    line += str(bracketOrder['OrderPermIdSL']) + ','
-    line += str(bracketOrder['OrderIdTP']) + ','
-    line += str(bracketOrder['OrderPermIdTP']) + ','
-    line += str(bracketOrder['BracketOrderFilledState'])
+    line = bracketOrder.B_S_ + ','
+    line += str(bracketOrder.Price_) + ','
+    line += str(bracketOrder.Qty_) + ','
+    line += str(bracketOrder.PrecioSL_) + ','
+    line += str(bracketOrder.PrecioTP_) + ','
+    line += str(bracketOrder.orderId_) + ','
+    line += str(bracketOrder.orderPermId_) + ','
+    line += str(bracketOrder.orderIdSL_) + ','
+    line += str(bracketOrder.orderPermIdSL_) + ','
+    line += str(bracketOrder.orderIdTP_) + ','
+    line += str(bracketOrder.orderPermIdTP_) + ','
+    line += str(bracketOrder.BracketOrderFilledState_)
     line += '\n'
     return line
 
 class bracketOrderClass():
 
-    def __init__(self, data , symbol, straType, RTlocalData):
+    def __init__(self, data , symbol, straType, regenerate, RTlocalData):
         self.symbol_ = symbol
         self.orderId_ = None
         self.orderIdSL_ = None
@@ -91,6 +91,7 @@ class bracketOrderClass():
         self.strategyType_ = straType
 
         self.RTLocalData_ = RTlocalData
+        self.regenerate_ = regenerate
         self.timelasterror_ = datetime.datetime.now()
 
         if data and 'OrderId' in data:
@@ -309,15 +310,22 @@ class bracketOrderClass():
             self.timelasterror_ = datetime.datetime.now()
             ret = None
             if bRehacerNoError:
-                logging.info ('[Estrategia %s (%s)]. Todo ejecutado rehacemos', self.strategyType_, self.symbol_)
-                ret = self.orderBlockCreateBracketOrder ()
+                if self.regenerate_:
+                    logging.info ('[Estrategia %s (%s)]. Todo ejecutado rehacemos', self.strategyType_, self.symbol_)
+                    ret = self.orderBlockCreateBracketOrder ()
+                else:
+                    logging.info ('[Estrategia %s (%s)]. Todo ejecutado pero no rehacemos y salios', self.strategyType_, self.symbol_)
             elif bRehacerTodo:
                 logging.error ('[Estrategia %s (%s)]. Rehacemos todo', self.strategyType_, self.symbol_)
                 ret = self.orderBlockCreateBracketOrder ()
             elif bGenerarOCA:
                 logging.error ('[Estrategia %s (%s)]. Rehacemos OCA para childs', self.strategyType_, self.symbol_)
                 ret = self.orderBlockCreateChildOca ()
-            if ret != None:
+            if ret == None:
+                bBracketUpdated = False
+            elif ret == -1:
+                bBracketUpdated = -1
+            elif ret != None:
                 bBracketUpdated = True
 
         return bBracketUpdated

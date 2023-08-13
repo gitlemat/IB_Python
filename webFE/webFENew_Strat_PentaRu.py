@@ -90,7 +90,8 @@ def layout_getFigureHistoricoPenRu (estrategia):
                        xaxis_rangeslider_visible=False, 
                        title_text='Historico (15min)', 
                        title_x = 0.5,
-                       title_xanchor = 'center')
+                       title_xanchor = 'center',
+                       margin=dict(l=10, r=10, t=40, b=40))
 
     return fig1
 
@@ -171,7 +172,8 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
     fig2.update_layout(showlegend=False, 
                        title_text='Datos Tiempo Real Hoy', 
                        title_x = 0.5,
-                       title_xanchor = 'center')
+                       title_xanchor = 'center',
+                       margin=dict(l=10, r=10, t=40, b=40))
 
     contrato['dbPandas'].toPrint = False
 

@@ -115,7 +115,7 @@ class DataLocalRT():
 
         reqId = data['reqId']
         if 'end' in data:
-            logging.info ("Ya tengo la account info:\n%s", self.accountSummary())
+            logging.debug ("Ya tengo la account info:\n%s", self.accountSummary())
             self.accountPandas_.dbUpdateAddAccountData (self.accountData_)
             return # no hay nada mas. Ha terminado y punto (mirar IB_API_Client)
             
@@ -148,7 +148,7 @@ class DataLocalRT():
 
         if not contractObj == "":
             #print ('Actualizo cont')
-            self.contractAdd (contractObj)
+            ret = self.contractAdd (contractObj)
 
         gConId = self.contractGetGconId(contractObj)
 
@@ -282,6 +282,7 @@ class DataLocalRT():
                     prices['LAST_SIZE'] = size
             if tickType == 8 or tickType == 74:
                 bChange = True
+                logging.info ('Hemos recibido Volume: %s', size)
                 prices['VOLUME'] = size
 
             
@@ -377,8 +378,11 @@ class DataLocalRT():
         contrato['pnl']['value'] = None
         contrato['hasContractSymbols'] = False
         contrato['semaforoYfinance'] = False
+        contrato['contratoIndirecto'] = True
 
         self.contractDict_[gConId] = contrato    
+
+        return gConId
 
     def contratoReturnDictAll(self):
         return self.contractDict_
@@ -424,7 +428,8 @@ class DataLocalRT():
                         except:
                             logging.error ("Error al recibir detalles")
                         else:
-                            self.contractAdd(contrato1)
+                            gConId = self.contractAdd(contrato1)
+                            
 
     def contractCheckIfIncompleteGlobal (self):
         missing = False
@@ -458,14 +463,18 @@ class DataLocalRT():
             if line.rstrip() == '':
                 continue
             contractN = self.appObj_.contractFUTcreate(line.rstrip())
-            self.contractAdd(contractN)
+            gConId = self.contractAdd(contractN)
+            self.contractIndirectoSet (gConId, False)
+
+
 
     def contractWriteFixedWatchlist (self, contractList):
         with open('strategies/ContractsWatchList.conf', 'w') as f:
             for line in contractList:
                 f.writelines(line + '\n')
                 contractN = self.appObj_.contractFUTcreate(line.rstrip())
-                self.contractAdd(contractN)
+                gConId = self.contractAdd(contractN)
+                self.contractIndirectoSet (gConId, False)
 
     def contractReturnFixedWatchlist (self):
         contractList = []
@@ -728,6 +737,14 @@ class DataLocalRT():
 
     def contractCheckIfExists (self, gConId):
         return gConId in self.contractDict_
+
+    def contractIndirectoSet (self, gConId, indirecto):
+        if gConId in self.contractDict_:
+            self.contractDict_[gConId]['contratoIndirecto'] = indirecto
+
+    def contractIndirectoGet (self, gConId):
+        if gConId in self.contractDict_:
+            return self.contractDict_[gConId]['contratoIndirecto']
 
     def contractGetContractbyGconId (self, gConId):
         try:
@@ -1114,7 +1131,7 @@ class DataLocalRT():
         
         if not contractObj == "":
             #print ('Actualizo cont')
-            self.contractAdd (contractObj)         # Normalmante al añadir la orden, añadimos y actualizamos el contrato    
+            ret = self.contractAdd (contractObj)         # Normalmante al añadir la orden, añadimos y actualizamos el contrato    
         
         for orden in self.orderList_:
             if orden['permId'] == localPermId:

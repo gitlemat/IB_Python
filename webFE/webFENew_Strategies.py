@@ -28,10 +28,12 @@ def layout_strategies_tab():
 
     # Cabecera
 
+    logging.info ('Empiezo a calcular tab')
+
     tabEstrategias = [
             dbc.Row(
                 [
-                    html.P("Lista de Estrategias", className='text-left text-secondary mb-4 display-6'),
+                    html.P("Lista de Estrategias", className='text-left text-secondary mb-4 ps-0 display-6'),
                     html.Hr()
                 ]
             ),
@@ -69,6 +71,8 @@ def layout_strategies_tab():
             ]
         )
 
+        logging.info ('Ya tengo la cabecera')
+
         # Los dos graficos
         fig1 = layout_getFigura1(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
         graphColumn1 = html.Div(
@@ -78,6 +82,9 @@ def layout_strategies_tab():
                     figure = fig1
             )
         )
+
+
+        logging.info ('Ya tengo la fig1')
         
         random_wait = random.randint(0,1000) + 10000
 
@@ -95,12 +102,16 @@ def layout_strategies_tab():
             )
         ])
 
+        logging.info ('Ya tengo la fig2')
+
         collapseDetails = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2)
 
         # Lo añadimos a la pagina/tab:
 
         tabEstrategias.append(headerRow)
-        tabEstrategias.append(collapseDetails)        
+        tabEstrategias.append(collapseDetails)    
+
+        logging.info ('Ya tengo todo')    
 
     return tabEstrategias
 

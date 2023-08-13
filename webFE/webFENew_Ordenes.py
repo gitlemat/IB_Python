@@ -19,9 +19,10 @@ def layout_ordenes_tab ():
 
     tabOrdenes = [
             dbc.Row(
-                dbc.Col(html.H1("Lista de Ordenes",
-                                className='text-center text-primary mb-4'),
-                        width=12)
+                [
+                    html.P("Lista de Ordenes", className='text-left text-secondary mb-4 ps-0 display-6'),
+                    html.Hr()
+                ]
             ),
             dbc.Row(
                 [

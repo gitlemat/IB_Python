@@ -27,7 +27,7 @@ def layout_contratos_tab ():
     tabContratos = [
             dbc.Row(
                 [
-                    html.P("Lista de Contratos", className='text-left text-secondary mb-4 display-6'),
+                    html.P("Lista de Contratos", className='text-left text-secondary mb-4 ps-0 display-6'),
                     html.Hr()
                 ]
             ),
@@ -48,8 +48,13 @@ def layout_contratos_tab ():
 
     #################################
     # Preparacion de Tab de contratos
+    logging.info ('Contratos')
     for gConId, contrato in data.items():
-        
+
+        indirect = globales.G_RTlocalData_.contractIndirectoGet (gConId) # Podria leer de contrato, pero es una guarregria (como mucho de lo que hay aqui)
+        logging.info ('Contrato Indirecto $s', indirect)
+        if indirect:
+            continue
         headerRowInn = contratosObtenerFilas (contrato, False)  
         random_wait = random.randint(0,2000) + 4000
 
@@ -104,8 +109,8 @@ def layout_contratos_tab ():
     tabContratosWLLabel = [
         dbc.Row(
             [
-                html.Hr(),
-                html.P("Contratos WatchList", className='text-left text-secondary mb-4 display-6')
+                html.Hr(className='mt-4'),
+                html.P("Contratos WatchList", className='text-left text-secondary mb-4 ps-0 display-6')
             ]
         ),
         contratosEditWatchList(),
@@ -166,13 +171,13 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
     insideDetailsData.append(html.Div(children = "ConId: " + str(contrato['contract'].conId), style = {"margin-left": "40px"}))
     insideDetailsData.append(html.Div(children = "Symbol: " + str(contrato['contract'].localSymbol), style = {"margin-left": "40px"}))
     insideDetailsData.append(html.Div(children = "secType: " + str(contrato['contract'].secType), style = {"margin-left": "40px"}))
+    insideDetailsData.append(html.Div(children = "indirecto: " + str(contrato['contratoIndirecto']), style = {"margin-left": "40px"}))
     if contrato['contract'].secType == "BAG":
         for leg in contrato['contract'].comboLegs:
             insideDetailsData.append(html.Div(children = "Leg: ", style = {"margin-left": "40px"}))
             insideDetailsData.append(html.Div(children = "ConId: " + str(leg.conId), style = {"margin-left": "80px"}))
             insideDetailsData.append(html.Div(children = "Action: " + str(leg.action), style = {"margin-left": "80px"}))
             insideDetailsData.append(html.Div(children = "Ratio: " + str(leg.ratio), style = {"margin-left": "80px"}))
-
             insideDetailsData.append(html.Div(children = "LocalSymbol: " + data[leg.conId]['contract'].localSymbol, style = {"margin-left": "80px"}))
             insideDetailsData.append(html.Div(children = "LastOrderDate: " + data[leg.conId]['contract'].lastTradeDateOrContractMonth, style = {"margin-left": "80px"}))
 
@@ -216,7 +221,8 @@ def getFiguraComp (contrato):
                        xaxis_rangeslider_visible=False, 
                        title_text='Historico (15min)', 
                        title_x = 0.5,
-                       title_xanchor = 'center')
+                       title_xanchor = 'center',
+                       margin=dict(l=10, r=10, t=40, b=40))
 
     return fig
 
@@ -232,7 +238,8 @@ def contratosEditWatchList ():
             dbc.Textarea(
                 id = {'role': 'contratosInputWatchList'},
                 rows = n_rows, 
-                value = text.rstrip()
+                value = text.rstrip(), 
+                className="ps-0"
             ),
         ]
     )

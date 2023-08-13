@@ -535,7 +535,7 @@ class IBI_App(EWrapper, EClient):
             except:
                 logging.error ("Error al recibir detalles")
                 return None
-            self.RTLocalData_.contractAdd(contractN)
+            ret = self.RTLocalData_.contractAdd(contractN)
 
             if contractN.symbol != prevSymbol and nIter > 0:
                 different = True
