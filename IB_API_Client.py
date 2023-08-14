@@ -768,7 +768,7 @@ class IBI_App(EWrapper, EClient):
     
     def reqMktDataGen (self, contract):
         reqId = self.reqIdNew()
-        logging.info ("Subscribiendo a market data de: %s", contract.symbol)
+        logging.info ("Subscribiendo a market data de (reqId: %s): %s", reqId, contract.symbol)
         super().reqMktData(reqId, contract, '', False, False, [])
         return reqId
 

@@ -108,9 +108,27 @@ def create_card (contrato, fig1, estrategia):
     if estrategia == None:
         stratType = 'N/A'
         posQty = 'N/A'
+        execToday = 'N/A'
+        execTotal = 'N/A'
+        execString = 'N/A'
     else:
         stratType = estrategia['type']
         posQty = str(estrategia['classObject'].currentPos_)
+        execToday = estrategia['classObject'].pandas_.dbGetExecCountToday()
+        execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
+        execString = str(execToday) + '/' + str(execTotal)
+
+    lastPnL = contrato['dbPandas'].dbGetLastPnL()
+    dailyPnL = ''
+    realizedPnL = ''
+    unrealizedPnL = ''
+    if lastPnL['dailyPnL'] != None:
+        dailyPnL = formatCurrency(lastPnL['dailyPnL'])
+    if lastPnL['realizedPnL'] != None:
+        realizedPnL = formatCurrency(lastPnL['realizedPnL'])
+    if lastPnL['unrealizedPnL'] != None:
+        unrealizedPnL = formatCurrency(lastPnL['unrealizedPnL'])
+    totalPnl = dailyPnL + '/' + realizedPnL + '/' + unrealizedPnL
 
     graphColumn1 = html.Div(
         dcc.Graph(
@@ -127,8 +145,19 @@ def create_card (contrato, fig1, estrategia):
                 [
                     dbc.Row(
                         [
-                            html.Div("Strategy: " + stratType, className = 'float-start'),
-                            html.Div("Pos: " + posQty, className = 'float-end'),
+                            dbc.Col(
+                                [
+                                    html.Div("Strategy: " + stratType, className = 'text-start'),
+                                    html.Div("Pos: " + posQty, className = 'text-start'),
+                                ], width=6,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Div("Executions: " + execString, className = 'text-end'),
+                                    html.Div("PnL: " + totalPnl, className = 'text-end'),
+                                ], width=6,
+                            ),
+
                         ]
                     ),
                     dbc.Row(graphColumn1),

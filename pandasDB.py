@@ -142,7 +142,7 @@ class dbPandasAccount():
         record = {}
         tags = {'accountId': self.accountId_}
         time = data['timestamp']
-        time = utils.date2UTC (time)
+        time = utils.dateLocal2UTC (time)
         
         fields_influx = {}
 
@@ -264,7 +264,7 @@ class dbPandasStrategy():
         record = {}
         tags = {'symbol': self.symbol_, 'strategy': self.strategyType}
         time = data['timestamp']
-        time = utils.date2UTC (time)
+        time = utils.dateLocal2UTC (time)
         
         fields_influx = {}
 
@@ -293,6 +293,7 @@ class dbPandasContrato():
         self.df_ = None
         self.dfcomp_ = None
         self.dfPnl_ = None
+        self.dfVolume_ = None
         self.symbol_ = symbol
         self.influxIC_ = influxIC
         self.toSaveComp = False
@@ -509,6 +510,31 @@ class dbPandasContrato():
             self.dfPnl_ = pd.concat([self.dfPnl_, dfDelta])
             self.toPrintPnL = True
 
+    def dbUpdateAddVolume(self, data):
+        keys_pnl = ['Volume']
+        today = datetime.datetime.today()
+        today = utils.date2local (today)
+        today_chicago = utils.date2Chicago (today)  # La hora de chicago es mas facil de usar
+        today_chicago = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+        today_chicago = utils.date2UTC (today_chicago)  # Para que todo en Influx tenga el mismo TZ
+        try:
+            lastdate = self.dfVolume_.index.max().to_pydatetime()
+        except:
+            lastdate = today_chicago - datetime.timedelta(days=3)
+
+        if today_chicago == lastdate:
+            self.dfExecCount_.iloc[-1]['Volume'] = data['Volume']
+            data = {'timestamp': today_chicago, 'Volume': data['Volume']}
+            self.dbUpdateInfluxVolume (data)
+        else:
+            data = {'timestamp': today_chicago, 'Volume': 0}
+            self.dbUpdateInfluxVolume (data)
+            newlineL = []
+            newlineL.append(data)
+            dfDelta = pd.DataFrame.from_records(newlineL)
+            dfDelta.set_index('timestamp', inplace=True)
+            self.dfVolume_ = pd.concat([self.dfVolume_, dfDelta])
+
 
     def dbUpdateInfluxPnL (self, data):
         keys_pnl = ['dailyPnL','realizedPnL','unrealizedPnL']
@@ -517,7 +543,7 @@ class dbPandasContrato():
         record = {}
         tags = {'symbol': self.symbol_}
         time = data['timestamp']
-        time = utils.date2UTC (time)
+        time = utils.dateLocal2UTC (time)
         
         fields_pnl = {}
 
@@ -544,7 +570,7 @@ class dbPandasContrato():
         record = {}
         tags = {'symbol': self.symbol_}
         time = data['timestamp']
-        time = utils.date2UTC (time)
+        time = utils.dateLocal2UTC (time)
         
         fields_prices = {}
 
@@ -605,6 +631,33 @@ class dbPandasContrato():
             logging.error ('Problema guardando las Comp en influx')
         else:
             self.dateRanges = []   # Borramos
+
+    def dbUpdateInfluxVolume (self, data):
+        keys_pnl = ['Volume']
+        
+        records = []
+        record = {}
+        tags = {'symbol': self.symbol_}
+        time = data['timestamp']
+        time = utils.date2UTC (time)
+        
+        fields_volume = {}
+
+        for key in keys_pnl:
+            if key in data:
+                fields_volume[key] = data[key]
+
+
+        record = {
+            "measurement": "volume", 
+            "tags": tags,
+            "fields": fields_volume,
+            "time": time,
+        }
+        records.append(record)
+
+        if len(fields_volume) > 0:
+            self.influxIC_.write_data(records, 'volume')
 
         
 

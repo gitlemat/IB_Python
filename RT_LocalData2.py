@@ -282,7 +282,7 @@ class DataLocalRT():
                     prices['LAST_SIZE'] = size
             if tickType == 8 or tickType == 74:
                 bChange = True
-                logging.info ('Hemos recibido Volume: %s', size)
+                logging.info ('Hemos recibido Volume (req:%s): %s', reqId, size)
                 prices['VOLUME'] = size
 
             
@@ -541,6 +541,8 @@ class DataLocalRT():
                 if conReqLeg['reqId'] == reqId:
                     updated = True
             if updated:
+                lsymbol = contrato['fullSymbol']
+                logging.debug ('Tick (req:%s): %s', reqId, lsymbol)
                 price2sell = 0.0
                 price2buy = 0.0
                 price2last = 0.0

@@ -141,6 +141,8 @@ def modal_error():
 
 @callback(Output("page-content", "children"), [Input("url", "pathname")])
 def render_page_content(pathname):
+    if pathname == "/":
+        return webFE.webFENew_Summary.layout_summary_tab()
     if pathname == "/Summary":
         return webFE.webFENew_Summary.layout_summary_tab()
     elif pathname == "/Estrategias":

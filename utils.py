@@ -2,15 +2,33 @@ from datetime import datetime
 import pytz
 import glob
 
-def date2UTC (fecha_local):
+def dateLocal2UTC (fecha_local):
 
-    local = pytz.timezone("Europe/Madrid")
     if fecha_local.tzinfo == None or fecha_local.tzinfo.utcoffset(fecha_local) == None:
         fecha_local = local.localize(fecha_local)
     
     utc_dt = fecha_local.astimezone(pytz.utc)
 
     return utc_dt
+
+def date2UTC (fecha_local):
+
+    if fecha_local.tzinfo == None or fecha_local.tzinfo.utcoffset(fecha_local) == None:
+        fecha_local = pytz.utc.localize(fecha_local)
+    else:
+        fecha_local = fecha_local.astimezone(pytz.utc)
+
+    return fecha_local
+
+def date2Chicago (fecha_local):
+
+    cme = pytz.timezone("America/Chicago")
+    if fecha_local.tzinfo == None or fecha_local.tzinfo.utcoffset(fecha_local) == None:
+        fecha_local = cme.localize(fecha_local)
+    else:
+        fecha_local = fecha_local.astimezone(cme)
+
+    return fecha_local
 
 def date2local (fecha):
 

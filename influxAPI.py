@@ -123,12 +123,12 @@ class InfluxClient:
     def influxGetTodayDataFrame (self, symbol):
         logging.info('Leyendo precios de hoy de Influx para: %s', symbol)
         now  = datetime.datetime.now()
-        now = utils.date2UTC (now) # Para poder comparar
+        now = utils.dateLocal2UTC (now) # Para poder comparar
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 15, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        todayStart = utils.date2UTC (todayStart)
-        todayStop = utils.date2UTC (todayStop)
+        todayStart = utils.dateLocal2UTC (todayStart)
+        todayStop = utils.dateLocal2UTC (todayStop)
         param = {"_bucket": self._bucket_prices, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
         logging.debug('      Params: %s', param)
 
@@ -196,8 +196,8 @@ class InfluxClient:
         todayStop = datetime.datetime.today()
         todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)
         todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        todayStart = utils.date2UTC (todayStart)
-        todayStop = utils.date2UTC (todayStop)
+        todayStart = utils.dateLocal2UTC (todayStart)
+        todayStop = utils.dateLocal2UTC (todayStop)
         param = {"_bucket": self._bucket_ohcl, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
         
         query = '''
@@ -240,8 +240,8 @@ class InfluxClient:
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        todayStart = utils.date2UTC (todayStart)
-        todayStop = utils.date2UTC (todayStop)
+        todayStart = utils.dateLocal2UTC (todayStart)
+        todayStop = utils.dateLocal2UTC (todayStop)
         param = {"_bucket": self._bucket_pnl, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
         query = '''
         from(bucket: _bucket)
@@ -282,8 +282,8 @@ class InfluxClient:
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        todayStart = utils.date2UTC (todayStart)
-        todayStop = utils.date2UTC (todayStop)
+        todayStart = utils.dateLocal2UTC (todayStart)
+        todayStop = utils.dateLocal2UTC (todayStop)
         param = {"_bucket": self._bucket_execs, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
         query = '''
         from(bucket: _bucket)
@@ -326,8 +326,8 @@ class InfluxClient:
         todayStop = datetime.datetime.today()
         todayStart = todayStart.replace(hour = 0, minute = 0, second = 0, microsecond=0)
         todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
-        todayStart = utils.date2UTC (todayStart)
-        todayStop = utils.date2UTC (todayStop)
+        todayStart = utils.dateLocal2UTC (todayStart)
+        todayStop = utils.dateLocal2UTC (todayStop)
         param = {"_bucket": self._bucket_execs, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
         query = '''
         from(bucket: _bucket)
