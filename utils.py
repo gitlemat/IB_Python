@@ -4,6 +4,8 @@ import glob
 
 def dateLocal2UTC (fecha_local):
 
+    local = pytz.timezone("Europe/Madrid")
+ 
     if fecha_local.tzinfo == None or fecha_local.tzinfo.utcoffset(fecha_local) == None:
         fecha_local = local.localize(fecha_local)
     

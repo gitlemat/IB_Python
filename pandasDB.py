@@ -122,13 +122,13 @@ class dbPandasAccount():
         newlineL.append (data)
 
         if different and (timestamp - self.last_refresh_db_ > datetime.timedelta(hours=24)):
-            self.dbUpdateInfluxAccountData (data)
+            self.influxIC_.influxUpdateAccountData (self.accountId_, data)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
             #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
             self.dfAccountEvo_ = pd.concat([self.dfAccountEvo_, dfDelta]) #, ignore_index=True
             self.toPrint = True
-
+    '''
     def dbUpdateInfluxAccountData (self, data):
         keys_account = [
             'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
@@ -162,7 +162,8 @@ class dbPandasAccount():
         records.append(record)
 
         if len(fields_influx) > 0:
-            self.influxIC_.write_data(records, 'executions')
+            self.influxIC_.write_data(records, 'account')
+    '''
     
 
 class dbPandasStrategy():
@@ -522,13 +523,11 @@ class dbPandasContrato():
         except:
             lastdate = today_chicago - datetime.timedelta(days=3)
 
+        data = {'timestamp': today_chicago, 'Volume': data['VOLUME']}
+        self.dbUpdateInfluxVolume (data)
         if today_chicago == lastdate:
-            self.dfExecCount_.iloc[-1]['Volume'] = data['Volume']
-            data = {'timestamp': today_chicago, 'Volume': data['Volume']}
-            self.dbUpdateInfluxVolume (data)
+            self.dfVolume_.iloc[-1]['Volume'] = data['VOLUME']
         else:
-            data = {'timestamp': today_chicago, 'Volume': 0}
-            self.dbUpdateInfluxVolume (data)
             newlineL = []
             newlineL.append(data)
             dfDelta = pd.DataFrame.from_records(newlineL)

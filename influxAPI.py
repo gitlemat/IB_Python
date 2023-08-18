@@ -4,12 +4,13 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 import pandas as pd
 import utils
-
-
 import os
 from dotenv import load_dotenv
-
+import sys
 import logging
+
+UNSET_DOUBLE = sys.float_info.max
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class InfluxClient:
             self._bucket_pnl = 'ib_data_lab'
             self._bucket_execs = 'ib_data_lab'
             self._bucket_account = 'ib_data_lab'
+            self._bucket_volume = 'ib_prices_1h'
 
             '''
             self._bucket_prices = 'ib_prices_lab'
@@ -53,6 +55,8 @@ class InfluxClient:
             self._bucket_pnl = 'ib_data_prod'
             self._bucket_execs = 'ib_data_prod'
             self._bucket_account = 'ib_data_prod'
+            self._bucket_volume = 'ib_prices_1h'
+
             '''
             self._bucket_prices = 'ib_prices_prod' #Utilizo lab para tener todos. Asi están juntos
             self._bucket_ohcl = 'ib_prices_1h_prod'
@@ -71,6 +75,10 @@ class InfluxClient:
             lbucket = self._bucket_pnl
         elif type == 'executions':
             lbucket = self._bucket_execs
+        elif type == 'account':
+            lbucket = self._bucket_account
+        elif type == 'volume':
+            lbucket = self._bucket_volume
         else:
             lbucket = self._bucket_prices
 
@@ -88,10 +96,11 @@ class InfluxClient:
 
         with self._client.write_api(write_option) as write_api:
             try:
-                logging.debug ('Escribiendo en influx esto: %s', data)
+                logging.debug ('Escribiendo en influx esto (%s): %s', type, data)
                 write_api.write(bucket=lbucket, org=self._org, record=data)
             except:
-                logging.error ("Exception occurred", exc_info=True)
+                logging.error ("Exception al escribir en Influx occurred", exc_info=True)
+                logging.error ("Ha sido al escribir esto (%s): %s", type, data)
 
     def write_dataframe(self,dataframe, params, write_option=SYNCHRONOUS):
         # measurementName,tagKey=tagValue fieldKey1="fieldValue1",fieldKey2=fieldValue2 timestamp
@@ -409,6 +418,41 @@ class InfluxClient:
         logging.debug('%s', result)
 
         return result
+
+    def influxUpdateAccountData (self, accountId_, data):
+        keys_account = [
+            'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
+            'AvailableFunds', 'BuyingPower', 'EquityWithLoanValue', 'ExcessLiquidity', 'FullAvailableFunds',
+            'FullExcessLiquidity','FullInitMarginReq','FullMaintMarginReq','GrossPositionValue','InitMarginReq',
+            'LookAheadAvailableFunds','LookAheadExcessLiquidity','LookAheadInitMarginReq','LookAheadMaintMarginReq',
+            'MaintMarginReq','NetLiquidation','TotalCashValue'
+        ]
+        
+        records = []
+        record = {}
+        tags = {'accountId': accountId_}
+        time = data['timestamp']
+        time = utils.dateLocal2UTC (time)
+        
+        fields_influx = {}
+
+        for key in keys_account:
+            if key in data:
+                if data[key] != None and data[key] != UNSET_DOUBLE:
+                    fields_influx[key] = data[key]
+
+
+        record = {
+            "measurement": "account", 
+            "tags": tags,
+            "fields": fields_influx,
+            "time": time,
+        }
+
+        records.append(record)
+
+        if len(fields_influx) > 0:
+            self.write_data(records, 'account')
     
 
     def query_data_frame(self,query, param):

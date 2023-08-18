@@ -270,6 +270,7 @@ class DataLocalRT():
             self.tickPrices_[reqId] = prices
         if size != None:
             bChange = False
+            bChange_volume = False
             if tickType == 0 or tickType == 69:
                 bChange = True
                 prices['BID_SIZE'] = size
@@ -281,17 +282,20 @@ class DataLocalRT():
                     bChange = True
                     prices['LAST_SIZE'] = size
             if tickType == 8 or tickType == 74:
-                bChange = True
-                logging.info ('Hemos recibido Volume (req:%s): %s', reqId, size)
-                prices['VOLUME'] = size
+                if not 'VOLUME' in prices or ('VOLUME' in prices and prices['VOLUME'] != size):
+                    bChange_volume = True
+                    logging.info ('Hemos recibido Volume (req:%s): %s', reqId, size)
+                    prices['VOLUME'] = size
 
-            
-        
             self.tickPrices_[reqId] = prices
         
             if bChange:  # Solo con size
                 logging.debug("Deberia actualizar valor")
                 self.contractUpdateTicks(reqId)
+
+            if bChange_volume:
+                logging.debug("Deberia actualizar valor")
+                self.contractUpdateVolumeTicks(reqId)
 
     ########################################
     # PnL Update
@@ -371,6 +375,7 @@ class DataLocalRT():
         contrato['currentPrices']['BUY_SIZE'] = None
         contrato['currentPrices']['SELL_SIZE'] = None
         contrato['currentPrices']['LAST_SIZE'] = None
+        contrato['VOLUME'] = None
         contrato['pnl'] = {}
         contrato['pnl']['dailyPnL'] = None
         contrato['pnl']['unrealizedPnL'] = None
@@ -549,8 +554,9 @@ class DataLocalRT():
                 size2sell = None
                 size2buy = None
                 size2last = None
+                volumen = None
+                allReady = True
                 for conReqLeg in contrato['contractReqIdLegs']:      
-                    allReady = True
                     if conReqLeg['reqId'] == None:
                         allReady = False
                         break
@@ -567,6 +573,7 @@ class DataLocalRT():
                     if not 'LAST' in self.tickPrices_[legReqId] or not 'LAST_SIZE' in self.tickPrices_[legReqId]:  
                         allReady = False
                         break
+                    
                     if conReqLeg['action'] == 'BUY':
                         price2sell = price2sell + self.tickPrices_[legReqId]['BID'] * conReqLeg['ratio']
                         price2buy = price2buy + self.tickPrices_[legReqId]['ASK'] * conReqLeg['ratio']
@@ -607,15 +614,6 @@ class DataLocalRT():
                     size2sell = float(size2sell)
                     size2last = float(size2last)
                     
-                '''
-                if allReady == False:
-                    price2sell = None
-                    price2buy = None
-                    price2last = None
-                    size2buy = None
-                    size2sell = None
-                    size2last = None
-                '''
                 bUpdated = False
                 if allReady != False:
                     
@@ -651,6 +649,52 @@ class DataLocalRT():
                     # Se actualiza la DB para el contrato['gConId'] con estos datos:
                     if bUpdated:
                         contrato['dbPandas'].dbUpdateAddPrices(data_args)  # no estariamos aquí si no hay 'dbpandas'
+
+    def contractUpdateVolumeTicks(self, reqId):
+        # Tenemos por un lado los contratos BAG
+        #  y luego hay que actualizar los legs por si alguno tiene este reqId
+        # Los que no son BAG tambien tienren el contractReqIdLegs con 1 solo entry, por lo que se buscan los dos igual
+        for gConId, contrato in self.contractDict_.items():
+            updated = False
+            for conReqLeg in contrato['contractReqIdLegs']: # Directamente esto implica que contrato['hasContractSymbols'] = True
+                if conReqLeg['reqId'] == reqId:
+                    updated = True
+            if updated:
+                lsymbol = contrato['fullSymbol']
+                nLegs = len(contrato['contractReqIdLegs'])
+                logging.debug('El contrato %s: ha actualizado volumen. Vamoso a reviar sus legs (%s)', lsymbol, nLegs)
+                logging.debug ('Tick (req:%s): %s', reqId, lsymbol)
+                volumen = None
+                allReadyVolumen = True
+                for conReqLeg in contrato['contractReqIdLegs']:      
+                    if conReqLeg['reqId'] == None:
+                        allReadyVolumen = False
+                        break
+                    legReqId = conReqLeg['reqId']
+                    if not legReqId in self.tickPrices_:
+                        allReadyVolumen = False
+                        break
+                    if not 'VOLUME' in self.tickPrices_[legReqId]:  
+                        allReadyVolumen = False
+                        break
+
+                    logging.debug('    Revisamos un leg: %s', conReqLeg['lSymbol'])
+                    logging.debug('       Volume: %s. New one: %s', volumen, int(self.tickPrices_[legReqId]['VOLUME']))
+                    if volumen == None:
+                        volumen = int(self.tickPrices_[legReqId]['VOLUME'])
+                    else:
+                        volumen = min(volumen, int(self.tickPrices_[legReqId]['VOLUME']))
+
+                if allReadyVolumen != False:
+                    data_args = {}
+                    if contrato['VOLUME'] != volumen:
+                        contrato['VOLUME'] = volumen
+                        data_args['VOLUME'] = volumen
+                        logging.debug('    Volumen final de %s: %s', lsymbol, volumen)
+                        contrato['dbPandas'].dbUpdateAddVolume(data_args)
+
+
+
 
     def contractUpdatePnL(self, reqIdPnL):
         # Tenemos por un lado los contratos BAG

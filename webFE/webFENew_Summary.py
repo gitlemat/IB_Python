@@ -48,7 +48,7 @@ def layout_summary_tab ():
 
     for gConId, contrato in contractList.items():
         indirect = globales.G_RTlocalData_.contractIndirectoGet (gConId) # Podria leer de contrato, pero es una guarregria (como mucho de lo que hay aqui)
-        logging.info ('Contrato Indirecto $s', indirect)
+        logging.debug ('Contrato Indirecto %s', indirect)
         if indirect:
             continue
         symbol = contrato['fullSymbol']
@@ -77,7 +77,7 @@ def layout_summary_tab ():
     '''
 
     for i in range(0, len(all_cards), 2):
-        logging.info ('Card: %d, %d', i, len(all_cards))
+        logging.debug ('Card: %d, %d', i, len(all_cards))
         column1 = dbc.Col(all_cards[i], width=6)
         column2 = None
         if i + 1 < len(all_cards):
