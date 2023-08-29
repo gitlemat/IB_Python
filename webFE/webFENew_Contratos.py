@@ -52,7 +52,7 @@ def layout_contratos_tab ():
     for gConId, contrato in data.items():
 
         indirect = globales.G_RTlocalData_.contractIndirectoGet (gConId) # Podria leer de contrato, pero es una guarregria (como mucho de lo que hay aqui)
-        logging.info ('Contrato Indirecto $s', indirect)
+        logging.debug ('Contrato Indirecto %s', indirect)
         if indirect:
             continue
         headerRowInn = contratosObtenerFilas (contrato, False)  

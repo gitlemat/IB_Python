@@ -161,12 +161,12 @@ def actualizarFilaOrdenes (n_intervals):
 
 # Callback para borrar ordenes individualmente
 @callback(
-    Output("modalErrorHeader", "children"),
-    Output("modalErrorBody", "children"),
-    Output("modal_error_main", "is_open"),
+    Output("modal_cancelOrder", "children"),
+    Output("modal_cancelOrder_Body", "children"),
+    Output("modal_cancelOrder_main", "is_open"),
     Input({'role': 'boton_order_cancel', 'orderId': ALL}, "n_clicks"),
-    Input("modal_boton_close", "n_clicks"),
-    State("modal_error_main", "is_open"), prevent_initial_call = True,
+    Input("modal_cancelOrder_boton_close", "n_clicks"),
+    State("modal_cancelOrder_main", "is_open"), prevent_initial_call = True,
 )
 def cancelOrder (n_button_open, n_button_close, open_status):
 
@@ -187,7 +187,7 @@ def cancelOrder (n_button_open, n_button_close, open_status):
 
     logging.debug('Trigger %s', ctx.triggered_id)
 
-    if ctx.triggered_id == "modal_boton_close":
+    if ctx.triggered_id == "modal_cancelOrder_boton_close":
         return responseHeader, responseBody, False
 
     orderId = ctx.triggered_id['orderId'] 

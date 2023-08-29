@@ -28,12 +28,30 @@ def layout_strategies_tab():
 
     # Cabecera
 
-    logging.info ('Empiezo a calcular tab')
+    logging.debug ('Empiezo a calcular tab')
 
     tabEstrategias = [
             dbc.Row(
                 [
-                    html.P("Lista de Estrategias", className='text-left text-secondary mb-4 ps-0 display-6'),
+
+                    dbc.Col(
+                        html.P("Lista de Estrategias", className='text-left mb-0 text-secondary display-6'),
+                        className = 'ps-0',
+                        width = 9
+                    ),
+                    dbc.Col(
+                        html.Div(
+                            dbc.Button("Reload Todas", id={'role': 'ZoneButtonReloadAll'}, className="me-0", n_clicks=0),
+                            className="text-end"
+                        ),
+                        className = 'pe-0',
+                        width = 3
+                    ),
+                ],
+                className = 'mb-4',
+            ),
+            dbc.Row(
+                [
                     html.Hr()
                 ]
             ),
@@ -71,7 +89,7 @@ def layout_strategies_tab():
             ]
         )
 
-        logging.info ('Ya tengo la cabecera')
+        logging.debug ('Ya tengo la cabecera')
 
         # Los dos graficos
         fig1 = layout_getFigura1(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
@@ -84,7 +102,7 @@ def layout_strategies_tab():
         )
 
 
-        logging.info ('Ya tengo la fig1')
+        logging.debug ('Ya tengo la fig1')
         
         random_wait = random.randint(0,1000) + 10000
 
@@ -102,7 +120,7 @@ def layout_strategies_tab():
             )
         ])
 
-        logging.info ('Ya tengo la fig2')
+        logging.debug ('Ya tengo la fig2')
 
         collapseDetails = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2)
 
@@ -111,7 +129,7 @@ def layout_strategies_tab():
         tabEstrategias.append(headerRow)
         tabEstrategias.append(collapseDetails)    
 
-        logging.info ('Ya tengo todo')    
+        logging.debug ('Ya tengo todo')    
 
     return tabEstrategias
 
@@ -225,15 +243,16 @@ def layout_getStrategyHeader (estrategia, update = False):
     prevent_initial_call = True,
 )
 def switchStrategy(state):
-    if state:
-        logging.info ('Estrategia enabled')
-    else:
-        logging.info ('Estrategia disabled')
-
+    
     if not ctx.triggered_id:
         return no_update
     symbol = str(ctx.triggered_id.symbol)
     strategyType = ctx.triggered_id['strategy']
+
+    if state:
+        logging.info ('Estrategia [%s] del tipo: %s Enabled', symbol, strategyType)
+    else:
+        logging.info ('Estrategia [%s] del tipo: %s Disabled', symbol, strategyType)
 
     globales.G_RTlocalData_.strategies_.strategyEnableDisable (symbol, strategyType, state)
     
@@ -268,3 +287,37 @@ def actualizarFilaStrategies (n_intervals):
 
     resp = layout_getStrategyHeader (estrategia, True)
     return resp
+
+#Callback para recargar todas las estrategias desde fichero
+@callback(
+    Output("modal_reloadStrategiesOK", "children"),
+    Output("modal_reloadStrategiesOK_Body", "children"),
+    Output("modal_reloadStrategiesOK_main", "is_open"),
+    Input({'role': 'ZoneButtonReloadAll'}, "n_clicks"),
+    Input("modal_reloadStrategiesOK_boton_close", "n_clicks"),
+    State("modal_reloadStrategiesOK_main", "is_open"), prevent_initial_call = True,
+)
+def reloadStrats (n_button_open, n_button_close, open_status):
+
+    # Esto es por si las moscas
+    logging.debug('%s',n_button_open )
+    logging.debug('%s',ctx.triggered_id )
+    responseHeader = ''
+    responseBody = ''
+
+    if n_button_open == 0:
+        raise PreventUpdate
+
+    if ctx.triggered_id == "modal_reloadStrategiesOK_boton_close":
+        return responseHeader, responseBody, False
+    
+    try:
+        globales.G_RTlocalData_.strategies_.strategyInit ()
+    except:
+        responseHeader = 'Error'
+        responseBody = 'Error al recargar estrategias'     
+    else:
+        responseHeader = 'Aceptado'
+        responseBody = 'Todas las estrategias recargadas. Recarga el navegador'
+
+    return responseHeader, responseBody, True

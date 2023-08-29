@@ -284,7 +284,7 @@ class DataLocalRT():
             if tickType == 8 or tickType == 74:
                 if not 'VOLUME' in prices or ('VOLUME' in prices and prices['VOLUME'] != size):
                     bChange_volume = True
-                    logging.info ('Hemos recibido Volume (req:%s): %s', reqId, size)
+                    logging.debug ('Hemos recibido Volume (req:%s): %s', reqId, size)
                     prices['VOLUME'] = size
 
             self.tickPrices_[reqId] = prices

@@ -526,7 +526,7 @@ class dbPandasContrato():
         data = {'timestamp': today_chicago, 'Volume': data['VOLUME']}
         self.dbUpdateInfluxVolume (data)
         if today_chicago == lastdate:
-            self.dfVolume_.iloc[-1]['Volume'] = data['VOLUME']
+            self.dfVolume_.iloc[-1]['Volume'] = data['Volume']
         else:
             newlineL = []
             newlineL.append(data)

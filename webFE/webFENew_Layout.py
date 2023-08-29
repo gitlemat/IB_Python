@@ -15,7 +15,8 @@ def layout_init():
     layout = dbc.Container(
         [
             layout_sidebar(),
-            modal_error(),
+            modal_error('cancelOrder'),
+            modal_error('reloadStrategiesOK'),
         ], fluid=True
     )
 
@@ -119,20 +120,20 @@ def layout_sidebar():
 
     return layout
 
-def modal_error():
+def modal_error(usecase):
     modal = html.Div(
         [
             dbc.Modal(
                 [
-                    dbc.ModalHeader(dbc.ModalTitle("Deafult", id = "modalErrorHeader")),
-                    dbc.ModalBody("Default", id = "modalErrorBody"),
+                    dbc.ModalHeader(dbc.ModalTitle("Deafult", id = "modal_" + usecase)),
+                    dbc.ModalBody("Default", id = "modal_" + usecase + "_Body"),
                     dbc.ModalFooter(
                         dbc.Button(
-                            "Close", id="modal_boton_close", className="ms-auto", n_clicks=0
+                            "Close", id="modal_" + usecase + "_boton_close", className="ms-auto", n_clicks=0
                         )
                     ),
                 ],
-                id="modal_error_main",
+                id="modal_" + usecase + "_main",
                 is_open=False,
             ),
         ]

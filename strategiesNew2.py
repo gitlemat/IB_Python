@@ -20,8 +20,20 @@ class Strategies():
         #  {'symbol': lineSymbol, 'type': 'Pentagrama', 'classObject': classObject}
 
         self.stratList_ = [] 
-        #self.stratList_ += strategyPentagramaNew.strategyReadFile(self.RTLocalData_)
-        self.stratList_ += strategyPentagramaRuNew2.strategyReadFile(self.RTLocalData_)
+        try:
+            self.strategyInit()
+        except:
+            logging.error('Fallo cargando estrategias')
+
+    def strategyInit(self):
+        tstratList = [] 
+        try:
+            tstratList += strategyPentagramaRuNew2.strategyReadFile(self.RTLocalData_)
+        except:
+            logging.error ('Error cargando estrategiaRu')
+            raise
+
+        self.stratList_ = tstratList  # Si recargo, solo me las cargo si ha ido todo bien
 
         # Hay que asegurarse qe todos los contratos estan en la lista:
         for strategy in self.stratList_: 
@@ -29,6 +41,7 @@ class Strategies():
             gConId = self.RTLocalData_.contractAdd(contractN)
             self.RTLocalData_.contractIndirectoSet (gConId, False)
 
+    
     def strategyGetAll (self):
         return self.stratList_
 

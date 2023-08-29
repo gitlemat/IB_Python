@@ -427,8 +427,8 @@ def reloadStrategyRuFiles(n_clicks):
     if n_clicks is None or (not ctx.triggered_id):
         raise PreventUpdate
 
-    # Aqui grabamos los zones
     logging.info ("Actualización de los ficheros de estrategia Ruben (%s)", symbol)
-    globales.G_RTlocalData_.strategies_.strategyPentagramaRuObj_.strategyPentagramaRuReadFile ()
+    #globales.G_RTlocalData_.strategies_.strategyPentagramaRuObj_.strategyPentagramaRuReadFile ()
+    globales.G_RTlocalData_.strategies_.strategyReload ('PentagramaRu', symbol)
 
     return  no_update

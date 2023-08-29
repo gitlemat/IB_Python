@@ -89,6 +89,10 @@ def strategyReadFile (RTlocalData):
             else:
                 lineCurrentPos = int (fields[3].strip())
 
+    if bError:
+        raise Exception("Error cargando estrategiaRu")
+        return
+
     logging.info ('Estrategias PentagramaRu cargadas')
 
     return lstrategyList
