@@ -185,6 +185,9 @@ class dbPandasStrategy():
         self.dfExecs_ = self.influxIC_.influxGetExecDataFrame (self.symbol_, self.strategyType)
         self.dfExecCount_ = self.influxIC_.influxGetExecCountDataFrame (self.symbol_, self.strategyType)
 
+    def dbGetExecsDataframeAll(self):
+        return self.dfExecs_
+
     def dbGetExecsDataframeToday(self):
         #                                   OrderId  Quantity Side
         # timestamp                                               

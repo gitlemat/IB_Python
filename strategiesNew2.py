@@ -1,6 +1,7 @@
 import logging
 import datetime
 import strategyPentagramaRuNew2
+import pandas as pd
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,15 @@ class Strategies():
     
     def strategyGetAll (self):
         return self.stratList_
+
+    def strategyGetAllExecs (self):
+        df = pd.DataFrame()
+        for strategy in self.stratList_:
+            dfPart_ = strategy['classObject'].pandas_.dbGetExecsDataframeAll()
+            dfPart_['Strategy'] = strategy['type'] + '/' + strategy['symbol']
+            df = pd.concat([df, dfPart_])
+
+        return df
 
     def strategyEnableDisable (self, symbol, strategyType, state):
         toWrite = {}

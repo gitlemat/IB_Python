@@ -235,7 +235,146 @@ def layout_getStrategyHeader (estrategia, update = False):
     
     return headerRow
 
+def modal_addStrategy():
 
+    # Aquí habria que añadir un id para el tipo de estrategia, y con un callback decidir el responseBody
+
+    Symbol = dcc.Input(
+        id = "strategy_create_symbol",
+        type = "text",
+        placeholder = "",
+    )
+
+    Qty = dcc.Input(
+        id = "strategy_create_qty",
+        type = "number",
+        placeholder = "0",
+    )
+
+    nBuys = dcc.Input(
+        id = "strategy_create_nBuys",
+        type = "number",
+        placeholder = "0",
+    )
+
+    nSells = dcc.Input(
+        id = "strategy_create_nSells",
+        type = "number",
+        placeholder = "0",
+    )
+
+    interSpace = dcc.Dropdown(
+        options = [250, 300, 350], 
+        value = 250, 
+        id = 'strategy_create_interSpace'
+    )
+
+    gain = dcc.Input(
+        id = "strategy_create_gain",
+        type = "number",
+        placeholder = "0",
+    )
+
+    first = dcc.Input(
+        id = "strategy_create_first",
+        type = "number",
+        placeholder = "0",
+    )
+
+    slBuy = dcc.Input(
+        id = "strategy_create_slBuy",
+        type = "number",
+        placeholder = "0",
+    )
+
+    slSell = dcc.Input(
+        id = "strategy_create_slSell",
+        type = "number",
+        placeholder = "0",
+    )
+
+
+    responseBody = html.Div([
+        html.P('Simbolo Estrategia: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        Symbol,
+        html.P('Numero de BUY:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        nBuys,
+        html.P('Numero de SELL:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        nSells,
+        html.P('Primer LMT:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        first,
+        html.P('Espaciado:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        interSpace,
+        html.P('Qty:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        Qty,
+        html.P('Ganancia TP:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        gain,
+        html.P('Stop Loss BUY:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        slBuy,
+        html.P('Stop Loss SELL:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        slSell,
+    ])
+    
+    modal = html.Div(
+        [
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Crear Ordem", id = "modalStrategyCreateHeader")),
+                    dbc.ModalBody(responseBody, id = "modalStrategyCreateBody"),
+                    dbc.ModalFooter([
+                        dbc.Button(
+                            "Crear", id="modalStrategyCreate_boton_create", className="ms-auto", n_clicks=0
+                        ),
+                        dbc.Button(
+                            "Close", id="modalStrategyCreate_boton_close", className="ms-auto", n_clicks=0
+                        )
+                    ]),
+                ],
+                id="modalStrategyCreate_main",
+                is_open=False,
+            ),
+        ]
+    )
+    return modal
+'''
+# Callback para general una orden en el contrato
+@callback(
+    Output("contract_orders_create_symbol", "placeholder"),
+    Output("modalContratoOrdenCreate_main", "is_open"),
+    Input({'role': 'boton_order_create', 'gConId': ALL}, "n_clicks"),
+    Input("contract_orders_create_symbol", "placeholder"),
+    Input("contract_orders_create_qty", "value"),
+    Input("contract_orders_create_LmtPrice", "value"),
+    Input("contract_orders_create_action", "value"),
+    Input("contract_orders_create_orderType", "value"),
+    Input("modalContratoOrdenCreate_boton_create", "n_clicks"),
+    Input("modalContratoOrdenCreate_boton_close", "n_clicks"),
+    State("modalContratoOrdenCreate_main", "is_open"), prevent_initial_call = True,
+)
+def createStrategy (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderType, n_button_create, n_button_close, open_status):
+
+    # Esto es por si las moscas
+    if not ctx.triggered_id:
+        raise PreventUpdate
+'''
 # Callback para enable/disable estrategia
 @callback(
     Output({'role': 'switchStratEnabled', 'strategy':MATCH, 'symbol': MATCH}, "value"),   # Dash obliga a poner un output.

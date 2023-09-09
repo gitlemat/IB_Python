@@ -179,6 +179,8 @@ def main():
     #t_wsServerIB.start()
 
     # Esperamos que esté conectado
+
+    max_con_fails = 0
     
     while True:
         if isinstance(app.nextorderId, int):
@@ -186,9 +188,15 @@ def main():
             app.initConnected_ = True
             break
         else:
-            logging.info("Waiting for connection...")
+            if max_con_fails == 0:
+                logging.info("Waiting for connection...")
+            max_con_fails += 1
             # LLegado cierto momento se podría hacer algo con t_api_thread
-            time.sleep(1)    
+            if max_con_fails > 6:
+                logging.info("Demasiado tiempo esperando. Reconectando.......")
+                max_con_fails = 0
+                app.reconnect()
+            time.sleep(10)    
 
     time.sleep (3)
     logging.info("Conexion establecida con TWS.")

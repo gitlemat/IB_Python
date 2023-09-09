@@ -120,6 +120,35 @@ def strategyWriteFile (strategies):
         for line in lines:
             f.writelines(line)
 
+def strategyPentagramaRuAddToFile (data):
+    symbol = data['symbol']
+    nBuys = data['nBuys']
+    nSells = data['nSells']
+    interSpace = data['interSpace']
+    gain = data['gain']
+    start = data['start']
+    qty_row = str(data['qty_row'])
+    sl_buy = str(data['sl_buy'])
+    sl_sell = str(data['sl_sell'])
+    row = ''
+    #HEZ3-2HEG4+HEJ4,False,False,0
+    row = symbol+',False,False,0\n'
+    value = start
+    for n in range(nSells):
+        valueStr = str(round(value,4))
+        tp = str(round(value - gain,4))
+        row += 'S,' + valueStr + ',' + qty_row + ',' + sl_sell + ',' + tp + ',,,,,,,None\n'
+        value -= interSpace
+    for n in range(nBuys):
+        valueStr = str(round(value,4))
+        tp = str(round(value + gain,4))
+        row += 'B,' + valueStr + ',' + qty_row + ',' + sl_buy + ',' + tp + ',,,,,,,None\n'
+        value -= interSpace
+    row += '%'
+    return row
+
+
+
 class strategyPentagramaRu(strategyBaseClass):
 
     def __init__(self, RTlocalData, symbol, data):

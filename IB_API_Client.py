@@ -30,6 +30,10 @@ class IBI_App(EWrapper, EClient):
         #Order.__setattr__ = utils.setattr_log
         #Contract.__setattr__ = utils.setattr_log
 
+        self.ipaddress_ = ipaddress
+        self.portid_ = portid
+        self.clientid_ = clientid
+
         self.accSumTags = AccountSummaryTags()
         
         self.contract_details = {} #Contract details will be stored here using reqId as a dictionary key
@@ -68,6 +72,9 @@ class IBI_App(EWrapper, EClient):
         thread.start()
         setattr(self, "_thread", thread)
         '''
+
+    def reconnect (self):
+        self.connect(self.ipaddress_, self.portid_, self.clientid_)
 
     def reqIdNew(self):
         i = 0

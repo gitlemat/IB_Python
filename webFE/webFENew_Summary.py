@@ -5,6 +5,8 @@ import webFE.webFENew_Contratos
 from dash import MATCH, ALL, Input, Output, State, ctx, no_update, callback
 from dash import html
 from dash import dcc
+from dash import dash_table
+from dash.dash_table.Format import Format, Group, Prefix, Scheme, Symbol
 from dash.exceptions import PreventUpdate
 
 import dash_bootstrap_components as dbc
@@ -32,7 +34,7 @@ def layout_summary_tab ():
     included_contracts = []
     for estrategia in strategyList:
         symbol = estrategia['symbol']
-        
+                
         contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
         if not contrato:
             logging.error ('Error cargando estrategia Headerde %s. No tenemos el contrato cargado en RT_Data', symbol)
@@ -62,19 +64,32 @@ def layout_summary_tab ():
 
         all_cards.append(this_card)
 
-    '''
-    row_complete = True
-    for a_card in all_cards:
-        if row_complete:
-            a_row = []
-        column = dbc.Col(a_card, width=6)
-        a_row.append(column)
+    # Ahora añadimos la lista de execs a tabSummary
 
-        if not row_complete:
-            row_complete = True
-            row = dbc.Row(a_row)
-            tabSummary.append(row)
-    '''
+    df_execs = globales.G_RTlocalData_.strategies_.strategyGetAllExecs()
+    df_execs['timestamp'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
+
+    columnas = [
+        {'id': "timestamp", 'name': "Fecha", 'type': 'datetime'},
+        {'id': "OrderId", 'name': "OrderId", 'type': 'numeric'},
+        {'id': "Side", 'name': "Side", 'type': 'text'},
+        {'id': "FillPrice", 'name': "Precio", 'type': 'numeric', 'format': Format(symbol=Symbol.yes, symbol_prefix='$', precision=3)},
+        {'id': "Quantity", 'name': "Qty", 'type': 'numeric'},
+        {'id': "RealizedPnL", 'name': "PnL", 'type': 'numeric', 'format': Format(symbol=Symbol.yes, symbol_prefix='$', precision=3)},
+        {'id': "Commission", 'name': "Comisión", 'type': 'numeric', 'format': Format(symbol=Symbol.yes, symbol_prefix='$', precision=3)},
+        {'id': "Strategy", 'name': "Estrategia", 'type': 'text'},
+    ]
+
+    tablaExecs = dbc.Card([
+        dash_table.DataTable(
+            data=df_execs.to_dict('records'), 
+            columns = columnas,
+            page_size=20
+        )
+    ])
+    #logging.info ('%s', df_execs)
+
+    #all_cards.append(tablaExecs)
 
     for i in range(0, len(all_cards), 2):
         logging.debug ('Card: %d, %d', i, len(all_cards))
@@ -91,10 +106,8 @@ def layout_summary_tab ():
         )  
         tabSummary.append(row)
 
+    tabSummary.append(tablaExecs)
 
-
-
-        
 
     return tabSummary
 

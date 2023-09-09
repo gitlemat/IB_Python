@@ -6,7 +6,7 @@ ORG = 'rodsic.com'
 BUCKET = 'ib_prices_lab'
 
 def testToday():
-    client = InfluxDBClient(url="http://localhost:8086", token=TOKEN)
+    client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
     today = datetime.datetime.today()#  - datetime.timedelta(days = 1)
 
     now  = datetime.datetime.now()
@@ -101,7 +101,7 @@ def testOhcl():
     return result
 
 def testPnL():
-    client = InfluxDBClient(url="http://localhost:8086", token=TOKEN)
+    client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
     #today = datetime.datetime.today()  - datetime.timedelta(days = 1)
 
     #today = today.replace(hour = 14, minute = 0, second = 0, microsecond=0)
@@ -166,7 +166,7 @@ def testExec():
     return result
 
 def testExecCountSum():
-    client = InfluxDBClient(url="http://localhost:8086", token=TOKEN)
+    client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
 
     print ("todayStop")
     param = {"_bucket": BUCKET, "_symbol": "HEM3-2HEN3+HEQ3", "_desc": False}

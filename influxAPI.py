@@ -290,6 +290,7 @@ class InfluxClient:
 
         today = datetime.datetime.today()
         todayStart = today.replace(hour = 0, minute = 0, second = 0, microsecond=0)
+        todayStart = todayStart - datetime.timedelta(days=180)
         todayStop = today.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
         todayStart = utils.dateLocal2UTC (todayStart)
         todayStop = utils.dateLocal2UTC (todayStop)
@@ -300,16 +301,16 @@ class InfluxClient:
         |> filter(fn:(r) => r._measurement == "executions")
         |> filter(fn:(r) => r.symbol == _symbol)
         |> filter(fn:(r) => r.strategy == _strategyType)
-        |> filter(fn:(r) => r._field == "OrderId" or r._field == "Quantity" or r._field == "Side")
+        |> filter(fn:(r) => r["_field"] == "Commission" or r["_field"] == "OrderId" or r["_field"] == "ExecId" or r["_field"] == "Quantity" or r["_field"] == "Side" or r["_field"] == "RealizedPnL" or r["_field"] == "FillPrice" or r["_field"] == "Side" or r["_field"] == "RealizedPnL" or r["_field"] == "PermId")
         |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
-        |> keep(columns: ["_time", "OrderId", "Quantity", "Side"])
+        |> keep(columns: ["_time", "ExecId", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"])
         |> sort(columns: ["_time"], desc: _desc)
         '''
 
         result = self.query_data_frame(query, param)
 
         if len(result) == 0:
-            df_temp = pd.DataFrame(columns = ['timestamp', 'OrderId','Quantity','Side'])
+            df_temp = pd.DataFrame(columns = ['timestamp', 'ExecId', 'PermId', 'OrderId', 'Quantity', 'Side', 'RealizedPnL', 'Commission', 'FillPrice'])
             df_temp.set_index('timestamp', inplace=True)
             return df_temp
     
