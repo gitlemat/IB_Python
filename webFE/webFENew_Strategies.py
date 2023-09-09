@@ -4,7 +4,6 @@ import dash_bootstrap_components as dbc
 from dash import MATCH, ALL, Input, Output, State, ctx, no_update, callback
 from dash.exceptions import PreventUpdate
 
-import webFE.webFENew_Strat_Penta
 import webFE.webFENew_Strat_PentaRu
 from webFE.webFENew_Utils import formatCurrency
 import globales
@@ -137,8 +136,6 @@ def layout_strategies_tab():
 def layout_getFigura1(estrategia):
     stratType = estrategia['type']
     fig1 = None
-    if stratType == 'Pentagrama':
-        fig1 = webFE.webFENew_Strat_Penta.layout_getFigureHistoricoPen (estrategia)
     if stratType == 'PentagramaRu':
         fig1 = webFE.webFENew_Strat_PentaRu.layout_getFigureHistoricoPenRu (estrategia)
 
@@ -148,8 +145,6 @@ def layout_getFigura1(estrategia):
 def layout_getFigura2(estrategia):
     stratType = estrategia['type']
     fig2 = None
-    if stratType == 'Pentagrama':
-        fig2 = webFE.webFENew_Strat_Penta.layout_getFigureTodayPen (estrategia)
     if stratType == 'PentagramaRu':
         fig2 = webFE.webFENew_Strat_PentaRu.layout_getFigureTodayPenRu (estrategia)
 
@@ -158,8 +153,6 @@ def layout_getFigura2(estrategia):
 def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2):
     stratType = estrategia['type']
     collapseDetails = None
-    if stratType == 'Pentagrama':
-        collapseDetails = webFE.webFENew_Strat_Penta.insideDetailsPentagrama (estrategia, graphColumn1, graphColumn2)
     if stratType == 'PentagramaRu':
         collapseDetails = webFE.webFENew_Strat_PentaRu.insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2)
     
