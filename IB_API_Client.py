@@ -74,6 +74,7 @@ class IBI_App(EWrapper, EClient):
         '''
 
     def reconnect (self):
+        self.disconnect()
         self.connect(self.ipaddress_, self.portid_, self.clientid_)
 
     def reqIdNew(self):

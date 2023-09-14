@@ -5,6 +5,8 @@ from dash import dcc
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+from dash import dash_table
+from dash.dash_table.Format import Format, Group, Prefix, Scheme, Symbol
 import globales
 import logging
 import random
@@ -36,7 +38,29 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2):
     insideDetailsBotonesZonas = []
     insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar desde Fichero", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0)))
 
+    # Las ordenes ejecutadas de PentagramaRu
 
+    # strategy['classObject'].pandas_.dbGetExecsDataframeAll()
+
+    df_execs = estrategia['classObject'].pandas_.dbGetExecsDataframeAll()
+    df_execs['timestamp'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
+
+    columnas = [
+        {'id': "timestamp", 'name': "Fecha", 'type': 'datetime'},
+        {'id': "OrderId", 'name': "OrderId", 'type': 'numeric'},
+        {'id': "Side", 'name': "Side", 'type': 'text'},
+        {'id': "FillPrice", 'name': "Precio", 'type': 'numeric', 'format': Format(symbol=Symbol.yes, symbol_prefix='$', precision=3)},
+        {'id': "Quantity", 'name': "Qty", 'type': 'numeric'},
+        {'id': "RealizedPnL", 'name': "PnL", 'type': 'numeric', 'format': Format(symbol=Symbol.yes, symbol_prefix='$', precision=3)},
+        {'id': "Commission", 'name': "Comisión", 'type': 'numeric', 'format': Format(symbol=Symbol.yes, symbol_prefix='$', precision=3)},
+    ]
+
+    tablaExecs = dash_table.DataTable (
+        data = df_execs.to_dict('records'), 
+        columns = columnas,
+        page_size=10
+    )
+    
     # Todo lo que se oculta junto
     collapseDetails = dbc.Collapse(
         [
@@ -45,6 +69,9 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2):
                     dbc.Col(graphColumn1, width=6),
                     dbc.Col(graphColumn2, width=6)
                 ]
+            ),
+            dbc.Row(
+                    tablaExecs,
             ),
             dbc.Row(
                     insideDetailsBotonesZonas,

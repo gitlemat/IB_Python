@@ -38,7 +38,7 @@ def SetupLogger():
     time.strftime("pyibapi.%Y%m%d_%H%M%S.log")
 
     #recfmt = '(%(threadName)s) %(asctime)s.%(msecs)03d %(levelname)s %(filename)s:%(lineno)d %(message)s'
-    recfmt = '%(asctime)s.%(msecs)03d %(levelname)-5s [%(filename)-MMMM.MMMMs:%(lineno)-4.4d] %(message)s'
+    recfmt = '%(asctime)s.%(msecs)03d %(levelname)-7s [%(filename)-MMMM.MMMMs:%(lineno)-4.4d] %(message)s'
     recfmt = recfmt.replace('MMMM', max_len)
 
     timefmt = '%y-%m-%d_%H:%M:%S'
@@ -164,8 +164,6 @@ def main():
     app = IB_API_Client.IBI_App("127.0.0.1", _port, client_id, globales.G_RTlocalData_)
     t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)
     t_api_thread.start()
-
-    strategyIns = strategiesNew2.Strategies(globales.G_RTlocalData_, app)
     
     # Init web page
     #webFE1 = webFE.webFE(globals.G_RTlocalData_)
@@ -200,6 +198,8 @@ def main():
 
     time.sleep (3)
     logging.info("Conexion establecida con TWS.")
+
+    strategyIns = strategiesNew2.Strategies(globales.G_RTlocalData_, app)
 
     #assigning the return from our clock method to a variable 
     requested_time = app.server_clock()
