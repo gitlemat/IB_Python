@@ -121,19 +121,6 @@ def create_card (contrato, fig1, estrategia):
     priceLast = formatCurrency(contrato['currentPrices']['LAST'])
     priceTotal = "BUY:" + priceBuy + '/SELL:' + priceSell + '/LAST:' + priceLast
 
-    if estrategia == None:
-        stratType = 'N/A'
-        posQty = 'N/A'
-        execToday = 'N/A'
-        execTotal = 'N/A'
-        execString = 'N/A'
-    else:
-        stratType = estrategia['type']
-        posQty = str(estrategia['classObject'].currentPos_)
-        execToday = estrategia['classObject'].pandas_.dbGetExecCountToday()
-        execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
-        execString = str(execToday) + '/' + str(execTotal)
-
     lastPnL = contrato['dbPandas'].dbGetLastPnL()
     dailyPnL = ''
     realizedPnL = ''
@@ -144,7 +131,22 @@ def create_card (contrato, fig1, estrategia):
         realizedPnL = formatCurrency(lastPnL['realizedPnL'])
     if lastPnL['unrealizedPnL'] != None:
         unrealizedPnL = formatCurrency(lastPnL['unrealizedPnL'])
-    totalPnl = dailyPnL + '/' + realizedPnL + '/' + unrealizedPnL
+    
+    if estrategia == None:
+        stratType = 'N/A'
+        posQty = 'N/A'
+        execToday = 'N/A'
+        execTotal = 'N/A'
+        execString = 'N/A'
+        totalPnl = dailyPnL + '/' + realizedPnL + '/' + unrealizedPnL
+    else:
+        stratType = estrategia['type']
+        posQty = str(estrategia['classObject'].currentPos_)
+        execToday = estrategia['classObject'].pandas_.dbGetExecCountToday()
+        execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
+        execString = str(execToday) + '/' + str(execTotal)
+        allPnL = estrategia['classObject'].strategyGetExecPnL()
+        totalPnl = dailyPnL + '/' + formatCurrency(allPnL)
 
     graphColumn1 = html.Div(
         dcc.Graph(

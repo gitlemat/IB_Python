@@ -182,6 +182,9 @@ class strategyPentagramaRu(strategyBaseClass):
         # Nada fuera de lo normal. Hacemos solo lo standard de la clase base
         super().strategyLoopCheck()
 
+    def strategyGetExecPnL (self):
+        return self.pandas_.dbGetExecPnL()
+
 
     def strategyOrderUpdated (self, data):
 

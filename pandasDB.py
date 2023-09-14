@@ -229,6 +229,10 @@ class dbPandasStrategy():
         ret = self.dfExecCount_.sum(axis=0)['ExecCount']
         return ret
 
+    def dbGetExecPnL(self):
+        ret = self.dfExecs_.sum(axis=0)['RealizedPnL']
+        return ret
+
     def dbAddExecToCount(self):
         today = datetime.datetime.today()
         today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)

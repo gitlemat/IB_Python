@@ -68,6 +68,9 @@ class strategyBaseClass():
 
         return bStrategyUpdated
 
+    def strategyGetExecPnL (self):
+        return None
+
     def strategySubscribeOrdersInit (self): 
         # To override
         return None
