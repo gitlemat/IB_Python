@@ -142,9 +142,9 @@ def main():
     # El orden es el siguiente:
     #   0.- RT es global
     #   1.- app de API
-    #   2.- Cargar Estrategias. Para que cuando arranquemos Orders ya estén, y se pueda actualizar la estrategia.
-    #   3.- Los web servers, pero pueden ir despues
-    #   4.- Esperamos a confirmar conexion
+    #   2.- Los web servers, pero pueden ir despues
+    #   3.- Esperamos a confirmar conexion
+    #   4.- Cargar Estrategias. Para que cuando arranquemos Orders ya estén, y se pueda actualizar la estrategia.
     #   5.- Pedimos posiciones, ordenes y accountInfo
     #   6.- Esperamos a tener toda la info de lo anterior
     #   7.- Procesamos Ordenes y AccountInfo

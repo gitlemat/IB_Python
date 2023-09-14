@@ -43,6 +43,7 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2):
     # strategy['classObject'].pandas_.dbGetExecsDataframeAll()
 
     df_execs = estrategia['classObject'].pandas_.dbGetExecsDataframeAll()
+    df_execs.sort_index(ascending=False, inplace = True)
     df_execs['timestamp'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
 
     columnas = [

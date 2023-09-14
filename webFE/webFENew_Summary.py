@@ -67,8 +67,9 @@ def layout_summary_tab ():
     # Ahora añadimos la lista de execs a tabSummary
 
     df_execs = globales.G_RTlocalData_.strategies_.strategyGetAllExecs()
+    df_execs.sort_index(ascending=False, inplace = True)
     df_execs['time'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
-    df_execs.sort_values(by=['time'], inplace=True, ascending=False)
+    #df_execs.sort_values(by=['time'], inplace=True, ascending=False)
 
     columnas = [
         {'id': "time", 'name': "Fecha", 'type': 'datetime'},
