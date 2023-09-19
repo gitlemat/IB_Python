@@ -468,7 +468,7 @@ class bracketOrderClass():
         symbol = self.symbol_
         contract = self.RTLocalData_.contractGetBySymbol(symbol)  
         secType = contract['contract'].secType
-        action1 = 'BUY' if self.B_S_ == 'B' else 'SELL'
+        action1 = 'BUY' if self.B_S_ == 'S' else 'SELL'
         action2 = action1 # Es un SL , tiene que ser igual al TP
         qty = self.Qty_
         takeProfitLimitPrice = self.PrecioTP_
@@ -476,8 +476,8 @@ class bracketOrderClass():
 
         try:
             logging.info ('[Estrategia %s (%s)]. Vamos a crear las ordenes SL/TP como OCA', self.strategyType_,  symbol)
-            logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
-            logging.info ('     Precio SL : %.3f', stopLossPrice)
+            logging.info ('     Precio TP (%s): %.3f', action1, takeProfitLimitPrice)
+            logging.info ('     Precio SL (%s): %.3f', action2, stopLossPrice)
             orderIds = self.RTLocalData_.orderPlaceOCA (symbol, secType, action1, action2, qty, takeProfitLimitPrice, stopLossPrice)
         except:
             logging.error('Error lanzando las OCA orders', exc_info=True)
@@ -488,5 +488,9 @@ class bracketOrderClass():
 
         self.orderIdTP_ = orderIds['tpOrderId']
         self.orderIdSL_ = orderIds['slOrderId']
+
+        logging.info ('[Estrategia %s (%s)]. Estas son las ordenes nuevas', self.strategyType_, symbol)
+        logging.info ('     Orden TP: %s', self.orderIdTP_)
+        logging.info ('     Orden SL: %s', self.orderIdSL_)
 
         return True
