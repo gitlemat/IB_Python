@@ -659,8 +659,9 @@ class IBI_App(EWrapper, EClient):
             logging.error ("Error creando el contrato para la orden. Contrato vacio")
             return None
 
+        oca_name = "OCA_" + str(self.nextorderId)
         tpOrder = self.orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
-        tpOrder.ocaGroup = "OCA_" + str(self.nextorderId)
+        tpOrder.ocaGroup = oca_name
         tpOrder.ocaType = 3
 
         try:
@@ -670,7 +671,7 @@ class IBI_App(EWrapper, EClient):
             return None
  
         slOrder = self.orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
-        slOrder.ocaGroup = "OCA_" + str(self.nextorderId)
+        slOrder.ocaGroup = oca_name
         slOrder.ocaType = 3
 
         logging.info ("La OCA tiene este valor: %s", slOrder.ocaGroup)
