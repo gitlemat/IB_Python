@@ -263,24 +263,26 @@ class dbPandasStrategy():
         lotes_contrato = 400
         fillPrice = row['FillPrice'] * lotes_contrato
 
+        qty = float(row['Quantity'])
+
         if new_count == 0:
             new_avgPrice = 0     
             if row['Side'] == 'BOT':
-                new_tPnL = tPnL + avgPrice - fillPrice - row['Commission']/row['Quantity']
+                new_tPnL = tPnL + avgPrice - fillPrice - row['Commission']/qty
             else:
-                new_tPnL = tPnL + fillPrice - avgPrice - row['Commission']/row['Quantity']
+                new_tPnL = tPnL + fillPrice - avgPrice - row['Commission']/qty
         elif new_count > 0:
             if row['Side'] == 'BOT':
                 new_avgPrice = (avgPrice * abs(count) + fillPrice) / abs(new_count)
-                new_tPnL = tPnL - row['Commission']/row['Quantity']
+                new_tPnL = tPnL - row['Commission']/qty
             else:
-                new_tPnL = tPnL + fillPrice - avgPrice - row['Commission']/row['Quantity']
+                new_tPnL = tPnL + fillPrice - avgPrice - row['Commission']/qty
         elif new_count < 0:
             if row['Side'] == 'SLD':
                 new_avgPrice = (avgPrice * abs(count) + fillPrice) / abs(new_count)
-                new_tPnL = tPnL - row['Commission']/row['Quantity']
+                new_tPnL = tPnL - row['Commission']/qty
             else:
-                new_tPnL = tPnL + avgPrice - fillPrice - row['Commission']/row['Quantity']
+                new_tPnL = tPnL + avgPrice - fillPrice - row['Commission']/qty
         avgPrice = new_avgPrice
         count = new_count
         tPnL = new_tPnL
