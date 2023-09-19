@@ -172,6 +172,7 @@ class dbPandasStrategy():
         self.dfExecs_ = None
         self.dfExecCount_ = None
         self.ExecsList = {} # Esta no es un pandas, pero viene bien dejarlo aqui
+        self.ExecsPnL_ = {'avgPrice': 0, 'count': 0, 'PnL': 0} # Lo mismo, es mejor aqui
 
         self.symbol_ = symbol
         self.influxIC_ = influxIC
@@ -180,8 +181,11 @@ class dbPandasStrategy():
         
         self.dbReadInflux()
 
+        self.dbGetExecPnLInit()  # Alimentamos el self.ExecsPnL_
+
     def dbReadInflux(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes')
+        # ["_time", "ExecId", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"]
         self.dfExecs_ = self.influxIC_.influxGetExecDataFrame (self.symbol_, self.strategyType)
         self.dfExecCount_ = self.influxIC_.influxGetExecCountDataFrame (self.symbol_, self.strategyType)
 
@@ -230,8 +234,59 @@ class dbPandasStrategy():
         return ret
 
     def dbGetExecPnL(self):
-        ret = self.dfExecs_.sum(axis=0)['RealizedPnL']
-        return ret
+        return self.ExecsPnL_
+
+
+    def dbGetExecPnLInit(self):
+        # ["_time", "ExecId", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"]
+        logging.info('Llego aqui')
+
+        for index, row in self.dfExecs_.iterrows():
+            logging.info('Nuevo. FillPrice: %s. Qty: %s. Side: %s. Commission: %s', row['FillPrice'], row['Quantity'], row['Side'], row['Commission'])
+            for i in range(int(row['Quantity'])):
+                self.dbAddExecPnL(row)
+
+    def dbAddExecPnL(self, row):
+        count = self.ExecsPnL_['count']
+        avgPrice = self.ExecsPnL_['avgPrice']
+        tPnL = self.ExecsPnL_['PnL']
+
+        if row['Side'] == 'BOT':
+            new_count = count + 1
+        else:
+            new_count = count - 1
+
+        new_tPnL = tPnL
+        new_avgPrice = avgPrice
+
+        # Lotes por contrato
+        lotes_contrato = 400
+        fillPrice = row['FillPrice'] * lotes_contrato
+
+        if new_count == 0:
+            new_avgPrice = 0     
+            if row['Side'] == 'BOT':
+                new_tPnL = tPnL + avgPrice - fillPrice - row['Commission']/row['Quantity']
+            else:
+                new_tPnL = tPnL + fillPrice - avgPrice - row['Commission']/row['Quantity']
+        elif new_count > 0:
+            if row['Side'] == 'BOT':
+                new_avgPrice = (avgPrice * abs(count) + fillPrice) / abs(new_count)
+                new_tPnL = tPnL - row['Commission']/row['Quantity']
+            else:
+                new_tPnL = tPnL + fillPrice - avgPrice - row['Commission']/row['Quantity']
+        elif new_count < 0:
+            if row['Side'] == 'SLD':
+                new_avgPrice = (avgPrice * abs(count) + fillPrice) / abs(new_count)
+                new_tPnL = tPnL - row['Commission']/row['Quantity']
+            else:
+                new_tPnL = tPnL + avgPrice - fillPrice - row['Commission']/row['Quantity']
+        avgPrice = new_avgPrice
+        count = new_count
+        tPnL = new_tPnL
+
+        self.ExecsPnL_ = {'avgPrice': avgPrice, 'count': count, 'PnL': tPnL}
+        logging.info('Actualizamos PnL en estrategia %s: %s', self.symbol_, self.ExecsPnL_)
 
     def dbAddExecToCount(self):
         today = datetime.datetime.today()
@@ -258,9 +313,11 @@ class dbPandasStrategy():
         newlineL.append (dataFlux)
         dfDelta = pd.DataFrame.from_records(newlineL)
         dfDelta.set_index('timestamp', inplace=True)
+        # OJJJJJOOOOOOO
+        # Aqui hay que comprobar qye el ExecId no exista. Puede que IB lo mande dos veces
         self.dfExecs_ = pd.concat([self.dfExecs_, dfDelta]) #, ignore_index=True
         self.dbAddExecToCount() 
-
+        self.dbAddExecPnL(dataFlux)
         self.dbUpdateInfluxCommission (dataFlux)
 
         self.toPrint = True

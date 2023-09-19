@@ -139,14 +139,17 @@ def create_card (contrato, fig1, estrategia):
         execTotal = 'N/A'
         execString = 'N/A'
         totalPnl = dailyPnL + '/' + realizedPnL + '/' + unrealizedPnL
+        AvgPriceFmt = 'N/A'
     else:
         stratType = estrategia['type']
         posQty = str(estrategia['classObject'].currentPos_)
         execToday = estrategia['classObject'].pandas_.dbGetExecCountToday()
         execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
         execString = str(execToday) + '/' + str(execTotal)
-        allPnL = estrategia['classObject'].strategyGetExecPnL()
+        allPnL = estrategia['classObject'].strategyGetExecPnL()['PnL']
         totalPnl = dailyPnL + '/' + formatCurrency(allPnL)
+        AvgPrice = estrategia['classObject'].strategyGetExecPnL()['avgPrice']
+        AvgPriceFmt = formatCurrency(AvgPrice)
 
     graphColumn1 = html.Div(
         dcc.Graph(
@@ -158,7 +161,24 @@ def create_card (contrato, fig1, estrategia):
 
     this_card = dbc.Card(
         [
-            dbc.CardHeader(html.H4(symbol)),
+            dbc.CardHeader(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.H4(symbol)
+                                ], width=6,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Div("AvgPrice: " + AvgPriceFmt, className = 'text-end')
+                                ], width=6,
+                            )
+                        ]
+                    )
+                ]
+            ),
             dbc.CardBody(
                 [
                     dbc.Row(

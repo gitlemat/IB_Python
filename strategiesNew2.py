@@ -21,6 +21,7 @@ class Strategies():
         #  {'symbol': lineSymbol, 'type': 'Pentagrama', 'classObject': classObject}
 
         self.stratList_ = [] 
+        
         try:
             self.strategyInit()
         except:
@@ -28,6 +29,7 @@ class Strategies():
 
     def strategyInit(self):
         tstratList = [] 
+        
         try:
             tstratList += strategyPentagramaRuNew2.strategyReadFile(self.RTLocalData_)
         except:
