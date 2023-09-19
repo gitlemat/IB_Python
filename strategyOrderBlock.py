@@ -234,7 +234,7 @@ class bracketOrderClass():
                 err_msg += "    \nLa parent [%s] está executada." % self.orderId_
                 err_msg += "    \nEl TPOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdTP_
                 bRehacerConError = True 
-            if bSLOrderStatus not in orderInactiveStatus and bTPOrderStatus not in orderInactiveStatus:
+            if bSLOrderStatus in orderInactiveStatus and bTPOrderStatus in orderInactiveStatus:
                 err_msg += "    \nEl SLOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderId_)
                 err_msg += "    \nEl TPOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderId_)
                 bSLOrderError = True
