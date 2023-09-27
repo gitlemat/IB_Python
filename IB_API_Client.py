@@ -739,8 +739,28 @@ class IBI_App(EWrapper, EClient):
         bracketOrder = {'parentOrderId': parentOrderId, 'tpOrderId': tpOrderId, 'slOrderId': slOrderId}
         return bracketOrder
 
+    def updateOrder (self, contract_symbol: str, contract:Contract, order:Order):
+        logging.info ("Vamos a ACTUALIZAR una orden con:")
+        logging.info ("    secType: %s", contract.secType)
+        logging.info ("    Symbol: %s", contract_symbol)
+        logging.info ("    Action: %s", order.action)
+        logging.info ("    oType: %s", order.orderType)
+        logging.info ("    oTif: %s", order.tif)
+        if order.orderType in ['LMT', 'MKT']:
+            logging.info ("    lmtPrice: %s", order.lmtPrice)
+        if order.orderType == 'STP':
+            logging.info ("    auxPrice: %s", order.auxPrice)
+        logging.info ("    qty: %s", order.totalQuantity)
+
+        super().placeOrder (order.orderId, contract, order)
+
+        return (order.orderId)
+
     @iswrapper    
     def placeOrder (self, contract_symbol: str, contract:Contract, order:Order):
+
+        orderId = self.nextorderId
+
         logging.info ("Vamos a CREAR una orden con:")
         logging.info ("    secType: %s", contract.secType)
         logging.info ("    Symbol: %s", contract_symbol)
@@ -753,15 +773,17 @@ class IBI_App(EWrapper, EClient):
             logging.info ("    auxPrice: %s", order.auxPrice)
         logging.info ("    qty: %s", order.totalQuantity)
 
-        super().placeOrder (self.nextorderId, contract, order)
+
+
+        super().placeOrder (orderId, contract, order)
 
         #Aqui es mejor crear la orden en Local_RT por si me llega la ejecución antes que la confirmacion (cosas de IB)
-        data = {'orderId': self.nextorderId, 'contractObj': contract, 'orderObj': order, 'paramsDict':'' }
+        data = {'orderId': orderId, 'contractObj': contract, 'orderObj': order, 'paramsDict':'' }
         queueEntry = {'type':'order', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
         
         self.nextorderId += 1
-        return (self.nextorderId - 1)
+        return (orderId)
 
     def cancelOrderByOrderId (self, orderId):
         logging.info ("[Orden (%s)] Vamos a CANCELAR esta orden", orderId)

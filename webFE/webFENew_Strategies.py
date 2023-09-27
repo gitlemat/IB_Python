@@ -3,6 +3,8 @@ from dash import dcc
 import dash_bootstrap_components as dbc
 from dash import MATCH, ALL, Input, Output, State, ctx, no_update, callback
 from dash.exceptions import PreventUpdate
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 import webFE.webFENew_Strat_PentaRu
 from webFE.webFENew_Utils import formatCurrency
@@ -118,10 +120,19 @@ def layout_strategies_tab():
                 n_intervals=0
             )
         ])
+        
+        fig3 = layout_getFigura3(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
+        graphColumn3 = html.Div([
+            dcc.Graph(
+                    id={'role': 'graphDetailsSpread', 'strategy': stratType, 'symbol': symbol},
+                    animate = False,
+                    figure = fig3
+            )
+        ])
 
         logging.debug ('Ya tengo la fig2')
 
-        collapseDetails = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2)
+        collapseDetails = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphColumn3)
 
         # Lo añadimos a la pagina/tab:
 
@@ -150,11 +161,70 @@ def layout_getFigura2(estrategia):
 
     return fig2
 
-def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2):
+
+def layout_getFigura3(estrategia):
+    stratType = estrategia['type']
+    fig3 = None
+
+    symbolSpread = estrategia['symbol']
+    spread_list = globales.G_RTlocalData_.appObj_.contractCode2list(symbolSpread)
+    spread_list.append ({'action':'BAG', 'ratio': 1, 'code': symbolSpread})
+    logging.info (spread_list)
+
+    fig3 = go.Figure()
+    fig3 = make_subplots(specs=[[{"secondary_y": True}]])
+
+    for comp in spread_list:
+        symbol = comp['code']
+        contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
+        if not contrato:
+            logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
+            break
+        if contrato['dbPandas']:
+            df_comp = contrato['dbPandas'].dbGetDataframeComp()
+            '''
+            fig3.add_trace(
+                go.Candlestick(
+                    x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']
+                )
+            )
+            '''
+            if comp ['action'] == 'BAG':
+                eje_sec = True
+            else:
+                eje_sec = False
+
+            base_level = df_comp.iloc[0]["close"]
+            fig3.add_trace(
+                go.Scatter(
+                    x=df_comp.index, y=(df_comp["close"]-base_level), mode="lines", connectgaps = True, name = symbol
+                ),
+                secondary_y=eje_sec
+            )
+
+    
+    fig3.update_xaxes(
+        rangebreaks=[
+            dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
+            dict(bounds=[21.1, 15], pattern="hour"),  # hide hours outside of 9.30am-4pm
+            #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
+        ]
+    )
+
+    fig3.update_layout(showlegend=True, 
+                       xaxis_rangeslider_visible=False, 
+                       title_text='Componentes', 
+                       title_x = 0.5,
+                       title_xanchor = 'center',
+                       margin=dict(l=10, r=10, t=40, b=40))
+
+    return fig3
+
+def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphColumn3):
     stratType = estrategia['type']
     collapseDetails = None
     if stratType == 'PentagramaRu':
-        collapseDetails = webFE.webFENew_Strat_PentaRu.insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2)
+        collapseDetails = webFE.webFENew_Strat_PentaRu.insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColumn3)
     
     return collapseDetails
 

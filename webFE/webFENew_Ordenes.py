@@ -27,12 +27,13 @@ def layout_ordenes_tab ():
             dbc.Row(
                 [
                     dbc.Col(html.Div("OrdenId"), className = 'bg-primary mr-1', width = 1),
-                    dbc.Col(html.Div("Symbol"), className = 'bg-primary mr-1', width = 3),
+                    dbc.Col(html.Div("Symbol"), className = 'bg-primary mr-1', width = 2),
                     dbc.Col(html.Div("Action"), className = 'bg-primary', width = 1),
                     dbc.Col(html.Div("Status"), className = 'bg-success', width = 1),
                     dbc.Col(html.Div("Fill Status"), className = 'bg-primary', width = 1),
                     dbc.Col(html.Div("LastFill"), className = 'bg-primary', width = 1),
                     dbc.Col(html.Div("Estrategia"), className = 'bg-primary', width = 3),
+                    dbc.Col(html.Div("Update"), className = 'bg-primary', width = 1),
                     dbc.Col(html.Div("Cancel"), className = 'bg-primary', width = 1),
                 ], className = 'mb-3 text-white'
                 ),
@@ -75,7 +76,7 @@ def layout_ordenes_tab ():
 
         tabOrdenes.append(headerRow)
         tabOrdenes.append(collapseDetails)
-
+        tabOrdenes.append(modal_ordenUpdate())
 
     return tabOrdenes
 
@@ -108,12 +109,13 @@ def ordenesObtenerFilas (orden, update = False):
     headerRow = dbc.Row(
             [
                 dbc.Col(dbc.Button(str(lOrderId),id={'role': 'boton', 'index': lOrderId}), className = 'bg-primary mr-1', width = 1),
-                dbc.Col(html.Div(symbol), className = 'bg-primary mr-1', width = 3),
+                dbc.Col(html.Div(symbol), className = 'bg-primary mr-1', width = 2),
                 dbc.Col(html.Div(lAction), className = 'bg-primary', width = 1),
                 dbc.Col(html.Div(lStatus), className = 'bg-success', width = 1),
                 dbc.Col(html.Div(lFillState), className = 'bg-primary', width = 1),
                 dbc.Col(html.Div(lLastFillPrice), className = 'bg-primary', width = 1),
                 dbc.Col(html.Div(lStrategy), className = 'bg-primary', width = 3),
+                dbc.Col(dbc.Button(html.I(className="bi bi-x-circle me-2"),id={'role': 'boton_order_update', 'orderId': str(lOrderId)}), className = 'bg-primary', width = 1),
                 dbc.Col(dbc.Button(html.I(className="bi bi-x-circle me-2"),id={'role': 'boton_order_cancel', 'orderId': str(lOrderId)}), className = 'bg-primary', width = 1),
             ], className = 'text-white mb-1'
     )  
@@ -139,6 +141,240 @@ def ordenesObtenerInsideDetails (orden, update = False):
     insideDetailsData.append(html.Div(children = "Time in Force: " + lTif, style = {"margin-left": "40px"}))
 
     return insideDetailsData
+
+def modal_ordenUpdate():
+
+    orderSymbol = dcc.Input(
+        id = "order_update_symbol",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    orderOrderId = dcc.Input(
+        id = "order_update_orderId",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    orderQty = dcc.Input(
+        id = "order_update_qty",
+        type = "number",
+        placeholder = "0",
+    )
+
+    orderLmtPrice = dcc.Input(
+        id = "order_update_LmtPrice",
+        type = "number",
+        placeholder = "0",
+    )
+
+    orderAction = dcc.Input(
+        type = "text",
+        readOnly = True,
+        id = 'order_update_action'
+    )
+
+    orderType = dcc.Input(
+        type = "text",
+        readOnly = True,
+        id='order_update_orderType'
+    )
+
+    orderOCAID = dcc.Input(
+        id = "order_update_OCAID",
+        type = "number",
+        readOnly = True,
+        placeholder = "0",
+    )
+
+    orderParentId = dcc.Input(
+        id = "order_update_parentId",
+        type = "number",
+        readOnly = True,
+        placeholder = "0",
+    )
+
+    responseBody = html.Div([
+        html.P('Contract Symbol: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderSymbol,
+        html.P('OrderId: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderOrderId,
+        html.P('Order Action:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderAction,
+        html.P('Order Type:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderType,
+        html.P('Order Qty:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderQty,
+        html.P('Order LMT Price:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderLmtPrice,
+        html.P('OCA Name:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderOCAID,
+        html.P('Parent OrderId:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderParentId,
+    ])
+    
+    modal = html.Div(
+        [
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Actualizar Orden", id = "OrdenUpdateHeader")),
+                    dbc.ModalBody(responseBody, id = "OrdenUpdateBody"),
+                    dbc.ModalFooter([
+                        dbc.Button(
+                            "Actualizar", id="modalOrdenUpdate_boton_update", className="ms-auto", n_clicks=0
+                        ),
+                        dbc.Button(
+                            "Close", id="modalOrdenUpdate_boton_close", className="ms-auto", n_clicks=0
+                        )
+                    ]),
+                ],
+                id="modalOrdenUpdate_main",
+                is_open=False,
+            ),
+        ]
+    )
+    return modal
+
+# Callback para actualizar una orden en el contrato
+@callback(
+    Output("order_update_symbol", "placeholder"),
+    Output("order_update_orderId", "value"),
+    Output("order_update_qty", "value"),
+    Output("order_update_LmtPrice", "value"),
+    Output("order_update_action", "value"),
+    Output("order_update_orderType", "value"),
+    Output("order_update_OCAID", "value"),
+    Output("order_update_parentId", "value"),
+    Output("modalOrdenUpdate_main", "is_open"),
+    Input({'role': 'boton_order_update', 'orderId': ALL}, "n_clicks"),
+    Input("order_update_symbol", "placeholder"),
+    Input("order_update_orderId", "value"),
+    Input("order_update_qty", "value"),
+    Input("order_update_LmtPrice", "value"),
+    Input("order_update_action", "value"),
+    Input("order_update_orderType", "value"),
+    Input("order_update_OCAID", "value"),
+    Input("order_update_parentId", "value"),
+    Input("modalOrdenUpdate_boton_update", "n_clicks"),
+    Input("modalOrdenUpdate_boton_close", "n_clicks"),
+    State("modalOrdenUpdate_main", "is_open"), prevent_initial_call = True,
+)
+def updateOrder (n_button_open, s_symbol, orderId, n_qty, n_LmtPrice, s_action, s_orderType, s_oca, s_parentId, n_button_create, n_button_close, open_status):
+
+    # Esto es por si las moscas
+    if not ctx.triggered_id:
+        raise PreventUpdate
+
+    # Esto es por si las moscas
+    pageLoad = True
+    for button in  n_button_open:
+        if button != None:
+            pageLoad = False
+    if pageLoad:
+        raise PreventUpdate
+
+    logging.info('Trigger %s', ctx.triggered_id)
+
+    if ctx.triggered_id == "modalOrdenUpdate_boton_close":
+        return s_symbol, orderId, n_qty, n_LmtPrice, s_action, s_orderType, s_oca, s_parentId, False
+
+    if ctx.triggered_id == "modalOrdenUpdate_boton_update":
+        contrato = globales.G_RTlocalData_.contractGetBySymbol (s_symbol)
+        orden = globales.G_RTlocalData_.orderGetByOrderId(orderId)
+        secType = contrato['contract'].secType
+
+        error = False
+
+        try:
+            n_qty = int (n_qty)
+        except:
+            error = True
+        
+        if s_orderType in ['LMT', 'STP']:
+            try:
+                n_LmtPrice = float (n_LmtPrice)
+            except:
+                error = True
+        else:
+            n_LmtPrice = 0
+
+        orden['order'].totalQuantity = n_qty
+        if s_orderType == 'LMT':
+            orden['order'].lmtPrice = n_LmtPrice
+        if s_orderType == 'STP':
+            orden['order'].auxPrice = n_LmtPrice
+            
+        if error == False:
+            logging.info ('Vamos a actualizar la orden con:')
+            logging.info ('  Symbol: %s', s_symbol)
+            logging.info ('  secType: %s', secType)
+            logging.info ('  Action: %s', s_action)
+            logging.info ('  Type: %s', s_orderType)
+            logging.info ('  LmtPrice: %s', n_LmtPrice)
+            logging.info ('  Qty: %s', n_qty)
+            try:
+                result = globales.G_RTlocalData_.orderUpdateOrder (s_symbol, contrato['contract'], orden['order'])
+                result = True
+            except:
+                logging.error ("Exception occurred", exc_info=True)
+
+            return s_symbol, orderId, n_qty, n_LmtPrice, s_action, s_orderType, s_oca, s_parentId, False
+        else:
+            return no_update
+
+    if 'orderId' in ctx.triggered_id:
+        orderId = int(ctx.triggered_id['orderId'])
+        orden = globales.G_RTlocalData_.orderGetByOrderId(orderId)
+        gConId = orden['contractId']
+        contrato = globales.G_RTlocalData_.contractGetContractbyGconId (gConId)
+
+        #ahora hay que borrarla
+        logging.info('Queremos actualizar la orden %s', str(orderId))
+
+        contractText = ''
+        n_qty = 0
+        n_LmtPrice = 0
+        s_action = ''
+        s_orderType = ''
+        s_oca = ''
+        s_parentId = ''
+    
+        if contrato != None and 'fullSymbol' in contrato:
+            contractText = contrato['fullSymbol']
+
+        if orden != None and 'order' in orden:
+            n_qty = orden['order'].totalQuantity
+            s_action = orden['order'].action
+            s_orderType = orden['order'].orderType
+            s_oca = orden['order'].ocaGroup
+            s_parentId = orden['order'].parentId
+            if s_orderType == 'LMT':
+                n_LmtPrice = orden['order'].lmtPrice
+            if s_orderType == 'STP':
+                n_LmtPrice = orden['order'].auxPrice
+    
+        return contractText, orderId, n_qty, n_LmtPrice, s_action, s_orderType, s_oca, s_parentId, True
+
+    # Para todos los demas:
+    return no_update
 
 #Callback para actualizar fila de valores de Ordenes
 @callback(

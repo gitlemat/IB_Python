@@ -189,6 +189,7 @@ class bracketOrderClass():
         bRehacerNoError = False
         err_msg = ""
         bRehacerConError = False
+        bNoHacerNada = False
         bParentOrderExists = self.RTLocalData_.orderCheckIfExistsByOrderId(self.orderId_)
         bParentOrderStatus = self.RTLocalData_.orderGetStatusbyOrderId (self.orderId_)
         bSLOrderError = False
@@ -230,10 +231,12 @@ class bracketOrderClass():
                 err_msg += "    \nLa parent [%s] está executada." % self.orderId_
                 err_msg += "    \nEl SLOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdSL_
                 bRehacerConError = True 
+                bNoHacerNada = True
             if not bTPOrderExists:
                 err_msg += "    \nLa parent [%s] está executada." % self.orderId_
                 err_msg += "    \nEl TPOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdTP_
                 bRehacerConError = True 
+                bNoHacerNada = True # OJJJJOOOOOOOOOO
             if bSLOrderStatus in orderInactiveStatus and bTPOrderStatus in orderInactiveStatus:
                 err_msg += "    \nEl SLOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderId_)
                 err_msg += "    \nEl TPOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderId_)
@@ -270,6 +273,8 @@ class bracketOrderClass():
         parentOrderId = self.orderId_                
 
         # Hay que rehacer, pero no es error
+        if bNoHacerNada:
+            return bBracketUpdated
         if bRehacerNoError:
             if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
                 return bBracketUpdated

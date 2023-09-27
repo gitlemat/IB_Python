@@ -1526,6 +1526,10 @@ class DataLocalRT():
         ordersIds = self.appObj_.placeOCAOrder (symbol, secType, actionUp, actionDown, qty, LmtUp, LmtDown) 
         return ordersIds
 
+    def orderUpdateOrder (self, symbol, contractObj, orderObj):
+        orderId = self.appObj_.updateOrder (symbol, contractObj, orderObj) 
+        return orderId
+
     def orderCancelByOrderId (self, orderId):
         for order in self.orderList_: 
             if int(order['order'].orderId) == int(orderId):

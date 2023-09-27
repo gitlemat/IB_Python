@@ -13,7 +13,7 @@ import random
 
 logger = logging.getLogger(__name__)
 
-def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2):
+def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColumn3):
     # Y las tablas con ordenes
 
     symbol = estrategia['symbol']
@@ -76,6 +76,9 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2):
             ),
             dbc.Row(
                     insideDetailsBotonesZonas,
+            ),
+            dbc.Row(
+                    graphColumn3,
             ),
             dbc.Row(
                     insideOrdenes,
