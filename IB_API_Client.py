@@ -644,6 +644,7 @@ class IBI_App(EWrapper, EClient):
             logging.error ("Error emplazando la orden")
             return None
         else:
+            self.reqAllOpenOrders()
             return newReq
 
     def placeOCAOrder(self, contract_symbol:str, secType:str, slAction:str, tpAction:str, quantity:Decimal, 
@@ -684,6 +685,8 @@ class IBI_App(EWrapper, EClient):
             return None
  
         OcaOrders = {'tpOrderId': tpOrderId, 'slOrderId': slOrderId}
+        self.reqAllOpenOrders()
+
         return OcaOrders
     
     
@@ -737,6 +740,7 @@ class IBI_App(EWrapper, EClient):
             return None
  
         bracketOrder = {'parentOrderId': parentOrderId, 'tpOrderId': tpOrderId, 'slOrderId': slOrderId}
+        self.reqAllOpenOrders()
         return bracketOrder
 
     def updateOrder (self, contract_symbol: str, contract:Contract, order:Order):
@@ -789,10 +793,12 @@ class IBI_App(EWrapper, EClient):
         logging.info ("[Orden (%s)] Vamos a CANCELAR esta orden", orderId)
         manualOrderCancelTime = ''
         super().cancelOrder (orderId, manualOrderCancelTime)
+        self.reqAllOpenOrders()
         return True
 
     def cancelOrderAll (self):
         super().reqGlobalCancel()
+        self.reqAllOpenOrders()
         
     #####################################
     # Market requests

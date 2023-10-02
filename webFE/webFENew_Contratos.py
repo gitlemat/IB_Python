@@ -278,6 +278,21 @@ def modal_contratoOrdenCreate():
         id='contract_orders_create_orderType'
     )
 
+    orderSLType = dcc.Input(
+        id = "contract_orders_create_orderTypeSL",
+        type = "text",
+        readOnly = True,
+        placeholder = "STPGTC",
+    )
+
+    orderLmtPriceSL = dcc.Input(
+        id = "contract_orders_create_LmtPriceSL",
+        type = "number",
+        placeholder = "0",
+    )
+
+    
+
     responseBody = html.Div([
         html.P('Contract Symbol: ',
             style={'margin-top': '8px', 'margin-bottom': '4px'},
@@ -299,13 +314,31 @@ def modal_contratoOrdenCreate():
             style={'margin-top': '8px', 'margin-bottom': '4px'},
             className='font-weight-bold'),
         orderLmtPrice,
+        html.P('Crear OCA:',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        dbc.Switch(id={'role': 'contract_orders_create_OCA_ENABLE'}, value = False),
+        dbc.Collapse(
+            [
+                html.P('OrderSL LMT Price:',
+                    style={'margin-top': '8px', 'margin-bottom': '4px'},
+                    className='font-weight-bold'),
+                orderLmtPriceSL,
+                html.P('OrderSL Type:',
+                    style={'margin-top': '8px', 'margin-bottom': '4px'},
+                    className='font-weight-bold'),
+                orderSLType,
+            ],
+            id={'role': 'colapse_OCA'},
+            is_open=False,
+        )
     ])
     
     modal = html.Div(
         [
             dbc.Modal(
                 [
-                    dbc.ModalHeader(dbc.ModalTitle("Crear Ordem", id = "modalContratoOrdenCreateHeader")),
+                    dbc.ModalHeader(dbc.ModalTitle("Crear Orden", id = "modalContratoOrdenCreateHeader")),
                     dbc.ModalBody(responseBody, id = "modalContratoOrdenCreateBody"),
                     dbc.ModalFooter([
                         dbc.Button(
@@ -345,11 +378,17 @@ def toggle_colapse_contract(n_button, is_open):
     Input("contract_orders_create_LmtPrice", "value"),
     Input("contract_orders_create_action", "value"),
     Input("contract_orders_create_orderType", "value"),
+
+    Input("contract_orders_create_orderTypeSL", "value"),
+    Input("contract_orders_create_LmtPriceSL", "value"),
+    
     Input("modalContratoOrdenCreate_boton_create", "n_clicks"),
     Input("modalContratoOrdenCreate_boton_close", "n_clicks"),
-    State("modalContratoOrdenCreate_main", "is_open"), prevent_initial_call = True,
+    State("modalContratoOrdenCreate_main", "is_open"), 
+    State({'role': 'colapse_OCA'}, "is_open"),
+    prevent_initial_call = True,
 )
-def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderType, n_button_create, n_button_close, open_status):
+def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderType, s_orderTypeSL, n_LmtPriceSL, n_button_create, n_button_close, open_status, oca_status):
 
     # Esto es por si las moscas
     if not ctx.triggered_id:
@@ -391,18 +430,43 @@ def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderT
             n_LmtPrice = 0
         
         if error == False:
-            logging.info ('Vamos a crear una orden con:')
-            logging.info ('  Symbol: %s', s_symbol)
-            logging.info ('  secType: %s', secType)
-            logging.info ('  Action: %s', s_action)
-            logging.info ('  Type: %s', s_orderType)
-            logging.info ('  LmtPrice: %s', n_LmtPrice)
-            logging.info ('  Qty: %s', n_qty)
-            try:
-                result = globales.G_RTlocalData_.orderPlaceBrief (s_symbol, secType, s_action, s_orderType, n_LmtPrice, n_qty)
-                result = True
-            except:
-                logging.error ("Exception occurred", exc_info=True)
+            mesg = ""
+            if oca_status:
+                mesg += 'Vamos a crear una pareja de ordenes OCA con:\n'
+                mesg += "  Symbol: %s\n" % (s_symbol)
+                mesg += "  secType: %s\n" % (secType)
+                mesg += "  Action: %s\n" % (s_action)
+                mesg += "  Qty: %s\n" % (n_qty)
+                mesg += "  Orden LMT:\n"
+                mesg += "    Price: %s\n" % (n_LmtPrice)
+                mesg += "    Type: %s\n" % (s_orderType)
+                mesg += "  Orden STP:\n"
+                mesg += "    Price: %s\n" % (n_LmtPriceSL)
+                mesg += "    Type: %s\n" % (s_orderTypeSL)
+                logging.info (mesg)
+                if n_LmtPriceSL == None:
+                    logging.error ("Error con el n_LmtPriceSL")
+                    return contractText, False
+                try:
+                    result = globales.G_RTlocalData_.orderPlaceOCA (s_symbol, secType, s_action, s_action, n_qty, n_LmtPrice, n_LmtPriceSL)
+                    result = True
+                except:
+                    logging.error ("Exception occurred", exc_info=True)
+            else:
+                mesg += 'Vamos a crear una orden con:\n'
+                mesg += "  Symbol: %s\n" % (s_symbol)
+                mesg += "  secType: %s\n" % (secType)
+                mesg += "  Action: %s\n" % (s_action)
+                mesg += "  Qty: %s\n" % (n_qty)
+                mesg += "  Price: %s\n" % (n_LmtPrice)
+                mesg += "  Type: %s\n" % (s_orderType)
+                mesg += "  Orden STP:\n"
+                logging.info (mesg)
+                try:
+                    result = globales.G_RTlocalData_.orderPlaceBrief (s_symbol, secType, s_action, s_orderType, n_LmtPrice, n_qty)
+                    result = True
+                except:
+                    logging.error ("Exception occurred", exc_info=True)
 
             return contractText, False
         else:
@@ -423,6 +487,18 @@ def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderT
 
     # Para todos los demas:
     return no_update
+
+# Callback para enable/disable OCA en dialog
+@callback(
+    Output({'role': 'colapse_OCA'}, "is_open"),
+    Input({'role': 'contract_orders_create_OCA_ENABLE'}, "value"), 
+    State({'role': 'colapse_OCA'}, "is_open"),
+    prevent_initial_call = True,
+)
+def toggle_colapse_OCA(n_button, is_open):
+    if n_button:
+        return not is_open
+    return is_open
 
 # Callback para guardar watchlist
 @callback(

@@ -7,7 +7,11 @@ orderChildErrorStatus = ['Inactive']
 orderChildValidExecStatusParentFilled = ['Filled', 'Submitted', 'Cancelled', 'PreSubmitted', 'PendingCancel', 'ApiCancelled']
 orderChildInvalidExecStatusParentNotFilled = ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
 orderInactiveStatus = ['Cancelled', 'PendingCancel', 'Inactive', 'ApiCancelled']
-Error_orders_timer_dt = datetime.timedelta(seconds=90)
+
+bracketStatusAll = ['ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 'ParentFilled+EC', '+EC']
+bracketStatusParentFilled = ['ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 'ParentFilled+EC', '+EC']
+
+Error_orders_timer_dt = datetime.timedelta(seconds=600)
 
 def bracketOrderParseFromFile(fields):
     bError = False
@@ -44,7 +48,7 @@ def bracketOrderParseFromFile(fields):
         bracketOrder['OrderPermIdTP'] = None
     else:
         bracketOrder['OrderPermIdTP'] = int (fields[10].strip())
-    if fields[11].strip() == 'ParentFilled' or fields[11].strip() == 'ParentFilled+F' or fields[11].strip() == 'ParentFilled+C' :
+    if fields[11].strip() in bracketStatusAll:
         bracketOrder['BracketOrderFilledState'] = fields[11].strip()
     else:
         bracketOrder['BracketOrderFilledState'] = None
@@ -75,6 +79,7 @@ def bracketOrderParseToFile(bracketOrder):
 class bracketOrderClass():
 
     def __init__(self, data , symbol, straType, regenerate, RTlocalData):
+        # regenerate es por si queremos que se regenere o no.
         self.symbol_ = symbol
         self.orderId_ = None
         self.orderIdSL_ = None
@@ -92,6 +97,7 @@ class bracketOrderClass():
 
         self.RTLocalData_ = RTlocalData
         self.regenerate_ = regenerate
+        self.autofix_ = True
         self.timelasterror_ = datetime.datetime.now()
 
         if data and 'OrderId' in data:
@@ -231,7 +237,7 @@ class bracketOrderClass():
                 err_msg += "    \nLa parent [%s] está executada." % self.orderId_
                 err_msg += "    \nEl SLOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdSL_
                 bRehacerConError = True 
-                bNoHacerNada = True
+                bNoHacerNada = True # OJJJJOOOOOOOOOO
             if not bTPOrderExists:
                 err_msg += "    \nLa parent [%s] está executada." % self.orderId_
                 err_msg += "    \nEl TPOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdTP_
@@ -270,8 +276,6 @@ class bracketOrderClass():
         bRehacerTodo = False
         bGenerarOCA = False
 
-        parentOrderId = self.orderId_                
-
         # Hay que rehacer, pero no es error
         if bNoHacerNada:
             return bBracketUpdated
@@ -282,18 +286,19 @@ class bracketOrderClass():
         elif bRehacerConError: # La parentId no está, y no está ejecutada. Borramos todas y rehacemos
             if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
                 return bBracketUpdated
-            parentOrderId = None
             logging.error (err_msg)
-            if bParentOrderExists:
-                logging.error ('    Cancelamos la Parent OrderId %s', self.orderId_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderId_)  
-            if bSLOrderExists:
-                logging.error ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
-            if bSLOrderExists:
-                logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
             bRehacerTodo = True
+
+            if self.autofix_:
+                if bParentOrderExists:
+                    logging.error ('    Cancelamos la Parent OrderId %s', self.orderId_)
+                    self.RTLocalData_.orderCancelByOrderId (self.orderId_)  
+                if bSLOrderExists:
+                    logging.error ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
+                    self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
+                if bSLOrderExists:
+                    logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
+                    self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
 
         # Si hemos detectado error en alguna child, las borramos para recrear
         # Si no esta exec: borramos todo y recrear
@@ -303,19 +308,22 @@ class bracketOrderClass():
                 return bBracketUpdated
             logging.error ('[Estrategia PentagramaRu (%s)]. Error en childOrder', self.symbol_)
             logging.error (err_msg)
-            if bSLOrderExists:
-                logging.error ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
-            if bSLOrderExists:
-                logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)  
-            if self.BracketOrderFilledState_ not in ['ParentFilled', 'ParentFilled+F', 'ParentFilled+C']:
-                logging.error ('    Cancelamos la Parent OrderId %s', self.orderId_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderId_)
+            if self.autofix_:
+                if bSLOrderExists:
+                    logging.error ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
+                    self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
+                if bSLOrderExists:
+                    logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
+                    self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)  
+                if self.BracketOrderFilledState_ not in bracketStatusAll:
+                    logging.error ('    Cancelamos la Parent OrderId %s', self.orderId_)
+                    self.RTLocalData_.orderCancelByOrderId (self.orderId_)
+            if self.BracketOrderFilledState_ not in bracketStatusAll:    
                 bRehacerTodo = True
             else:
                 bGenerarOCA = True
 
+        origState = self.BracketOrderFilledState_
         if bRehacerTodo or bGenerarOCA or bRehacerNoError:
             self.timelasterror_ = datetime.datetime.now()
             ret = None
@@ -326,11 +334,43 @@ class bracketOrderClass():
                 else:
                     logging.info ('[Estrategia %s (%s)]. Todo ejecutado pero no rehacemos y salios', self.strategyType_, self.symbol_)
             elif bRehacerTodo:
-                logging.error ('[Estrategia %s (%s)]. Rehacemos todo', self.strategyType_, self.symbol_)
-                ret = self.orderBlockCreateBracketOrder ()
+                self.BracketOrderFilledState_ = 'ParentFilled+EP'
+                if self.autofix_:
+                    logging.error ('[Estrategia %s (%s)]. Rehacemos todo', self.strategyType_, self.symbol_)
+                    ret = self.orderBlockCreateBracketOrder ()
             elif bGenerarOCA:
-                logging.error ('[Estrategia %s (%s)]. Rehacemos OCA para childs', self.strategyType_, self.symbol_)
-                ret = self.orderBlockCreateChildOca ()
+                self.BracketOrderFilledState_ += '+EC'
+                if self.autofix_:
+                    logging.error ('[Estrategia %s (%s)]. Rehacemos OCA para childs', self.strategyType_, self.symbol_)
+                    ret = self.orderBlockCreateChildOca ()
+                    if ret:
+                        self.BracketOrderFilledState_ = origState
+            if ret == None:
+                bBracketUpdated = False
+            elif ret == -1:
+                bBracketUpdated = -1
+            elif ret != None:
+                bBracketUpdated = True
+                
+
+        return bBracketUpdated
+
+    def orderBlockOrderFix (self, data):
+        fixType = data['fixType']
+        bParentOrderExists = self.RTLocalData_.orderCheckIfExistsByOrderId(self.orderId_)
+        bSLOrderExists = self.RTLocalData_.orderCheckIfExistsByOrderId(self.orderIdSL_)
+        bTPOrderExists = self.RTLocalData_.orderCheckIfExistsByOrderId(self.orderIdTP_)
+        
+        if fixType == 'OCA':
+            logging.error('Vamos a regenerar la OCA. Primero borramos las anteriores si existan')
+            if bSLOrderExists:
+                logging.error ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
+                self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
+            if bSLOrderExists:
+                logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
+                self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
+            logging.error ('[Estrategia %s (%s)]. Rehacemos OCA para childs', self.strategyType_, self.symbol_)
+            ret = self.orderBlockCreateChildOca ()
             if ret == None:
                 bBracketUpdated = False
             elif ret == -1:
@@ -338,7 +378,37 @@ class bracketOrderClass():
             elif ret != None:
                 bBracketUpdated = True
 
-        return bBracketUpdated
+            if bBracketUpdated:
+                if self.BracketOrderFilledState_ == '+EC':
+                    self.BracketOrderFilledState_ = None
+                if self.BracketOrderFilledState_ == 'ParentFilled+EC':
+                    self.BracketOrderFilledState_ = 'ParentFilled'
+            
+        if fixType == 'ALL':
+            logging.error('Vamos a regenerar todo el bracket. Primero borramos las anteriores si existen')
+            if bSLOrderExists:
+                logging.error ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
+                self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
+            if bSLOrderExists:
+                logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
+                self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)  
+            if bParentOrderExists:
+                logging.error ('    Cancelamos la Parent OrderId %s', self.orderId_)
+                self.RTLocalData_.orderCancelByOrderId (self.orderId_)    
+            logging.error ('[Estrategia %s (%s)]. Rehacemos todo', self.strategyType_, self.symbol_)
+            ret = self.orderBlockCreateBracketOrder ()  
+            if ret == None:
+                bBracketUpdated = False
+            elif ret == -1:
+                bBracketUpdated = -1
+            elif ret != None:
+                bBracketUpdated = True   
+
+            if bBracketUpdated:
+                self.BracketOrderFilledState_ = None
+            
+        return bBracketUpdated  
+
 
     def orderBlockOrderUpdated (self, data):
         #data['orderId']

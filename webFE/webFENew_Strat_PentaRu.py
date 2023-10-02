@@ -283,6 +283,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                    html.Th("Type"),
                    html.Th("Status"),
                    html.Th("Qty"),
+                   html.Th("Fix"),
                 ]
             )   
         )
@@ -301,15 +302,15 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             else:
                 statusParent = 'N/A'
             lmtParent = ordenParent['order'].lmtPrice
-            if ordenParent['order'].orderType == 'STP':
+            if ordenParent['order'].orderType == 'STP':  # No va a pasar nunca
                 lmtParent = ordenParent['order'].auxPrice
             lmtParent = formatCurrency(lmtParent)
             if ordenParent['order'].action == 'SELL':
                 posParent = posParent * (-1)
         else:
-            posParent = 'N/A'
-            lmtParent = 'N/A'
-            typeParent = 'N/A'
+            posParent = zone['orderBlock'].Qty_
+            lmtParent = zone['orderBlock'].Price_
+            typeParent = 'LMT'
             statusParent = 'N/A'
 
         #ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
@@ -328,9 +329,9 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             if ordenTP['order'].action == 'SELL':
                 posTP = posTP * (-1)
         else:
-            posTP = 'N/A'
-            lmtTP = 'N/A'
-            typeTP = 'N/A'
+            posTP = zone['orderBlock'].Qty_
+            lmtTP = zone['orderBlock'].PrecioTP_
+            typeTP = 'LMT'
             statusTP = 'N/A'
 
         #ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
@@ -349,9 +350,9 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             if ordenSL['order'].action == 'SELL':
                 posSL = posSL * (-1)
         else:
-            posSL = 'N/A'
-            lmtSL = 'N/A'
-            typeSL = 'N/A'
+            posSL = zone['orderBlock'].Qty_
+            lmtSL = zone['orderBlock'].PrecioSL_
+            typeSL = 'STP'
             statusSL = 'N/A'
 
         insideDetailsStratParent = html.Tr(
@@ -365,6 +366,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(typeParent)),
                 html.Td(str(statusParent)),
                 html.Td(str(posParent)),
+                html.Td(str('Fix')),
             ]
         )
 
@@ -379,6 +381,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(typeTP)),
                 html.Td(str(statusTP)),
                 html.Td(str(posTP)),
+                html.Td(str('Fix')),
             ]
         )
 
@@ -393,6 +396,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(typeSL)),
                 html.Td(str(statusSL)),
                 html.Td(str(posSL)),
+                html.Td(str('Fix')),
             ]
         )
 

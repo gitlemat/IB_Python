@@ -1522,8 +1522,8 @@ class DataLocalRT():
         ordersIds = self.appObj_.placeBracketOrder (symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice) 
         return ordersIds
 
-    def orderPlaceOCA (self, symbol, secType, actionUp, actionDown, qty, LmtUp, LmtDown):
-        ordersIds = self.appObj_.placeOCAOrder (symbol, secType, actionUp, actionDown, qty, LmtUp, LmtDown) 
+    def orderPlaceOCA (self, symbol, secType, actionSL, actionTP, qty, LmtPriceTP, LmtPriceSL):
+        ordersIds = self.appObj_.placeOCAOrder (symbol, secType, actionSL, actionTP, qty, LmtPriceTP, LmtPriceSL) 
         return ordersIds
 
     def orderUpdateOrder (self, symbol, contractObj, orderObj):
