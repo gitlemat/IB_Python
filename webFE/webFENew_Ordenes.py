@@ -77,6 +77,7 @@ def layout_ordenes_tab ():
         tabOrdenes.append(headerRow)
         tabOrdenes.append(collapseDetails)
         tabOrdenes.append(modal_ordenUpdate())
+        tabOrdenes.append(modal_ordenCancel())
 
     return tabOrdenes
 
@@ -115,7 +116,7 @@ def ordenesObtenerFilas (orden, update = False):
                 dbc.Col(html.Div(lFillState), className = 'bg-primary', width = 1),
                 dbc.Col(html.Div(lLastFillPrice), className = 'bg-primary', width = 1),
                 dbc.Col(html.Div(lStrategy), className = 'bg-primary', width = 3),
-                dbc.Col(dbc.Button(html.I(className="bi bi-x-circle me-2"),id={'role': 'boton_order_update', 'orderId': str(lOrderId)}), className = 'bg-primary', width = 1),
+                dbc.Col(dbc.Button(html.I(className="bi bi-pencil-square me-2"),id={'role': 'boton_order_update', 'orderId': str(lOrderId)}), className = 'bg-primary', width = 1),
                 dbc.Col(dbc.Button(html.I(className="bi bi-x-circle me-2"),id={'role': 'boton_order_cancel', 'orderId': str(lOrderId)}), className = 'bg-primary', width = 1),
             ], className = 'text-white mb-1'
     )  
@@ -130,6 +131,7 @@ def ordenesObtenerInsideDetails (orden, update = False):
     if lorderType == 'STP':
         lLmtPrice = orden['order'].auxPrice
     lTif = orden['order'].tif
+    lOca = orden['order'].ocaGroup
 
     lLmtPrice = formatCurrency (lLmtPrice)
 
@@ -139,8 +141,49 @@ def ordenesObtenerInsideDetails (orden, update = False):
     insideDetailsData.append(html.Div(children = "Order Type: " + lorderType, style = {"margin-left": "40px"}))
     insideDetailsData.append(html.Div(children = "Limit Price: " + lLmtPrice, style = {"margin-left": "40px"}))
     insideDetailsData.append(html.Div(children = "Time in Force: " + lTif, style = {"margin-left": "40px"}))
+    insideDetailsData.append(html.Div(children = "OCA Group: " + lOca, style = {"margin-left": "40px"}))
 
     return insideDetailsData
+
+def modal_ordenCancel():
+
+    orderOrderId = dcc.Input(
+        id = "order_cancel_orderId",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    responseBody = html.Div([
+        html.P('Cancelamos esta: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderOrderId,
+    ])
+    
+    modal = html.Div(
+        [
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Cancelar Orden", id = "modal_cancelOrder")),
+                    dbc.ModalBody(responseBody, id = "OrdenUpdateBody"),
+                    dbc.ModalFooter(
+                        [
+                            dbc.Button(
+                                "Cancelar", id="modal_cancelOrder_boton_cancel", className="ms-auto", n_clicks=0
+                            ),
+                            dbc.Button(
+                                "Close", id="modal_cancelOrder_boton_close", className="ms-auto", n_clicks=0
+                            )
+                        ]
+                    ),
+                ],
+                id="modal_cancelOrder_main",
+                is_open=False,
+            ),
+        ]
+    )
+    return modal
 
 def modal_ordenUpdate():
 
@@ -397,14 +440,15 @@ def actualizarFilaOrdenes (n_intervals):
 
 # Callback para borrar ordenes individualmente
 @callback(
-    Output("modal_cancelOrder", "children"),
-    Output("modal_cancelOrder_Body", "children"),
+    Output("order_cancel_orderId", "value"),
     Output("modal_cancelOrder_main", "is_open"),
     Input({'role': 'boton_order_cancel', 'orderId': ALL}, "n_clicks"),
+    Input("modal_cancelOrder_boton_cancel", "n_clicks"),
     Input("modal_cancelOrder_boton_close", "n_clicks"),
+    Input("order_cancel_orderId", "value"),
     State("modal_cancelOrder_main", "is_open"), prevent_initial_call = True,
 )
-def cancelOrder (n_button_open, n_button_close, open_status):
+def cancelOrder (n_button_open, n_button_cancel, n_button_close, orderId, open_status):
 
     # Esto es por si las moscas
     if not ctx.triggered_id:
@@ -418,34 +462,27 @@ def cancelOrder (n_button_open, n_button_close, open_status):
     if pageLoad:
         raise PreventUpdate
 
-    responseHeader = ''
-    responseBody = ''
 
     logging.debug('Trigger %s', ctx.triggered_id)
 
     if ctx.triggered_id == "modal_cancelOrder_boton_close":
-        return responseHeader, responseBody, False
-
-    orderId = ctx.triggered_id['orderId'] 
-
-    #ahora hay que borrarla
-    logging.info('[Orden (%s)] CANCEL esta orden desde GUI', str(orderId))
-    #return no_update, no_update, no_update
-
+        return None, False
     
-    try:
-        result = globales.G_RTlocalData_.orderCancelByOrderId (orderId)
-        result = True
-    except:
-        responseHeader = 'Error'
-        responseBody = 'Error al cancelar la ordenId: ' + str(orderId)
-        
-    else:
-        if result:
-            responseHeader = 'Aceptado'
-            responseBody = 'Cancelacion ' + str(orderId) + 'Orden Lanzada'
-        else:
-            responseHeader = 'Error'
-            responseBody = 'Orden no encontrada'
+    if ctx.triggered_id == "modal_cancelOrder_boton_cancel":
+    
+        #ahora hay que borrarla
+        logging.info('[Orden (%s)] CANCEL esta orden desde GUI', str(orderId))
+        #return no_update, no_update, no_update
+    
+        try:
+            result = globales.G_RTlocalData_.orderCancelByOrderId (orderId)
+            result = True
+        except:
+            logging.error ("Exception occurred", exc_info=True)
 
-    return responseHeader, responseBody, True
+        return None, False
+            
+
+    if 'orderId' in ctx.triggered_id:
+        orderId = int(ctx.triggered_id['orderId'])
+        return orderId, True

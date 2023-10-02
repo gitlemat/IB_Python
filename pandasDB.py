@@ -242,7 +242,7 @@ class dbPandasStrategy():
         logging.info('Llego aqui')
 
         for index, row in self.dfExecs_.iterrows():
-            logging.info('Nuevo. FillPrice: %s. Qty: %s. Side: %s. Commission: %s', row['FillPrice'], row['Quantity'], row['Side'], row['Commission'])
+            logging.debug('Nuevo. FillPrice: %s. Qty: %s. Side: %s. Commission: %s', row['FillPrice'], row['Quantity'], row['Side'], row['Commission'])
             for i in range(int(row['Quantity'])):
                 self.dbAddExecPnL(row)
 
@@ -288,7 +288,7 @@ class dbPandasStrategy():
         tPnL = new_tPnL
 
         self.ExecsPnL_ = {'avgPrice': avgPrice, 'count': count, 'PnL': tPnL}
-        logging.info('Actualizamos PnL en estrategia %s: %s', self.symbol_, self.ExecsPnL_)
+        logging.debug('Actualizamos PnL en estrategia %s: %s', self.symbol_, self.ExecsPnL_)
 
     def dbAddExecToCount(self):
         today = datetime.datetime.today()

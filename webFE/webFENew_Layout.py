@@ -15,7 +15,6 @@ def layout_init():
     layout = dbc.Container(
         [
             layout_sidebar(),
-            modal_error('cancelOrder'),
             modal_error('reloadStrategiesOK'),
         ], fluid=True
     )

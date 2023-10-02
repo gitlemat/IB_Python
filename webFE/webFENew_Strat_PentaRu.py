@@ -306,8 +306,6 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             actionParent = ordenParent['order'].action
             if ordenParent['order'].orderType == 'STP':  # No va a pasar nunca
                 lmtParent = ordenParent['order'].auxPrice
-            if ordenParent['order'].action == 'SELL':
-                posParent = posParent * (-1)
         else:
             posParent = zone['orderBlock'].Qty_
             lmtParent = zone['orderBlock'].Price_
@@ -318,6 +316,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             typeParent = 'LMT'
             statusParent = 'N/A'
 
+        if actionParent == 'SELL':
+            posParent = posParent * (-1)
         lmtParent = formatCurrency(lmtParent)
 
         #ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
@@ -333,8 +333,6 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             actionTP = ordenTP['order'].action
             if ordenTP['order'].orderType == 'STP':
                 lmtTP = ordenTP['order'].auxPrice
-            if ordenTP['order'].action == 'SELL':
-                posTP = posTP * (-1)
         else:
             posTP = zone['orderBlock'].Qty_
             lmtTP = zone['orderBlock'].PrecioTP_
@@ -342,6 +340,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             typeTP = 'LMT'
             statusTP = 'N/A'
 
+        if actionTP == 'SELL':
+            posTP = posTP * (-1)
         lmtTP = formatCurrency(lmtTP)
 
         #ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
@@ -366,6 +366,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             typeSL = 'STP'
             statusSL = 'N/A'
 
+        if actionSL == 'SELL':
+            posSL = posSL * (-1)
         lmtSL = formatCurrency(lmtSL)
 
         insideDetailsStratParent = html.Tr(
