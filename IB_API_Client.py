@@ -757,6 +757,7 @@ class IBI_App(EWrapper, EClient):
         logging.info ("    qty: %s", order.totalQuantity)
 
         super().placeOrder (order.orderId, contract, order)
+        self.reqAllOpenOrders()
 
         return (order.orderId)
 
