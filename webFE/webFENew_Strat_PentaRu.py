@@ -281,6 +281,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                    html.Th("Perm Id"),
                    html.Th("Lmt"),
                    html.Th("Type"),
+                   html.Th("Action"),
                    html.Th("Status"),
                    html.Th("Qty"),
                    html.Th("Fix"),
@@ -302,6 +303,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             else:
                 statusParent = 'N/A'
             lmtParent = ordenParent['order'].lmtPrice
+            actionParent = ordenParent['order'].action
             if ordenParent['order'].orderType == 'STP':  # No va a pasar nunca
                 lmtParent = ordenParent['order'].auxPrice
             if ordenParent['order'].action == 'SELL':
@@ -309,6 +311,10 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         else:
             posParent = zone['orderBlock'].Qty_
             lmtParent = zone['orderBlock'].Price_
+            if zone['orderBlock'].B_S_ == 'S':
+                actionParent = 'SELL'
+            else:
+                actionParent = 'BUY'
             typeParent = 'LMT'
             statusParent = 'N/A'
 
@@ -324,6 +330,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             else:
                 statusTP = 'N/A'
             lmtTP = ordenTP['order'].lmtPrice
+            actionTP = ordenTP['order'].action
             if ordenTP['order'].orderType == 'STP':
                 lmtTP = ordenTP['order'].auxPrice
             if ordenTP['order'].action == 'SELL':
@@ -331,6 +338,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         else:
             posTP = zone['orderBlock'].Qty_
             lmtTP = zone['orderBlock'].PrecioTP_
+            actionTP = "SELL" if actionParent == "BUY" else "BUY"
             typeTP = 'LMT'
             statusTP = 'N/A'
 
@@ -346,6 +354,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             else:
                 statusSL = 'N/A'
             lmtSL = ordenSL['order'].lmtPrice
+            actionSL = ordenSL['order'].action
             if ordenSL['order'].orderType == 'STP':
                 lmtSL = ordenSL['order'].auxPrice
             if ordenSL['order'].action == 'SELL':
@@ -353,6 +362,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         else:
             posSL = zone['orderBlock'].Qty_
             lmtSL = zone['orderBlock'].PrecioSL_
+            actionSL = "SELL" if actionParent == "BUY" else "BUY"
             typeSL = 'STP'
             statusSL = 'N/A'
 
@@ -367,6 +377,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(zone['orderBlock'].orderPermId_)),
                 html.Td(str(lmtParent)),
                 html.Td(str(typeParent)),
+                html.Td(str(actionParent)),
                 html.Td(str(statusParent)),
                 html.Td(str(posParent)),
                 html.Td(str('Fix')),
@@ -382,6 +393,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(zone['orderBlock'].orderPermIdTP_)),
                 html.Td(str(lmtTP)),
                 html.Td(str(typeTP)),
+                html.Td(str(actionTP)),
                 html.Td(str(statusTP)),
                 html.Td(str(posTP)),
                 html.Td(str('Fix')),
@@ -397,6 +409,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(zone['orderBlock'].orderPermIdSL_)),
                 html.Td(str(lmtSL)),
                 html.Td(str(typeSL)),
+                html.Td(str(actionSL)),
                 html.Td(str(statusSL)),
                 html.Td(str(posSL)),
                 html.Td(str('Fix')),
