@@ -98,6 +98,7 @@ class bracketOrderClass():
         self.RTLocalData_ = RTlocalData
         self.regenerate_ = regenerate
         self.autofix_ = True
+        self.toFix = False
         self.timelasterror_ = datetime.datetime.now()
 
         if data and 'OrderId' in data:
@@ -332,12 +333,17 @@ class bracketOrderClass():
                     logging.info ('[Estrategia %s (%s)]. Todo ejecutado rehacemos', self.strategyType_, self.symbol_)
                     ret = self.orderBlockCreateBracketOrder ()
                 else:
-                    logging.info ('[Estrategia %s (%s)]. Todo ejecutado pero no rehacemos y salios', self.strategyType_, self.symbol_)
+                    logging.info ('[Estrategia %s (%s)]. Todo ejecutado pero no rehacemos y salimos', self.strategyType_, self.symbol_)
+                    ret = -1
+                    self.toFix = 1
             elif bRehacerTodo:
                 self.BracketOrderFilledState_ = 'ParentFilled+EP'
                 if self.autofix_:
                     logging.error ('[Estrategia %s (%s)]. Rehacemos todo', self.strategyType_, self.symbol_)
                     ret = self.orderBlockCreateBracketOrder ()
+                else:
+                    ret = -1
+                    self.toFix = 2
             elif bGenerarOCA:
                 self.BracketOrderFilledState_ += '+EC'
                 if self.autofix_:
@@ -345,10 +351,13 @@ class bracketOrderClass():
                     ret = self.orderBlockCreateChildOca ()
                     if ret:
                         self.BracketOrderFilledState_ = origState
+                else:
+                    ret = -1
+                    self.toFix = 2
             if ret == None:
                 bBracketUpdated = False
             elif ret == -1:
-                bBracketUpdated = -1
+                bBracketUpdated = -1    # Fallo no arreglado
             elif ret != None:
                 bBracketUpdated = True
                 
@@ -373,10 +382,9 @@ class bracketOrderClass():
             ret = self.orderBlockCreateChildOca ()
             if ret == None:
                 bBracketUpdated = False
-            elif ret == -1:
-                bBracketUpdated = -1
             elif ret != None:
                 bBracketUpdated = True
+                self.toFix = False
 
             if bBracketUpdated:
                 if self.BracketOrderFilledState_ == '+EC':
@@ -399,10 +407,9 @@ class bracketOrderClass():
             ret = self.orderBlockCreateBracketOrder ()  
             if ret == None:
                 bBracketUpdated = False
-            elif ret == -1:
-                bBracketUpdated = -1
             elif ret != None:
                 bBracketUpdated = True   
+                self.toFix = False
 
             if bBracketUpdated:
                 self.BracketOrderFilledState_ = None

@@ -36,7 +36,14 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColu
     # El boton de recarga
 
     insideDetailsBotonesZonas = []
-    insideDetailsBotonesZonas.append(dbc.Row(dbc.Button("Actualizar desde Fichero", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0)))
+    insideDetailsBotonesZonas.append(
+        dbc.Row(
+                [
+                    dbc.Col('', width=10),
+                    dbc.Col(dbc.Button("Actualizar desde Fichero", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0), width=2)
+                ]
+            ),
+        )
 
     # Las ordenes ejecutadas de PentagramaRu
 
@@ -69,16 +76,16 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColu
                 [
                     dbc.Col(graphColumn1, width=6),
                     dbc.Col(graphColumn2, width=6)
-                ]
+                ],  className = 'mb-3' 
             ),
             dbc.Row(
                     tablaExecs,
             ),
             dbc.Row(
-                    insideDetailsBotonesZonas,
+                    graphColumn3,
             ),
             dbc.Row(
-                    graphColumn3,
+                    insideDetailsBotonesZonas, className = 'mb-3' 
             ),
             dbc.Row(
                     insideOrdenes,
@@ -130,25 +137,7 @@ def layout_getFigureHistoricoPenRu (estrategia):
 def addZonesLinesHistoricoRu (fig1, estrategia, df_comp):
     limitList= []
     for zone in estrategia['classObject'].zones_: 
-        '''  
-        ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
-        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
-        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
 
-        if zone['Price'] not in limitList:
-            zoneborder = [zone['Price']] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
-            limitList.append(zone['Price'])
-        if zone['PrecioSL'] not in limitList:
-            zoneborder = [zone['PrecioSL']] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
-            limitList.append(zone['PrecioSL'])
-        if zone['PrecioTP'] not in limitList:
-            zoneborder = [zone['PrecioTP']] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
-            limitList.append(zone['PrecioTP'])
-
-        '''
         ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderId_)
         ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdSL_)
         ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdTP_)
@@ -213,31 +202,6 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
 def addZonesLinesTodayRu (fig2, estrategia, dfToday):
     limitList= []
     for zone in estrategia['classObject'].zones_:  
-        ''' 
-        ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
-        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
-        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
-
-        if zone['Price'] not in limitList:
-            if ordenMain != None and ordenMain['params'] != None and 'status' in ordenMain['params']:
-                if ordenMain['params']['status'] == 'Submitted':
-                    zoneborder = [zone['Price']] * len (dfToday.index)
-                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
-                    limitList.append(zone['Price'])
-        if zone['PrecioSL'] not in limitList:
-            if ordenSL != None and ordenSL['params'] != None and 'status' in ordenSL['params']:
-                if ordenSL['params']['status'] == 'Submitted':
-                    zoneborder = [zone['PrecioSL']] * len (dfToday.index)
-                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
-                    limitList.append(zone['PrecioSL'])
-        if zone['PrecioTP'] not in limitList:
-            if ordenTP != None and ordenTP['params'] != None and 'status' in ordenTP['params']:
-                if ordenTP['params']['status'] == 'Submitted':
-                    zoneborder = [zone['PrecioTP']] * len (dfToday.index)
-                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
-                    limitList.append(zone['PrecioTP'])
-
-        '''
         ordenMain = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderId_)
         ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdSL_)
         ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdTP_)
@@ -295,6 +259,12 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
     for zone in estrategia['classObject'].zones_:
         #ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
         ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderId_)
+        if zone['orderBlock'].toFix == 1:
+            pass
+            # Parent Rota y fix necesario
+        if zone['orderBlock'].toFix == 2:
+            pass
+            # OCA Rota y fix necesario
         if ordenParent:
             posParent = ordenParent['order'].totalQuantity
             typeParent = ordenParent['order'].orderType
@@ -418,9 +388,12 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             ]
         )
 
+        insideDetailsStratEmpty = html.Tr("", style={'height':'10px'})
+
         insideDetailsTableBodyInside.append(insideDetailsStratParent)
         insideDetailsTableBodyInside.append(insideDetailsStratTP)
         insideDetailsTableBodyInside.append(insideDetailsStratSL)
+        insideDetailsTableBodyInside.append(insideDetailsStratEmpty)
 
 
     insideDetailsTableBody = [html.Tbody(insideDetailsTableBodyInside)]
@@ -478,6 +451,9 @@ def actualizarFiguraTodayPenRu (n_intervals):
 def reloadStrategyRuFiles(n_clicks):
 
     if n_clicks is None or (not ctx.triggered_id):
+        raise PreventUpdate
+
+    if not 'symbol' in ctx.triggered_id:
         raise PreventUpdate
 
     symbol = ctx.triggered_id['symbol']

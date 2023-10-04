@@ -195,6 +195,7 @@ def layout_getFigura3(estrategia):
                 eje_sec = False
 
             base_level = df_comp.iloc[0]["close"]
+            base_level = 0
             fig3.add_trace(
                 go.Scatter(
                     x=df_comp.index, y=(df_comp["close"]-base_level), mode="lines", connectgaps = True, name = symbol
