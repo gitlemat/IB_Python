@@ -765,8 +765,15 @@ class IBI_App(EWrapper, EClient):
     def placeOrder (self, contract_symbol: str, contract:Contract, order:Order):
 
         orderId = self.nextorderId
+        
+        try:
+            orderPermId = order.permId
+        except:
+            orderPermId = ''
 
         logging.info ("Vamos a CREAR una orden con:")
+        logging.info ("    orderId: %s", orderId)
+        logging.info ("    orderPermId: %s", orderPermId)
         logging.info ("    secType: %s", contract.secType)
         logging.info ("    Symbol: %s", contract_symbol)
         logging.info ("    Action: %s", order.action)
@@ -783,7 +790,7 @@ class IBI_App(EWrapper, EClient):
         super().placeOrder (orderId, contract, order)
 
         #Aqui es mejor crear la orden en Local_RT por si me llega la ejecución antes que la confirmacion (cosas de IB)
-        data = {'orderId': orderId, 'contractObj': contract, 'orderObj': order, 'paramsDict':'' }
+        data = {'orderId': orderId, 'contractObj': contract, 'orderObj': order, 'paramsDict':None }
         queueEntry = {'type':'order', 'data': data}
         self.CallbacksQueue_.put(queueEntry)
         

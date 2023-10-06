@@ -238,12 +238,10 @@ class bracketOrderClass():
                 err_msg += "    \nLa parent [%s] está executada." % self.orderId_
                 err_msg += "    \nEl SLOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdSL_
                 bRehacerConError = True 
-                bNoHacerNada = True # OJJJJOOOOOOOOOO
             if not bTPOrderExists:
                 err_msg += "    \nLa parent [%s] está executada." % self.orderId_
                 err_msg += "    \nEl TPOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdTP_
                 bRehacerConError = True 
-                bNoHacerNada = True # OJJJJOOOOOOOOOO
             if bSLOrderStatus in orderInactiveStatus and bTPOrderStatus in orderInactiveStatus:
                 err_msg += "    \nEl SLOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderId_)
                 err_msg += "    \nEl TPOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderId_)
@@ -342,6 +340,7 @@ class bracketOrderClass():
                     logging.error ('[Estrategia %s (%s)]. Rehacemos todo', self.strategyType_, self.symbol_)
                     ret = self.orderBlockCreateBracketOrder ()
                 else:
+                    logging.error ('[Estrategia %s (%s)]. Necesitamos rehacer todo, pero no lo hacemos y salimos', self.strategyType_, self.symbol_)
                     ret = -1
                     self.toFix = 2
             elif bGenerarOCA:
@@ -352,6 +351,7 @@ class bracketOrderClass():
                     if ret:
                         self.BracketOrderFilledState_ = origState
                 else:
+                    logging.error ('[Estrategia %s (%s)]. Necesitamos rehacer OCA para childs pero no hacemos nada y salimos', self.strategyType_, self.symbol_)
                     ret = -1
                     self.toFix = 2
             if ret == None:

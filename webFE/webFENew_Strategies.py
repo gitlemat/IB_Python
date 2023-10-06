@@ -482,6 +482,8 @@ def toggle_colapse_strategy(n_button, is_open):
 def actualizarFilaStrategies (n_intervals):
     if not ctx.triggered_id:
         raise PreventUpdate
+    if globales.G_RTlocalData_.strategies_ == None:
+        raise PreventUpdate
     logging.debug ('Actualizando Estrategia Fila')
     symbol = ctx.triggered_id['symbol']
     strategyType = ctx.triggered_id['strategy']

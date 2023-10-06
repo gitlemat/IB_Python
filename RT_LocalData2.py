@@ -1140,6 +1140,10 @@ class DataLocalRT():
             
         if orderObj == "":
             orderObj = Order()
+
+        if paramsDict == None:
+            paramsDict = {}
+
         
         orden = {}
         orden['permId'] = orderObj.permId
@@ -1207,6 +1211,7 @@ class DataLocalRT():
                             bChanged = True
                     elif 'status' in paramsDict or 'filled' in paramsDict or 'remaining' in paramsDict:
                         bChanged = True
+                        orden['params'] = []
                     orden['params'].update(paramsDict)
                 orden['toPrint'] = True
                 str_o = self.orderSummary(orden)

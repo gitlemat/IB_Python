@@ -281,61 +281,117 @@ def main():
                 app.initReady_ = False
                 # Primero hay que borrar la lista actual por si se han cerrado o cancelado ordenes
                 #globales.G_RTlocalData_.orderDeleteAll()
-                app.reqAllOpenOrders()
+                try:
+                    app.reqAllOpenOrders()
+                except:
+                    logging.error('Error en el loop con reqAllOpenOrders', exc_info=True)
                 continue # Que no continue si initOrders_ == False
             if app.initPositions_ == False:
                 app.initReady_ = False
                 # Primero hay que borrar la lista actual por si se han cerrado o cancelado ordenes
                 #globales.G_RTlocalData_.positionDeleteAll()
-                app.reqPositions()
+                try:
+                    app.reqPositions()
+                except:
+                    logging.error('Error en el loop con reqPositions', exc_info=True)
                 continue # Que no continue si initPositions_ == False
     
-            contratosIncompletos = globales.G_RTlocalData_.contractCheckStatus()  # Ver si los BAGs tienen sus legs completas
-                                                                                  # Y ver si tenemos todos los simbolos y subscripcion a tick
+            try:
+                contratosIncompletos = globales.G_RTlocalData_.contractCheckStatus()  # Ver si los BAGs tienen sus legs completas
+                                                                                      # Y ver si tenemos todos los simbolos y subscripcion a tick
+            except:
+                logging.error('Error en el loop con contractCheckStatus', exc_info=True)
+
             if contratosIncompletos == True:
                 app.initReady_ = False
-                globales.G_RTlocalData_.contractReqDetailsAllMissing()
+                try:
+                    globales.G_RTlocalData_.contractReqDetailsAllMissing()
+                except:
+                    logging.error('Error en el loop con contractReqDetailsAllMissing', exc_info=True)
                 continue
 
             if app.initReady_ == False:         # Si aqui está False, es que hemos recuperado
                 app.initReady_ = True             # Si llegamos aquí es que todo bien
-                globales.G_RTlocalData_.contractLoadFixedWatchlist()
+                try:
+                    globales.G_RTlocalData_.contractLoadFixedWatchlist()
+                except:
+                    logging.error('Error en el loop con contractLoadFixedWatchlist', exc_info=True)
 
-            strategyIns.strategyIndexCheckAll() # Compruebo las strategias
+            try:
+                strategyIns.strategyIndexCheckAll() # Compruebo las strategias
+            except:
+                logging.error('Error en el loop con strategyIndexCheckAll', exc_info=True)
 
             while app.CallbacksQueue_.empty() == False:
                 callbackItem = app.CallbacksQueue_.get()
                 if 'type' not in callbackItem:
                     continue
                 if callbackItem['type'] == 'execution':
-                    globales.G_RTlocalData_.executionAnalisys (callbackItem['data'])
+                    try:
+                        globales.G_RTlocalData_.executionAnalisys (callbackItem['data'])
+                    except:
+                        logging.error('Error en el loop con executionAnalisys', exc_info=True)
                 if callbackItem['type'] == 'commission':
-                    globales.G_RTlocalData_.commissionAnalisys(callbackItem['data'])
+                    try:
+                        globales.G_RTlocalData_.commissionAnalisys(callbackItem['data'])
+                    except:
+                        logging.error('Error en el loop con commissionAnalisys', exc_info=True)
                 if callbackItem['type'] == 'tick':
-                    globales.G_RTlocalData_.tickUpdatePrice (callbackItem['data'])
+                    try:
+                        globales.G_RTlocalData_.tickUpdatePrice (callbackItem['data'])
+                    except:
+                        logging.error('Error en el loop con tickUpdatePrice', exc_info=True)
                 if callbackItem['type'] == 'pnl':
-                    globales.G_RTlocalData_.pnlUpdate (callbackItem['data'])
+                    try:
+                        globales.G_RTlocalData_.pnlUpdate (callbackItem['data'])
+                    except:
+                        logging.error('Error en el loop con pnlUpdate', exc_info=True)
                 if callbackItem['type'] == 'order':
-                    bChange = globales.G_RTlocalData_.orderUpdate(callbackItem['data']) # Me dice si hay cambio o no
+                    try:
+                        bChange = globales.G_RTlocalData_.orderUpdate(callbackItem['data']) # Me dice si hay cambio o no
+                    except:
+                        logging.error('Error en el loop con orderUpdate', exc_info=True)
                     # Añadir algo que actualizar ordenes en Strategy
                     if bChange:
-                        strategyIns.strategyIndexOrderUpdate (callbackItem['data'])
+                        try:
+                            strategyIns.strategyIndexOrderUpdate (callbackItem['data'])
+                        except:
+                            logging.error('Error en el loop con strategyIndexOrderUpdate', exc_info=True)
                 if callbackItem['type'] == 'position':
-                    globales.G_RTlocalData_.positionUpdate (callbackItem['data'])
+                    try:
+                        globales.G_RTlocalData_.positionUpdate (callbackItem['data'])
+                    except:
+                        logging.error('Error en el loop con positionUpdate', exc_info=True)
                 if callbackItem['type'] == 'account':
-                    globales.G_RTlocalData_.accountTagUpdate(callbackItem['data'])
+                    try:
+                        globales.G_RTlocalData_.accountTagUpdate(callbackItem['data'])
+                    except:
+                        logging.error('Error en el loop con accountTagUpdate', exc_info=True)
                 if callbackItem['type'] == 'error':
                     if callbackItem['data'] == 10197:
-                        globales.G_RTlocalData_.dataFeedSetState(False)
+                        try:
+                            globales.G_RTlocalData_.dataFeedSetState(False)
+                        except:
+                            logging.error('Error en el loop con dataFeedSetState', exc_info=True)
 
             if (ahora - last_refresh_DBcomp_time > datetime.timedelta(minutes=15)):
                 last_refresh_DBcomp_time = ahora
-                globales.G_RTlocalData_.contractReloadCompPrices()
+                try:
+                    globales.G_RTlocalData_.contractReloadCompPrices()
+                except:
+                    logging.error('Error en el loop con contractReloadCompPrices', exc_info=True)
 
             if (ahora - last_refresh_DB_time > datetime.timedelta(minutes=5)):
                 last_refresh_DB_time = ahora
-                if globales.G_RTlocalData_.dataFeedGetState() == False:
-                    globales.G_RTlocalData_.contractReloadPrices()
+                try:
+                    dataFeedState = globales.G_RTlocalData_.dataFeedGetState()
+                except:
+                    logging.error('Error en el loop con dataFeedGetState', exc_info=True)
+                if dataFeedState == False:
+                    try:
+                        globales.G_RTlocalData_.contractReloadPrices()
+                    except:
+                        logging.error('Error en el loop con contractReloadPrices', exc_info=True)
 
     except KeyboardInterrupt:
         pass

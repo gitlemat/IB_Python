@@ -182,6 +182,28 @@ class strategyPentagramaRu(strategyBaseClass):
         # Nada fuera de lo normal. Hacemos solo lo standard de la clase base
         super().strategyLoopCheck()
 
+    def strategyFix (self, data):
+        #data:
+        #    orderId -> con esto identifico la zona
+        # asumimos que si el order es parent, se recrea todo, si es child, solo la OCA
+        if 'orderId' not in data:
+            logging.error('StrategyFix sin orderId. %s', data)
+        lorderId = data['orderId']
+
+        ret = False
+
+        for zoneItem in data['zones']:
+            if zoneItem['orderBlock'].orderBlockGetIfOrderId(lorderId):
+                if lorderId == zoneItem['orderBlock'].orderId_:
+                    fixType = 'ALL'
+                else:
+                    fixType = 'OCA'
+                data = {'fixType': fixType}
+                ret = zoneItem['orderBlock'].orderBlockOrderFix(data)
+                break
+
+        return ret
+
     def strategyGetExecPnL (self):
         return self.pandas_.dbGetExecPnL()
 

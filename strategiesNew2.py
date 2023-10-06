@@ -71,7 +71,28 @@ class Strategies():
         for strategy in self.stratList_:
             ret = strategy['classObject'].strategyLoopCheck()
             if ret:
+                logging.info ('[Estrategia %s (%s)]. Actualizo Fichero', strategy['type'], strategy['symbol'])
                 toWrite[strategy['type']] = True
+
+        self.strategyWriteFile(toWrite)
+
+    def strategyIndexFix (self, data):
+        # data: 
+        #   stratType
+        #   symbol
+        #   ldata (datos para la strat)
+        stratType = data['stratType']
+        symbol = data['symbol']
+        ldata = data['ldata']
+        
+        toWrite = {}
+        ret = None
+        for strategy in self.stratList_:
+            if strategy['symbol'] == symbol and strategy['type'] == stratType:
+                ret = strategy['classObject'].strategyFix(ldata)
+                if ret:
+                    logging.info ('[Estrategia %s (%s)]. Actualizo Fichero', strategy['type'], strategy['symbol'])
+                    toWrite[strategy['type']] = True
 
         self.strategyWriteFile(toWrite)
 

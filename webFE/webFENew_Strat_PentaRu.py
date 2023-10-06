@@ -249,7 +249,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                    html.Th("Status"),
                    html.Th("Qty"),
                    html.Th("Fix"),
-                ]
+                ], style={'color':'#ffffff','background-color':'#636363'}
             )   
         )
     ]
@@ -340,6 +340,21 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             posSL = posSL * (-1)
         lmtSL = formatCurrency(lmtSL)
 
+        backgroundColorParent = '#c1c2c9'
+        backgroundColorTP = '#e4e5ed'
+        backgroundColorSL = '#e4e5ed'
+        if statusParent in ['N/A', 'Filled']:
+            backgroundColorParent = '#d6bfba'
+
+        if statusTP in ['Filled']:
+            backgroundColorTP = '#caf5c9'
+        if statusTP in ['N/A']:
+            backgroundColorTP = '#cf5338'
+        if statusSL in ['Filled']:
+            backgroundColorSL = '#cf5338'
+        if statusSL in ['N/A']:
+            backgroundColorSL = '#cf5338'
+
         insideDetailsStratParent = html.Tr(
             [
                 html.Td("Parent"), 
@@ -352,8 +367,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionParent)),
                 html.Td(str(statusParent)),
                 html.Td(str(posParent)),
-                html.Td(str('Fix')),
-            ]
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_parent_fix', 'orderId': zone['orderBlock'].orderId_}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=True)),
+            ], style={'color':'#000000','background-color':backgroundColorParent}
         )
 
         insideDetailsStratTP = html.Tr(
@@ -368,8 +383,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionTP)),
                 html.Td(str(statusTP)),
                 html.Td(str(posTP)),
-                html.Td(str('Fix')),
-            ]
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_child_fix', 'orderId': zone['orderBlock'].orderId_}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=True)),
+            ], style={'color':'#000000','background-color':backgroundColorTP}
         )
 
         insideDetailsStratSL = html.Tr(
@@ -384,8 +399,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionSL)),
                 html.Td(str(statusSL)),
                 html.Td(str(posSL)),
-                html.Td(str('Fix')),
-            ]
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_child_fix', 'orderId': zone['orderBlock'].orderId_}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=True)),
+            ], style={'color':'#000000','background-color':backgroundColorSL}
         )
 
         insideDetailsStratEmpty = html.Tr("", style={'height':'10px'})
@@ -415,6 +430,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
 def actualizarTablaOrdenesStrategiesPenRu (n_intervals):
     if not ctx.triggered_id:
         raise PreventUpdate
+    if globales.G_RTlocalData_.strategies_ == None:
+        raise PreventUpdate
     logging.debug ('Actualizando tabla ordenes estrategia')
     symbol = ctx.triggered_id['symbol']
 
@@ -431,6 +448,8 @@ def actualizarTablaOrdenesStrategiesPenRu (n_intervals):
 )
 def actualizarFiguraTodayPenRu (n_intervals):
     if not ctx.triggered_id:
+        raise PreventUpdate
+    if globales.G_RTlocalData_.strategies_ == None:
         raise PreventUpdate
 
     symbol = ctx.triggered_id['symbol']

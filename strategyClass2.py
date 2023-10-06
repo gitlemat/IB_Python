@@ -68,6 +68,9 @@ class strategyBaseClass():
 
         return bStrategyUpdated
 
+    def strategyFix (self, data):
+        return None
+        
     def strategyGetExecPnL (self):
         return None
 
