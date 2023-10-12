@@ -22,7 +22,6 @@ import queue
 from dotenv import load_dotenv
 
 loop_timer = 0.1
-refreshFE_timer = 1
 
 
 def SetupLogger():
@@ -229,8 +228,8 @@ def main():
 
     TempQueue = queue.Queue()   # Creo una cola intermedia
 
-    while app.CallbacksQueue_.empty() == False:
-        callbackItem = app.CallbacksQueue_.get()
+    while app.CallbacksQueuePrio_.empty() == False:
+        callbackItem = app.CallbacksQueuePrio_.get()
         if 'type' not in callbackItem:
             continue
         elif callbackItem['type'] == 'order':
@@ -243,7 +242,7 @@ def main():
         else:
             TempQueue.put(callbackItem)
     
-    app.CallbacksQueue_ = TempQueue
+    app.CallbacksQueuePrio_ = TempQueue
 
     # Le decimos a las estrategias que pongan en RT cuales sin sus ordenes
     strategyIns.strategySubscribeOrdersInit()
@@ -274,6 +273,7 @@ def main():
         while True:
             time.sleep(loop_timer)
             ahora = datetime.datetime.now()
+            #app.CallbacksQueue_.qsize()
             if app.initConnected_== False:
                 app.initReady_ = False
                 continue
@@ -322,8 +322,8 @@ def main():
             except:
                 logging.error('Error en el loop con strategyIndexCheckAll', exc_info=True)
 
-            while app.CallbacksQueue_.empty() == False:
-                callbackItem = app.CallbacksQueue_.get()
+            while app.CallbacksQueuePrio_.empty() == False:
+                callbackItem = app.CallbacksQueuePrio_.get()
                 if 'type' not in callbackItem:
                     continue
                 if callbackItem['type'] == 'execution':
@@ -336,16 +336,6 @@ def main():
                         globales.G_RTlocalData_.commissionAnalisys(callbackItem['data'])
                     except:
                         logging.error('Error en el loop con commissionAnalisys', exc_info=True)
-                if callbackItem['type'] == 'tick':
-                    try:
-                        globales.G_RTlocalData_.tickUpdatePrice (callbackItem['data'])
-                    except:
-                        logging.error('Error en el loop con tickUpdatePrice', exc_info=True)
-                if callbackItem['type'] == 'pnl':
-                    try:
-                        globales.G_RTlocalData_.pnlUpdate (callbackItem['data'])
-                    except:
-                        logging.error('Error en el loop con pnlUpdate', exc_info=True)
                 if callbackItem['type'] == 'order':
                     try:
                         bChange = globales.G_RTlocalData_.orderUpdate(callbackItem['data']) # Me dice si hay cambio o no
@@ -374,6 +364,26 @@ def main():
                         except:
                             logging.error('Error en el loop con dataFeedSetState', exc_info=True)
 
+            ahora = datetime.datetime.now()
+            while app.CallbacksQueue_.empty() == False:
+                callbackItem = app.CallbacksQueue_.get()
+                if 'type' not in callbackItem:
+                    continue
+                if callbackItem['type'] == 'tick':
+                    try:
+                        globales.G_RTlocalData_.tickUpdatePrice (callbackItem['data'])
+                    except:
+                        logging.error('Error en el loop con tickUpdatePrice', exc_info=True)
+                if callbackItem['type'] == 'pnl':
+                    try:
+                        globales.G_RTlocalData_.pnlUpdate (callbackItem['data'])
+                    except:
+                        logging.error('Error en el loop con pnlUpdate', exc_info=True)
+                if (datetime.datetime.now() - ahora > datetime.timedelta(milliseconds=500)):
+                    break
+
+
+            ahora = datetime.datetime.now()
             if (ahora - last_refresh_DBcomp_time > datetime.timedelta(minutes=15)):
                 last_refresh_DBcomp_time = ahora
                 try:
@@ -381,6 +391,7 @@ def main():
                 except:
                     logging.error('Error en el loop con contractReloadCompPrices', exc_info=True)
 
+            ahora = datetime.datetime.now()
             if (ahora - last_refresh_DB_time > datetime.timedelta(minutes=5)):
                 last_refresh_DB_time = ahora
                 try:

@@ -239,7 +239,6 @@ class dbPandasStrategy():
 
     def dbGetExecPnLInit(self):
         # ["_time", "ExecId", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"]
-        logging.info('Llego aqui')
 
         for index, row in self.dfExecs_.iterrows():
             logging.debug('Nuevo. FillPrice: %s. Qty: %s. Side: %s. Commission: %s', row['FillPrice'], row['Quantity'], row['Side'], row['Commission'])
@@ -358,8 +357,10 @@ class dbPandasContrato():
 
     def __init__(self, symbol, influxIC):
         self.df_ = None
+        self.dfDelta_ = None
         self.dfcomp_ = None
         self.dfPnl_ = None
+        self.dfPnlDelta_ = None
         self.dfVolume_ = None
         self.symbol_ = symbol
         self.influxIC_ = influxIC
@@ -528,12 +529,15 @@ class dbPandasContrato():
         newlineL.append (data)
 
         if different:
-            self.dbUpdateInfluxPrices (data)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
             #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
-            self.df_ = pd.concat([self.df_, dfDelta]) #, ignore_index=True
-            self.toPrint = True
+            self.dfDelta_ = pd.concat([self.dfDelta_, dfDelta]) #, ignore_index=True
+            if len(self.dfDelta_.index) > 10:
+                self.dbUpdateInfluxPrices (self.dfDelta_)
+                self.df_ = pd.concat([self.df_, self.dfDelta_]) #, ignore_index=True
+                self.dfDelta_ = None
+                self.toPrint = True
 
     def dbUpdateAddPnL (self, data):
  
@@ -571,11 +575,14 @@ class dbPandasContrato():
         newlineL.append (data)
 
         if differentPnL:
-            self.dbUpdateInfluxPnL (data)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
-            self.dfPnl_ = pd.concat([self.dfPnl_, dfDelta])
-            self.toPrintPnL = True
+            self.dfPnlDelta_ = pd.concat([self.dfPnlDelta_, dfDelta]) #, ignore_index=True
+            if len(self.dfPnlDelta_.index) > 10:
+                self.dbUpdateInfluxPnL (self.dfPnlDelta_)
+                self.dfPnl_ = pd.concat([self.dfPnl_, self.dfPnlDelta_])
+                self.dfPnlDelta_ = None
+                self.toPrintPnL = True
 
     def dbUpdateAddVolume(self, data):
         keys_pnl = ['Volume']
@@ -601,60 +608,72 @@ class dbPandasContrato():
             self.dfVolume_ = pd.concat([self.dfVolume_, dfDelta])
 
 
-    def dbUpdateInfluxPnL (self, data):
+    def dbUpdateInfluxPnL (self, datadf):
         keys_pnl = ['dailyPnL','realizedPnL','unrealizedPnL']
         
         records = []
-        record = {}
-        tags = {'symbol': self.symbol_}
-        time = data['timestamp']
-        time = utils.dateLocal2UTC (time)
-        
-        fields_pnl = {}
+        datadf['timestamp'] = datadf.index
+        for index, row in datadf.iterrows():
+            
+            data = row.to_dict()
+            record = {}
+            tags = {'symbol': self.symbol_}
+            time = data['timestamp']
+            time = utils.dateLocal2UTC (time)
+            
+            fields_pnl = {}
+    
+            for key in keys_pnl:
+                if key in data:
+                    fields_pnl[key] = data[key]
+    
+    
+            record = {
+                "measurement": "pnl", 
+                "tags": tags,
+                "fields": fields_pnl,
+                "time": time,
+            }
+            if len(fields_pnl) > 0:
+                records.append(record)
 
-        for key in keys_pnl:
-            if key in data:
-                fields_pnl[key] = data[key]
-
-
-        record = {
-            "measurement": "pnl", 
-            "tags": tags,
-            "fields": fields_pnl,
-            "time": time,
-        }
-        records.append(record)
-
-        if len(fields_pnl) > 0:
+        if len(records) > 0:
             self.influxIC_.write_data(records, 'pnl')
 
-    def dbUpdateInfluxPrices (self, data):
+
+
+    def dbUpdateInfluxPrices (self, datadf):
         keys_prices = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE']
 
         records = []
-        record = {}
-        tags = {'symbol': self.symbol_}
-        time = data['timestamp']
-        time = utils.dateLocal2UTC (time)
-        
-        fields_prices = {}
-
-        
-        for key in keys_prices:
-            if key in data:
-                fields_prices[key] = data[key]
-
-        record = {
-            "measurement": "precios", 
-            "tags": tags,
-            "fields": fields_prices,
-            "time": time,
-        }
-        records.append(record)
+        datadf['timestamp'] = datadf.index
+        for index, row in datadf.iterrows():
+            
+            data = row.to_dict()
+            record = {}
+            tags = {'symbol': self.symbol_}
+            time = data['timestamp']
+            time = utils.dateLocal2UTC (time)
+            
+            fields_prices = {}
+    
+            
+            for key in keys_prices:
+                if key in data:
+                    fields_prices[key] = data[key]
+    
+            record = {
+                "measurement": "precios", 
+                "tags": tags,
+                "fields": fields_prices,
+                "time": time,
+            }
+            if len(fields_prices) > 0:
+                records.append(record)
 
         #logging.info ('Escribo valor para %s: %s', self.symbol_, records)
 
-        if len(fields_prices) > 0:
+        if len(records) > 0:
             self.influxIC_.write_data(records, 'precios')
 
 

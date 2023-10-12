@@ -51,6 +51,9 @@ class strategyBaseClass():
         # To override 
         return None
 
+    def strategySetCerrarPos(self, value):
+        return None
+
     def strategyLoopCheck (self): 
 
         if self.stratEnabled_ == False:
@@ -62,15 +65,17 @@ class strategyBaseClass():
             ret = orderBlock.orderBlockLoopCheck()
             if ret == True:
                 bStrategyUpdated = True
+                self.ordersUpdated_ = True
             if ret == -1:
                 ## Esto es cuando una bracket o OCA ha sido ejecutada entera, y no rehecha
+                self.ordersUpdated_ = True
                 pass
 
         return bStrategyUpdated
 
     def strategyFix (self, data):
         return None
-        
+
     def strategyGetExecPnL (self):
         return None
 

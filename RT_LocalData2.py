@@ -1177,14 +1177,18 @@ class DataLocalRT():
         # Find permId from tempId        
         localPermId = self.orderGetPermId (tempId, orderObj, paramsDict)
         if localPermId == "":
-            return (False)
+            pass
+            #return (False)
         
         if not contractObj == "":
             #print ('Actualizo cont')
             ret = self.contractAdd (contractObj)         # Normalmante al añadir la orden, añadimos y actualizamos el contrato    
         
         for orden in self.orderList_:
-            if orden['permId'] == localPermId:
+            if orden['order'].orderId == tempId:
+            #if orden['permId'] == localPermId:
+                if orden['permId'] == None or orden['permId'] == '' or str(orden['permId']) == '0':
+                    orden['permId'] = localPermId
                 exists = True
                 bChanged = False
                 bStatusChanged = False

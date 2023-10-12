@@ -89,7 +89,8 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColu
             ),
             dbc.Row(
                     insideOrdenes,
-            )
+            ), 
+            modal_ordenFix()
         ],
         id={'role': 'colapse_strategy', 'strategy':'PentagramaRu', 'symbol': symbol},
         is_open=False,
@@ -159,11 +160,15 @@ def addZonesLinesHistoricoRu (fig1, estrategia, df_comp):
     return fig1
 
 def layout_getFigureTodayPenRu (estrategia, update = False):
+    if estrategia == None:
+        return no_update
     symbol = estrategia['symbol']
     strategyType = estrategia['type']
     contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
     if not contrato:
         logging.error ('Error cargando grafico de Hoy de %s. No tenemos el contrato cargado en RT_Data', symbol)
+        return no_update
+    if contrato['dbPandas'] == None:
         return no_update
     if (contrato['dbPandas'].toPrint == False) and (update == True):
         logging.debug ('Grafico no actualizado. No hay datos nuevos')
@@ -236,6 +241,8 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         logging.debug ('Tabla de ordenes en Strategia no actualizado. No hay datos nuevos')
         return no_update
 
+    symbol = estrategia['classObject'].symbol_
+
     insideDetailsTableHeader = [
         html.Thead(
             html.Tr(
@@ -259,12 +266,17 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
     for zone in estrategia['classObject'].zones_:
         #ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
         ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderId_)
+        fixOCA = False
+        fixParent = False
         if zone['orderBlock'].toFix == 1:
-            pass
+            fixParent = True
             # Parent Rota y fix necesario
         if zone['orderBlock'].toFix == 2:
-            pass
+            fixOCA = True
             # OCA Rota y fix necesario
+        if zone['orderBlock'].toFix == 3:
+            fixParent = True
+            fixOCA = True
         if ordenParent:
             posParent = ordenParent['order'].totalQuantity
             typeParent = ordenParent['order'].orderType
@@ -343,8 +355,13 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         backgroundColorParent = '#c1c2c9'
         backgroundColorTP = '#e4e5ed'
         backgroundColorSL = '#e4e5ed'
-        if statusParent in ['N/A', 'Filled']:
-            backgroundColorParent = '#d6bfba'
+        if statusParent in ['Filled']:
+            backgroundColorParent = '#caf5c9' # Todo bien
+        if statusParent in ['N/A']:
+            if zone['orderBlock'].BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F']:
+                backgroundColorParent = '#caf5c9' # Bien
+            else:
+                backgroundColorParent = '#d6bfba' # Mal
 
         if statusTP in ['Filled']:
             backgroundColorTP = '#caf5c9'
@@ -354,6 +371,9 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             backgroundColorSL = '#cf5338'
         if statusSL in ['N/A']:
             backgroundColorSL = '#cf5338'
+
+        disableOcaFix = not fixOCA
+        disableParentFix = not fixParent
 
         insideDetailsStratParent = html.Tr(
             [
@@ -367,7 +387,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionParent)),
                 html.Td(str(statusParent)),
                 html.Td(str(posParent)),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_parent_fix', 'orderId': zone['orderBlock'].orderId_}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=True)),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderId_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix)),
             ], style={'color':'#000000','background-color':backgroundColorParent}
         )
 
@@ -383,7 +403,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionTP)),
                 html.Td(str(statusTP)),
                 html.Td(str(posTP)),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_child_fix', 'orderId': zone['orderBlock'].orderId_}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=True)),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderIdTP_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix)),
             ], style={'color':'#000000','background-color':backgroundColorTP}
         )
 
@@ -399,7 +419,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionSL)),
                 html.Td(str(statusSL)),
                 html.Td(str(posSL)),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_child_fix', 'orderId': zone['orderBlock'].orderId_}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=True)),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderIdSL_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix)),
             ], style={'color':'#000000','background-color':backgroundColorSL}
         )
 
@@ -420,6 +440,76 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
     )
 
     return ret
+
+def modal_ordenFix():
+
+    orderOrderId = dcc.Input(
+        id = "order_fix_orderId",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    orderStratType = dcc.Input(
+        id = "order_fix_stratType",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    orderSymbol = dcc.Input(
+        id = "order_fix_symbol",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    responseBody = html.Div([
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.P('Tipo Estrategia:', className='font-weight-bold'),
+                        orderStratType
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        html.P('Simbolo:', className='font-weight-bold'),
+                        orderSymbol
+                    ]
+                ),                
+            ]
+        ),
+        html.P('Ejecutamos Fix para esta: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderOrderId,
+    ])
+    
+    modal = html.Div(
+        [
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Regenerar Orden", id = "modal_fixOrder")),
+                    dbc.ModalBody(responseBody, id = "OrdenFixBody"),
+                    dbc.ModalFooter(
+                        [
+                            dbc.Button(
+                                "Fix", id="modal_fixOrder_boton_fix", className="ms-auto", n_clicks=0
+                            ),
+                            dbc.Button(
+                                "Close", id="modal_fixOrder_boton_close", className="ms-auto", n_clicks=0
+                            )
+                        ]
+                    ),
+                ],
+                id="modal_fixOrder_main",
+                is_open=False,
+            ),
+        ]
+    )
+    return modal
 
 #Callback para actualizar tabla de ordenes en Strategy
 @callback(
@@ -482,3 +572,62 @@ def reloadStrategyRuFiles(n_clicks):
     globales.G_RTlocalData_.strategies_.strategyReload ('PentagramaRu', symbol)
 
     return  no_update
+
+# Callback para fix
+@callback(
+    Output("order_fix_orderId", "value"),
+    Output("order_fix_stratType", "value"),
+    Output("order_fix_symbol", "value"),
+    Output("modal_fixOrder_main", "is_open"),
+    Input({'role': 'boton_fix', 'orderId': ALL, 'symbol': ALL}, "n_clicks"),
+    Input("modal_fixOrder_boton_fix", "n_clicks"),
+    Input("modal_fixOrder_boton_close", "n_clicks"),
+    Input("order_fix_orderId", "value"),
+    Input("order_fix_stratType", "value"),
+    Input("order_fix_symbol", "value"),
+    State("modal_fixOrder_main", "is_open"), 
+    prevent_initial_call = True,
+)
+def fixStrategyRuOrdenes (n_button_open, n_button_fix, n_button_close, orderId, stratType, Symbol, open_status):
+
+    # Esto es por si las moscas
+    if not ctx.triggered_id:
+        raise PreventUpdate
+    
+    # Esto es por si las moscas
+    pageLoad = True
+    for button in  n_button_open:
+        if button != None:
+            pageLoad = False
+    if pageLoad:
+        raise PreventUpdate
+
+
+    logging.debug('Trigger %s', ctx.triggered_id)
+
+    if ctx.triggered_id == "modal_fixOrder_boton_close":
+        return None, None, None, False
+    
+    if ctx.triggered_id == "modal_fixOrder_boton_fix":
+        
+        #ahora hay que arreglar
+        logging.info('[Orden (%s)] Fix esta orden desde GUI', str(orderId))
+
+        stratType = 'PentagramaRu'
+
+        data = {'orderId': orderId}
+    
+        try:
+            result = globales.G_RTlocalData_.strategies_.strategyIndexFix (data)
+            result = True
+        except:
+            logging.error ("Exception occurred", exc_info=True)
+
+        return None, None, None, False
+            
+
+    if 'orderId' in ctx.triggered_id:
+        orderId = int(ctx.triggered_id['orderId'])
+        Symbol = ctx.triggered_id['symbol']
+        stratType = 'PentagramaRu'
+        return orderId, stratType, Symbol, True

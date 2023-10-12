@@ -78,18 +78,14 @@ class Strategies():
 
     def strategyIndexFix (self, data):
         # data: 
-        #   stratType
-        #   symbol
-        #   ldata (datos para la strat)
-        stratType = data['stratType']
-        symbol = data['symbol']
-        ldata = data['ldata']
+        #   orderId
+        orderId = data['orderId']
         
         toWrite = {}
         ret = None
         for strategy in self.stratList_:
-            if strategy['symbol'] == symbol and strategy['type'] == stratType:
-                ret = strategy['classObject'].strategyFix(ldata)
+            if strategy['classObject'].strategyGetIfOrderId(orderId):
+                ret = strategy['classObject'].strategyFix(data)
                 if ret:
                     logging.info ('[Estrategia %s (%s)]. Actualizo Fichero', strategy['type'], strategy['symbol'])
                     toWrite[strategy['type']] = True
@@ -210,6 +206,15 @@ class Strategies():
 
         self.strategyWriteFile(toWrite)
 
+    def strategyCerrarPosiciones (self, symbol, strategyType, cerrar_value):
+        toWrite = {}
+        for strategy in self.stratList_:
+            if strategy['symbol'] == symbol and strategy['type'] == strategyType:
+                ret = strategy['classObject'].strategySetCerrarPos(cerrar_value)
+                if ret:
+                    toWrite[strategy['type']] = True
+                    self.strategyWriteFile(toWrite)
+    
     def strategyUpdateZones (self, symbol, strategyType, zones, onlyNOP=False):
 
         toWrite = {}

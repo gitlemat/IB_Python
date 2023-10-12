@@ -60,6 +60,7 @@ class IBI_App(EWrapper, EClient):
         #globales.RTLocalData_.appObj_ = self
 
         self.CallbacksQueue_ = queue.Queue()
+        self.CallbacksQueuePrio_ = queue.Queue()
         
         #Starts listening for errors 
 
@@ -111,7 +112,7 @@ class IBI_App(EWrapper, EClient):
             self.initReady_ = False
         elif errorCode == 10197:
             queueEntry = {'type':'error', 'data': errorCode}
-            self.CallbacksQueue_.put(queueEntry)
+            self.CallbacksQueuePrio_.put(queueEntry)
         else:
             errormessage = "[%d] %s" % (errorCode, errorString)
 
@@ -215,7 +216,7 @@ class IBI_App(EWrapper, EClient):
 
         data = {'orderId': orderId, 'contractObj': "", 'orderObj': "", 'paramsDict':paramsDict }
         queueEntry = {'type':'order', 'data': data}
-        self.CallbacksQueue_.put(queueEntry)
+        self.CallbacksQueuePrio_.put(queueEntry)
     
 
     @iswrapper    
@@ -233,7 +234,7 @@ class IBI_App(EWrapper, EClient):
 
         data = {'orderId': orderId, 'contractObj': contract, 'orderObj': order, 'paramsDict':paramsDict }
         queueEntry = {'type':'order', 'data': data}
-        self.CallbacksQueue_.put(queueEntry)
+        self.CallbacksQueuePrio_.put(queueEntry)
 
     @iswrapper    
     def openOrderEnd(self):
@@ -249,7 +250,7 @@ class IBI_App(EWrapper, EClient):
         # Un execution queue
         data = {'executionObj': execution, 'contractObj': contract}
         queueEntry = {'type':'execution', 'data': data}
-        self.CallbacksQueue_.put(queueEntry)
+        self.CallbacksQueuePrio_.put(queueEntry)
    
     @iswrapper
     def execDetailsEnd(self, reqId: int):
@@ -262,7 +263,7 @@ class IBI_App(EWrapper, EClient):
         #logging.info("CommissionReport: %s", commissionReport) Ya lo escribe wrapper.py
         data = {'CommissionReport': commissionReport}
         queueEntry = {'type':'commission', 'data': data}
-        self.CallbacksQueue_.put(queueEntry)
+        self.CallbacksQueuePrio_.put(queueEntry)
 
     @iswrapper
     def position(self, account: str, contract: Contract, position: Decimal, avgCost: float):
@@ -275,7 +276,7 @@ class IBI_App(EWrapper, EClient):
         #print ('position input:', contract)     
         data = {'contract': contract, 'position': position, 'avgCost':avgCost }
         queueEntry = {'type':'position', 'data': data}
-        self.CallbacksQueue_.put(queueEntry)
+        self.CallbacksQueuePrio_.put(queueEntry)
     
     @iswrapper          
     def positionEnd(self):
@@ -311,7 +312,7 @@ class IBI_App(EWrapper, EClient):
         #    "Tag: ", tag, "Value:", value, "Currency:", currency)
         data = {'reqId': reqId, 'account': account, 'tag':tag, 'value':value}
         queueEntry = {'type':'account', 'data': data}
-        self.CallbacksQueue_.put(queueEntry)
+        self.CallbacksQueuePrio_.put(queueEntry)
                  
     @iswrapper
     def accountSummaryEnd(self, reqId:int):
@@ -323,7 +324,7 @@ class IBI_App(EWrapper, EClient):
 
         data = {'reqId': reqId, 'end': True}
         queueEntry = {'type':'account', 'data': data}
-        self.CallbacksQueue_.put(queueEntry)
+        self.CallbacksQueuePrio_.put(queueEntry)
 
     @iswrapper  
     def reqPositions (self):
@@ -337,6 +338,7 @@ class IBI_App(EWrapper, EClient):
     @iswrapper    
     def reqAllOpenOrders (self):
         if self.semaforo_requestingOrders:
+            logging.info ('No he podido pedir estado de ordenes porque hay uno activo')
             return False
         else:
             self.semaforo_requestingOrders = True
@@ -792,7 +794,9 @@ class IBI_App(EWrapper, EClient):
         #Aqui es mejor crear la orden en Local_RT por si me llega la ejecución antes que la confirmacion (cosas de IB)
         data = {'orderId': orderId, 'contractObj': contract, 'orderObj': order, 'paramsDict':None }
         queueEntry = {'type':'order', 'data': data}
-        self.CallbacksQueue_.put(queueEntry)
+        self.CallbacksQueuePrio_.put(queueEntry)
+
+        time.sleep (1)
         
         self.nextorderId += 1
         return (orderId)
@@ -801,11 +805,13 @@ class IBI_App(EWrapper, EClient):
         logging.info ("[Orden (%s)] Vamos a CANCELAR esta orden", orderId)
         manualOrderCancelTime = ''
         super().cancelOrder (orderId, manualOrderCancelTime)
+        time.sleep (1)
         self.reqAllOpenOrders()
         return True
 
     def cancelOrderAll (self):
         super().reqGlobalCancel()
+        time.sleep (1)
         self.reqAllOpenOrders()
         
     #####################################

@@ -37,6 +37,13 @@ def layout_logs_tab ():
             ),
             dbc.Row
             (
+                [
+                    'Tamaño cola Prio    : ' + str(globales.G_RTlocalData_.appObj_.CallbacksQueuePrio_.qsize()) + '\n',
+                    'Tamaño cola Non-Prio: ' + str(globales.G_RTlocalData_.appObj_.CallbacksQueue_.qsize()) + '\n'
+                ]
+            ),
+            dbc.Row
+            (
                 logtext
             )
     ]

@@ -20,7 +20,25 @@ def layout_ordenes_tab ():
     tabOrdenes = [
             dbc.Row(
                 [
-                    html.P("Lista de Ordenes", className='text-left text-secondary mb-4 ps-0 display-6'),
+
+                    dbc.Col(
+                        html.P("Lista de Ordenes", className='text-left mb-0 text-secondary display-6'),
+                        className = 'ps-0',
+                        width = 9
+                    ),
+                    dbc.Col(
+                        html.Div(
+                            dbc.Button("Pedir Update", id={'role': 'ZoneButtonReqOrderUpdate'}, className="me-0", n_clicks=0),
+                            className="text-end"
+                        ),
+                        className = 'pe-0',
+                        width = 3
+                    ),
+                ],
+                className = 'mb-4',
+            ),
+            dbc.Row(
+                [
                     html.Hr()
                 ]
             ),
@@ -166,7 +184,7 @@ def modal_ordenCancel():
             dbc.Modal(
                 [
                     dbc.ModalHeader(dbc.ModalTitle("Cancelar Orden", id = "modal_cancelOrder")),
-                    dbc.ModalBody(responseBody, id = "OrdenUpdateBody"),
+                    dbc.ModalBody(responseBody, id = "OrdenCancelBody"),
                     dbc.ModalFooter(
                         [
                             dbc.Button(
@@ -486,3 +504,23 @@ def cancelOrder (n_button_open, n_button_cancel, n_button_close, orderId, open_s
     if 'orderId' in ctx.triggered_id:
         orderId = int(ctx.triggered_id['orderId'])
         return orderId, True
+
+# Callback para pedir order update
+@callback(
+    Output({'role': 'ZoneButtonReqOrderUpdate'}, "n_clicks"),   # Dash obliga a poner un output.
+    Input({'role': 'ZoneButtonReqOrderUpdate'}, "n_clicks"), 
+    prevent_initial_call = True,
+)
+def pedirOrderUpdate(n_button_open):
+    
+    if not ctx.triggered_id:
+        return no_update
+
+    # Esto es por si las moscas
+    if n_button_open == 0:
+        raise PreventUpdate
+
+    logging.info ('Pedimos update de ordenes')
+    globales.G_RTlocalData_.appObj_.reqAllOpenOrders()
+    
+    return no_update

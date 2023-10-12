@@ -6,7 +6,6 @@ from strategyClass2 import strategyBaseClass
 
 
 logger = logging.getLogger(__name__)
-Error_orders_timer_dt = datetime.timedelta(seconds=90)
 
 #  ------------ 2
 #
@@ -29,7 +28,9 @@ Error_orders_timer_dt = datetime.timedelta(seconds=90)
 # - ParentFilled: La parent se ha ejecutado, el resto tienen que estar en submitted/cancel/Filled
 # - ParentFilled+F: La parent se ha ejecutado, y una child ya ha ejecutado
 # - ParentFilled+C: La parent se ha ejecutado, y una child cancelada (la otra debería estar rellenada, pero igual está por llegar)
-
+# - ParentFilled+EP: La parent se ha ejecutado, y la partent tiene error. Se da cuando despues de ejecutar la parent, desaparece la child. Todo hecho?
+# - ParentFilled+EC: La parent se ha ejecutado, y error en childs
+# - +EC            : Parent NO ejecutada y error en childs
 
 
 STRAT_File = 'strategies/RU_Pentagrama.conf'
@@ -168,15 +169,26 @@ class strategyPentagramaRu(strategyBaseClass):
         self.pandas_ = pandasDB.dbPandasStrategy (self.symbol_, 'PentagramaRu', self.RTLocalData_.influxIC_)
         self.zones_ = [] # En realidad es innecesario. Podemos considerar zone=orderBlock
 
+        regen = not self.cerrarPos_
+
         # Da la casualidad que cada zona corresponde a un BracketOrder. Es innecesario mantener zones_, pero por si mas adelante hace falta
         for zoneItem in data['zones']:
             logging.debug('Zone Nueva:')
             logging.debug('\n%s', zoneItem)
-            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.symbol_, self.straType_, True, self.RTLocalData_)
+            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.symbol_, self.straType_, regen, self.RTLocalData_)
             zone = {'orderBlock': orderBlock}
             self.zones_.append(zone)
             # En todas las strats tiene que haber una lista con todos los orderBlocks
             self.orderBlocks_.append(orderBlock)
+
+    def strategySetCerrarPos(self, value):
+        if value not in [True, False]:
+            return False
+        regen = not value   # Si quiero cerrar pocision (True) entonces regen = False
+        for block in self.orderBlocks_:
+            block.oderBlockRegenChange(regen)
+        self.cerrarPos_ = value
+        return True
 
     def strategyLoopCheck (self): 
         # Nada fuera de lo normal. Hacemos solo lo standard de la clase base
@@ -192,13 +204,14 @@ class strategyPentagramaRu(strategyBaseClass):
 
         ret = False
 
-        for zoneItem in data['zones']:
+        for zoneItem in self.zones_:
             if zoneItem['orderBlock'].orderBlockGetIfOrderId(lorderId):
                 if lorderId == zoneItem['orderBlock'].orderId_:
                     fixType = 'ALL'
                 else:
                     fixType = 'OCA'
                 data = {'fixType': fixType}
+                logging.info ('[Estrategia PentagramaRu (%s)] Vamos a hacer un fix de orderId: %s, y fixType: %s', self.symbol_, lorderId , fixType)
                 ret = zoneItem['orderBlock'].orderBlockOrderFix(data)
                 break
 

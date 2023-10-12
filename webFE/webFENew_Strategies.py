@@ -169,7 +169,6 @@ def layout_getFigura3(estrategia):
     symbolSpread = estrategia['symbol']
     spread_list = globales.G_RTlocalData_.appObj_.contractCode2list(symbolSpread)
     spread_list.append ({'action':'BAG', 'ratio': 1, 'code': symbolSpread})
-    logging.info (spread_list)
 
     fig3 = go.Figure()
     fig3 = make_subplots(specs=[[{"secondary_y": True}]])
@@ -245,6 +244,8 @@ def layout_getStrategyHeader (estrategia, update = False):
         # contrato['dbPandas'].toPrint Es el precio del contrato
         # contrato['dbPandas'].toPrintPnL Es el PnL del contrato
         # estrategia['classObject'].pandas_.toPrint Es el numero de Execs
+        if contrato['dbPandas'] == None:
+            return no_update
         if contrato['dbPandas'].toPrint == False and contrato['dbPandas'].toPrintPnL == False and estrategia['classObject'].pandas_.toPrint == False:
             logging.debug ('Header estrategia no actualizado. No hay datos nuevos')
             return no_update
