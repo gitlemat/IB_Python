@@ -18,6 +18,42 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColu
 
     symbol = estrategia['symbol']
 
+    # Hacemos los botones e info inicial
+
+    # Cerrar posiciones
+
+    cerrarPos = estrategia['classObject'].cerrarPos_
+
+    grupo_switches = html.Div(
+        [
+            dbc.Switch(
+                    id={'role': 'switch_cerrarPos', 'strategy':'PentagramaRu', 'symbol': symbol},
+                    label="Dejar cerrar las posiciones y no regenerar",
+                    value=cerrarPos,
+                )
+        ]
+    )
+
+    # El boton de recarga
+
+    boton_reload = dbc.Button("Recargar desde Fichero", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0)
+
+    # Contenigo de caja
+    
+    contenido_caja = html.Div(
+        dbc.Row(
+                [
+                    dbc.Col(grupo_switches, width=10),
+                    dbc.Col(boton_reload, width=2)
+                ]
+            ),
+        )
+
+    caja_inicial_top = dbc.Card(contenido_caja, body=True),
+ 
+
+    # Hacemos la tabla de ordenes
+
     insideTable = layout_getStrategyPenRuTableOrders(estrategia)
     
     random_wait = random.randint(0,2000) + 3000
@@ -33,21 +69,7 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColu
         )
     ])
 
-    # El boton de recarga
-
-    insideDetailsBotonesZonas = []
-    insideDetailsBotonesZonas.append(
-        dbc.Row(
-                [
-                    dbc.Col('', width=10),
-                    dbc.Col(dbc.Button("Actualizar desde Fichero", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0), width=2)
-                ]
-            ),
-        )
-
     # Las ordenes ejecutadas de PentagramaRu
-
-    # strategy['classObject'].pandas_.dbGetExecsDataframeAll()
 
     df_execs = estrategia['classObject'].pandas_.dbGetExecsDataframeAll()
     df_execs.sort_index(ascending=False, inplace = True)
@@ -73,6 +95,9 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColu
     collapseDetails = dbc.Collapse(
         [
             dbc.Row(
+                    caja_inicial_top, className = 'mb-3' 
+            ),
+            dbc.Row(
                 [
                     dbc.Col(graphColumn1, width=6),
                     dbc.Col(graphColumn2, width=6)
@@ -82,10 +107,7 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColu
                     tablaExecs,
             ),
             dbc.Row(
-                    graphColumn3,
-            ),
-            dbc.Row(
-                    insideDetailsBotonesZonas, className = 'mb-3' 
+                    graphColumn3, className = 'mb-3' 
             ),
             dbc.Row(
                     insideOrdenes,
@@ -177,12 +199,13 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
     fig2 = go.Figure()
 
     # Valores de LAST
-    fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["BID"], mode="lines", line_color="blue", connectgaps = True))
-    fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["ASK"], mode="lines", line_color="green", connectgaps = True))
-    fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["LAST"], mode="lines", line_color="crimson", connectgaps = True))
+    fig2.add_trace(go.Candlestick(x=dfToday.index, open=dfToday['open'], high=dfToday['high'],low=dfToday['low'],close=dfToday['close']))
+    #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["BID"], mode="lines", line_color="blue", connectgaps = True))
+    #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["ASK"], mode="lines", line_color="green", connectgaps = True))
+    #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["LAST"], mode="lines", line_color="crimson", connectgaps = True))
     
     # Y las zonas
-    ifig2 = addZonesLinesTodayRu (fig2, estrategia, dfToday)
+    fig2 = addZonesLinesTodayRu (fig2, estrategia, dfToday)
 
     fig2.update_xaxes(
         rangebreaks=[
@@ -631,3 +654,25 @@ def fixStrategyRuOrdenes (n_button_open, n_button_fix, n_button_close, orderId, 
         Symbol = ctx.triggered_id['symbol']
         stratType = 'PentagramaRu'
         return orderId, stratType, Symbol, True
+
+# Callback para enable/disable cerrarPos
+@callback(
+    Output({'role': 'switch_cerrarPos', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),   # Dash obliga a poner un output.
+    Input({'role': 'switch_cerrarPos', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"), 
+    prevent_initial_call = True,
+)
+def switchStrategyCerrarPos(state):
+    
+    if not ctx.triggered_id:
+        return no_update
+    symbol = str(ctx.triggered_id.symbol)
+    strategyType = 'PentagramaRu'
+
+    if state:
+        logging.info ('Estrategia [%s] del tipo: %s. CerrarPos Enabled', symbol, strategyType)
+    else:
+        logging.info ('Estrategia [%s] del tipo: %s. CerrarPos Disabled', symbol, strategyType)
+
+    globales.G_RTlocalData_.strategies_.strategyCerrarPosiciones (symbol, strategyType, state)
+    
+    return no_update

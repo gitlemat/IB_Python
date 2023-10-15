@@ -230,6 +230,9 @@ def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphColumn3
 
 
 def layout_getStrategyHeader (estrategia, update = False):
+
+    if estrategia == None:
+        return no_update
     
     symbol = estrategia['symbol']
     strategyType = estrategia['type']
@@ -283,15 +286,19 @@ def layout_getStrategyHeader (estrategia, update = False):
     execString = str(execToday) + '/' + str(execTotal)
 
     # Cabecera para cada contrato con estrategia
+
+    color_switch = 'bg-danger'
+    if stratEnabled:
+        color_switch = 'bg-success'
     
     headerRow = dbc.Row(
         [
-            dbc.Col(dbc.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), className = 'bg-primary mr-1', width = 3),
-            dbc.Col(html.Div(posQty), className = 'bg-primary mr-1', width = 1),
-            dbc.Col(html.Div(priceTotal), className = 'bg-primary mr-1', width = 2),
-            dbc.Col(html.Div(totalPnl), className = 'bg-primary mr-1', width = 3),
-            dbc.Col(html.Div(execString), className = 'bg-primary mr-1', width = 2),
-            dbc.Col(dbc.Switch(id={'role': 'switchStratEnabled', 'strategy':strategyType, 'symbol': symbol}, value = stratEnabled), className = 'bg-primary mr-1', width = 1),
+            dbc.Col(dbc.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), class_name = 'bg-primary mr-1', width = 3),
+            dbc.Col(html.Div(posQty), class_name = 'bg-primary mr-1', width = 1),
+            dbc.Col(html.Div(priceTotal), class_name = 'bg-primary mr-1', width = 2),
+            dbc.Col(html.Div(totalPnl), class_name = 'bg-primary mr-1', width = 3),
+            dbc.Col(html.Div(execString), class_name = 'bg-primary mr-1', width = 2),
+            dbc.Col(dbc.Switch(id={'role': 'switchStratEnabled', 'strategy':strategyType, 'symbol': symbol}, input_class_name = color_switch, value = stratEnabled), class_name = 'bg-primary mr-1', width = 1),
         ], className = 'text-white mb-1'
     )
     
@@ -442,7 +449,7 @@ def createStrategy (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_ord
 '''
 # Callback para enable/disable estrategia
 @callback(
-    Output({'role': 'switchStratEnabled', 'strategy':MATCH, 'symbol': MATCH}, "value"),   # Dash obliga a poner un output.
+    Output({'role': 'switchStratEnabled', 'strategy':MATCH, 'symbol': MATCH}, "input_class_name"),
     Input({'role': 'switchStratEnabled', 'strategy':MATCH, 'symbol': MATCH}, "value"), 
     prevent_initial_call = True,
 )
@@ -455,12 +462,14 @@ def switchStrategy(state):
 
     if state:
         logging.info ('Estrategia [%s] del tipo: %s Enabled', symbol, strategyType)
+        ret = 'bg-success'
     else:
         logging.info ('Estrategia [%s] del tipo: %s Disabled', symbol, strategyType)
+        ret = 'bg-danger'
 
     globales.G_RTlocalData_.strategies_.strategyEnableDisable (symbol, strategyType, state)
     
-    return no_update
+    return ret
 
 # Callback para colapsar o mostrar filas Strategias
 @callback(

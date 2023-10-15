@@ -213,6 +213,8 @@ class strategyPentagramaRu(strategyBaseClass):
                 data = {'fixType': fixType}
                 logging.info ('[Estrategia PentagramaRu (%s)] Vamos a hacer un fix de orderId: %s, y fixType: %s', self.symbol_, lorderId , fixType)
                 ret = zoneItem['orderBlock'].orderBlockOrderFix(data)
+                if ret != None:
+                    self.ordersUpdated_ = True
                 break
 
         return ret

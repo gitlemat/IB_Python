@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def yfinanceGet():
+def yfinanceGet():  # No lo uso. Solo para test
     symbols = []
     symbols.append('HEZ23.CME')
     symbols.append('HEG24.CME')

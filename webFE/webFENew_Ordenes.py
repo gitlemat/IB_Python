@@ -188,10 +188,10 @@ def modal_ordenCancel():
                     dbc.ModalFooter(
                         [
                             dbc.Button(
-                                "Cancelar", id="modal_cancelOrder_boton_cancel", className="ms-auto", n_clicks=0
+                                "Cancelar Orden", id="modal_cancelOrder_boton_cancel", className="ms-auto", n_clicks=0
                             ),
                             dbc.Button(
-                                "Close", id="modal_cancelOrder_boton_close", className="ms-auto", n_clicks=0
+                                "Salir", id="modal_cancelOrder_boton_close", className="ms-auto", n_clicks=0
                             )
                         ]
                     ),

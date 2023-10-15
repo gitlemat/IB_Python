@@ -3,7 +3,7 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 TOKEN = 't5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=='
 ORG = 'rodsic.com'
-BUCKET = 'ib_prices_lab'
+BUCKET = 'ib_prices'
 
 def testToday():
     client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
@@ -13,8 +13,8 @@ def testToday():
     todayStart = today.replace(hour = 15, minute = 10, second = 0, microsecond=0)
     todayStop = today.replace(hour = 20, minute = 15, second = 0, microsecond=0)
     print (todayStart)
-    week = datetime.datetime.today() - datetime.timedelta(days = 70)
-    param = {"_bucket": BUCKET, "_start": todayStart, "_stop": todayStop, "_symbol": "HEM3-2HEN3+HEQ3", "_desc": False}
+    week = datetime.datetime.today() - datetime.timedelta(days = 7)
+    param = {"_bucket": BUCKET, "_start": week, "_stop": todayStop, "_symbol": "HEZ3-2HEG4+HEJ4", "_desc": False}
     query = '''
     from(bucket: _bucket)
     |> range(start: _start, stop: _stop)
@@ -31,7 +31,7 @@ def testToday():
     query_api = client.query_api()
     
     result = []
-    if now > todayStart:
+    if now > week:
         result = query_api.query_data_frame(org=ORG, query=query, params = param)
     if len(result) == 0:
         result = getLast(client)
@@ -50,7 +50,7 @@ def testToday():
 def getLast(client):
     param = {"_symbol": "HEM3", "_desc": False}
     query = '''
-    from(bucket:"ib_prices_lab")|> range(start: 0)
+    from(bucket:"ib_prices")|> range(start: 0)
     |> filter(fn:(r) => r._measurement == "precios")
     |> filter(fn:(r) => r.symbol == _symbol)
     |> filter(fn:(r) => r._field == "ASK" or r._field == "BID" or r._field == "LAST" or r._field == "BID_SIZE" or r._field == "LAST_SIZE" or r._field == "BID_SIZE")

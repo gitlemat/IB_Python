@@ -357,8 +357,10 @@ class dbPandasContrato():
 
     def __init__(self, symbol, influxIC):
         self.df_ = None
+        self.dfPrint_ = None
         self.dfDelta_ = None
         self.dfcomp_ = None
+        self.dfcompPrint_ = None
         self.dfPnl_ = None
         self.dfPnlDelta_ = None
         self.dfVolume_ = None
@@ -371,19 +373,32 @@ class dbPandasContrato():
 
         logging.debug  ('Leemos de influx y cargamos los dataframes')
         
-        self.df_ = self.influxIC_.influxGetTodayDataFrame (self.symbol_)        
-        self.dfcomp_ = self.influxIC_.influxGetOchlDataFrame (self.symbol_)
-        self.dfPnl_ = self.influxIC_.influxGetPnLDataFrame (self.symbol_)
+        self.df_ = self.dbReadInfluxPrices()   
+        if len(self.df_) > 0:
+            self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()    
+        self.dfcomp_ = self.dbReadInfluxPricesComp()
+        if len(self.dfcomp_) > 0:
+            self.dfcompPrint_ = self.dfcomp_  
+        self.dfPnl_ = self.dbReadInfluxPricesPnL()
+        
 
     def dbReadInfluxPrices(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes por si estoy en competing')
         
-        self.df_ = self.influxIC_.influxGetTodayDataFrame (self.symbol_)        
+        ret = self.influxIC_.influxGetTodayDataFrame (self.symbol_)    
+        return ret    
 
     def dbReadInfluxPricesComp(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes de comp')
         
-        self.dfcomp_ = self.influxIC_.influxGetOchlDataFrame (self.symbol_)
+        ret = self.influxIC_.influxGetOchlDataFrame (self.symbol_)
+        return ret
+
+    def dbReadInfluxPricesPnL(self):
+        logging.debug  ('Leemos de influx y cargamos los dataframes de PnL')
+        
+        ret = self.influxIC_.influxGetPnLDataFrame (self.symbol_)
+        return ret
 
     def dbGetDataframeToday(self):
         #otime = self.df_.index[0]
@@ -394,7 +409,7 @@ class dbPandasContrato():
         
         #logging.info('Pandas: %s', self.df_.index)
         #logging.info('otimeDT: %s', otimeDT)
-        ret = self.df_[(self.df_.index > otimeDT)]
+        ret = self.dfPrint_[(self.dfPrint_.index > otimeDT)]
 
         return ret
 
@@ -533,11 +548,28 @@ class dbPandasContrato():
             dfDelta.set_index('timestamp', inplace=True)
             #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
             self.dfDelta_ = pd.concat([self.dfDelta_, dfDelta]) #, ignore_index=True
+            self.df_ = pd.concat([self.df_, dfDelta]) #, ignore_index=True
+            self.dbUpdateAddPricesPrint(data['LAST'])
+            self.toPrint = True
             if len(self.dfDelta_.index) > 10:
                 self.dbUpdateInfluxPrices (self.dfDelta_)
-                self.df_ = pd.concat([self.df_, self.dfDelta_]) #, ignore_index=True
                 self.dfDelta_ = None
-                self.toPrint = True
+
+    def dbUpdateAddPricesPrint (self, dataLAST):
+        # el resample
+        if len (self.df_) == 0:
+            return
+
+        if (self.df_.index[-1] - self.dfPrint_.index[-1]) > datetime.timedelta(seconds = 299):
+            self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()
+            return
+
+        if dataLAST > self.dfPrint_['high'].iloc[-1]:
+            self.dfPrint_['high'].iloc[-1] = dataLAST
+        if dataLAST < self.dfPrint_['low'].iloc[-1]:
+            self.dfPrint_['low'].iloc[-1] = dataLAST
+        self.dfPrint_['close'].iloc[-1] = dataLAST
+
 
     def dbUpdateAddPnL (self, data):
  
