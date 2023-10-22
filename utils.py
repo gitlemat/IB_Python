@@ -1,6 +1,7 @@
 from datetime import datetime   
 import pytz
 import glob
+import re
 
 def dateLocal2UTC (fecha_local):
 
@@ -56,4 +57,19 @@ def getLongestFileName ():
             max_len = l_len
 
     return max_len
+
+def getLotesContratoBySymbol(symbol):
+    
+    mapping = {
+        'HE': 400,
+        'LE': 400,
+    }
+
+    pos = re.search(r'\d', symbol).start()
+    main_symbol = symbol[0:pos]
+
+    if not main_symbol in mapping:
+        return 400
+    else:
+        return mapping[main_symbol]
     

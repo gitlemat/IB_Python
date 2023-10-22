@@ -13,7 +13,7 @@ import random
 
 logger = logging.getLogger(__name__)
 
-def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColumn3):
+def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComponentes):
     # Y las tablas con ordenes
 
     symbol = estrategia['symbol']
@@ -107,7 +107,7 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColu
                     tablaExecs,
             ),
             dbc.Row(
-                    graphColumn3, className = 'mb-3' 
+                    graphComponentes, className = 'mb-3' 
             ),
             dbc.Row(
                     insideOrdenes,
@@ -218,6 +218,7 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
     rannn = str(random.randint(0,1000))
     logging.debug ('Grafico actualizado con %s', rannn)
     fig2.update_layout(showlegend=False, 
+                       xaxis_rangeslider_visible=False, 
                        title_text='Datos Tiempo Real Hoy', 
                        title_x = 0.5,
                        title_xanchor = 'center',

@@ -154,8 +154,12 @@ class DataLocalRT():
 
         logging.info("[Posicion] Actualizada %s: %d", contractObj.localSymbol, nPosition)
 
+        
+
+        lotes_contrato = utils.getLotesContratoBySymbol (contractObj.localSymbol)
+
         self.contractDict_[gConId]['pos'] = nPosition  # Solo haría falta esto cuando lo pase todo.
-        self.contractDict_[gConId]['posAvgPrice'] = avgCost
+        self.contractDict_[gConId]['posAvgPrice'] = avgCost/lotes_contrato
 
         self.postionFixSpreads()
          

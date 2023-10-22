@@ -129,10 +129,21 @@ def layout_strategies_tab():
                     figure = fig3
             )
         ])
+        switch_compon_base = dbc.Switch(
+            id={'role': 'switch_componentes_base', 'strategy':stratType, 'symbol': symbol},
+            label="Inicio a cero",
+            value=False,
+            className = 'mt-5' 
+        )
+
+        graphComponentes = [
+            dbc.Col(graphColumn3, width=10),
+            dbc.Col(switch_compon_base, width=2)
+        ]
 
         logging.debug ('Ya tengo la fig2')
 
-        collapseDetails = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphColumn3)
+        collapseDetails = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphComponentes)
 
         # Lo añadimos a la pagina/tab:
 
@@ -162,7 +173,7 @@ def layout_getFigura2(estrategia):
     return fig2
 
 
-def layout_getFigura3(estrategia):
+def layout_getFigura3(estrategia, base = False):
     stratType = estrategia['type']
     fig3 = None
 
@@ -181,23 +192,24 @@ def layout_getFigura3(estrategia):
             break
         if contrato['dbPandas']:
             df_comp = contrato['dbPandas'].dbGetDataframeComp()
-            '''
-            fig3.add_trace(
-                go.Candlestick(
-                    x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']
-                )
-            )
-            '''
+            if base:
+                base_level = df_comp.iloc[0]["close"]
+            else:
+                base_level = 0
             if comp ['action'] == 'BAG':
                 eje_sec = True
+                linel = dict(color='rgb(150,150,150)', width=1, dash='dash')
             else:
                 eje_sec = False
-
-            base_level = df_comp.iloc[0]["close"]
-            base_level = 0
+                linel = dict(width=2)
             fig3.add_trace(
                 go.Scatter(
-                    x=df_comp.index, y=(df_comp["close"]-base_level), mode="lines", connectgaps = True, name = symbol
+                    x=df_comp.index, 
+                    y=(df_comp["close"]-base_level), 
+                    line=linel,
+                    mode="lines", 
+                    connectgaps = True, 
+                    name = symbol
                 ),
                 secondary_y=eje_sec
             )
@@ -216,15 +228,17 @@ def layout_getFigura3(estrategia):
                        title_text='Componentes', 
                        title_x = 0.5,
                        title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40))
+                       margin=dict(l=10, r=10, t=40, b=40),
+                       legend_x=0, legend_y=1,
+                    )
 
     return fig3
 
-def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphColumn3):
+def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphComponentes):
     stratType = estrategia['type']
     collapseDetails = None
     if stratType == 'PentagramaRu':
-        collapseDetails = webFE.webFENew_Strat_PentaRu.insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphColumn3)
+        collapseDetails = webFE.webFENew_Strat_PentaRu.insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComponentes)
     
     return collapseDetails
 
@@ -536,3 +550,24 @@ def reloadStrats (n_button_open, n_button_close, open_status):
         responseBody = 'Todas las estrategias recargadas. Recarga el navegador'
 
     return responseHeader, responseBody, True
+
+#Callback para actualizar grafica today
+@callback(
+    Output({'role': 'graphDetailsSpread', 'strategy': MATCH, 'symbol': MATCH}, 'figure'),
+    Input ({'role': 'switch_componentes_base', 'strategy':MATCH, 'symbol': MATCH}, 'value'),
+    prevent_initial_call = True,
+)
+def actualizarFiguraComponentes (state_base):
+    if not ctx.triggered_id:
+        raise PreventUpdate
+    if globales.G_RTlocalData_.strategies_ == None:
+        raise PreventUpdate
+
+    symbol = ctx.triggered_id['symbol']
+    stratType = ctx.triggered_id['strategy']
+    estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, stratType)
+
+    fig3 = layout_getFigura3(estrategia, state_base)
+
+    #return  zonasFilaBorderDown, no_update, no_update
+    return  fig3

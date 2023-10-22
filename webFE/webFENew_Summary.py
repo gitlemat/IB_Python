@@ -19,8 +19,7 @@ import random
 logger = logging.getLogger(__name__)
 
 def layout_summary_tab ():
-    contractList = globales.G_RTlocalData_.contratoReturnDictAll()
-    strategyList = globales.G_RTlocalData_.strategies_.strategyGetAll()
+
     tabSummary = [
         dbc.Row(
             [
@@ -29,6 +28,12 @@ def layout_summary_tab ():
             ]
         ),
     ]
+
+    contractList = globales.G_RTlocalData_.contratoReturnDictAll()
+    if globales.G_RTlocalData_.strategies_ == None:
+        return tabSummary
+        
+    strategyList = globales.G_RTlocalData_.strategies_.strategyGetAll()
     
     all_cards = []
     included_contracts = []
@@ -161,18 +166,13 @@ def create_card (contrato, fig1, estrategia):
 
     this_card = dbc.Card(
         [
-            dbc.CardHeader(
+            dbc.CardHeader( # Lo pongo así por si luego quiero añadir cosas
                 [
                     dbc.Row(
                         [
                             dbc.Col(
                                 [
                                     html.H4(symbol)
-                                ], width=6,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.Div("AvgPrice: " + AvgPriceFmt, className = 'text-end')
                                 ], width=6,
                             )
                         ]
@@ -201,7 +201,24 @@ def create_card (contrato, fig1, estrategia):
                     dbc.Row(graphColumn1),
                 ]
             ),
-            dbc.CardFooter(priceTotal),
+            dbc.CardFooter(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.Div(priceTotal)
+                                ], width=6,
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Div("AvgPrice: " + AvgPriceFmt, className = 'text-end')
+                                ], width=6,
+                            )
+                        ]
+                    )
+                ]
+            ),
         ], className = 'mb-3',
     )
 

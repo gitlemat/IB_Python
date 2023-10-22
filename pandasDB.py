@@ -245,9 +245,13 @@ class dbPandasStrategy():
             for i in range(int(row['Quantity'])):
                 self.dbAddExecPnL(row)
 
-    def dbAddExecPnL(self, row):
+    def dbAddExecPnL(self, row):   # Esto no lo meto en influx (de momento)
+
+        # Lotes por contrato
+        lotes_contrato = utils.getLotesContratoBySymbol (self.symbol_)
+
         count = self.ExecsPnL_['count']
-        avgPrice = self.ExecsPnL_['avgPrice']
+        avgPrice = self.ExecsPnL_['avgPrice'] * lotes_contrato
         tPnL = self.ExecsPnL_['PnL']
 
         if row['Side'] == 'BOT':
@@ -257,9 +261,6 @@ class dbPandasStrategy():
 
         new_tPnL = tPnL
         new_avgPrice = avgPrice
-
-        # Lotes por contrato
-        lotes_contrato = 400
         fillPrice = row['FillPrice'] * lotes_contrato
 
         qty = float(row['Quantity'])
@@ -282,7 +283,7 @@ class dbPandasStrategy():
                 new_tPnL = tPnL - row['Commission']/qty
             else:
                 new_tPnL = tPnL + avgPrice - fillPrice - row['Commission']/qty
-        avgPrice = new_avgPrice
+        avgPrice = new_avgPrice / lotes_contrato
         count = new_count
         tPnL = new_tPnL
 
@@ -552,11 +553,11 @@ class dbPandasContrato():
             self.dbUpdateAddPricesPrint(data['LAST'])
             self.toPrint = True
             if len(self.dfDelta_.index) > 10:
-                self.dbUpdateInfluxPrices (self.dfDelta_)
+                self.influxIC_.influxUpdatePrices (self.symbol_, self.dfDelta_)
                 self.dfDelta_ = None
 
     def dbUpdateAddPricesPrint (self, dataLAST):
-        # el resample
+        # el resample. Esta es una version reducida para la grafica de todsy
         if len (self.df_) == 0:
             return
 
@@ -611,7 +612,7 @@ class dbPandasContrato():
             dfDelta.set_index('timestamp', inplace=True)
             self.dfPnlDelta_ = pd.concat([self.dfPnlDelta_, dfDelta]) #, ignore_index=True
             if len(self.dfPnlDelta_.index) > 10:
-                self.dbUpdateInfluxPnL (self.dfPnlDelta_)
+                self.influxIC_.influxUpdatePnL (self.symbol_, self.dfPnlDelta_)
                 self.dfPnl_ = pd.concat([self.dfPnl_, self.dfPnlDelta_])
                 self.dfPnlDelta_ = None
                 self.toPrintPnL = True
@@ -629,7 +630,7 @@ class dbPandasContrato():
             lastdate = today_chicago - datetime.timedelta(days=3)
 
         data = {'timestamp': today_chicago, 'Volume': data['VOLUME']}
-        self.dbUpdateInfluxVolume (data)
+        self.influxIC_.influxUpdateVolume (self.symbol_, data)
         if today_chicago == lastdate:
             self.dfVolume_.iloc[-1]['Volume'] = data['Volume']
         else:
@@ -640,7 +641,7 @@ class dbPandasContrato():
             self.dfVolume_ = pd.concat([self.dfVolume_, dfDelta])
 
 
-    def dbUpdateInfluxPnL (self, datadf):
+    def dbUpdateInfluxPnL (self, datadf): # Migrado
         keys_pnl = ['dailyPnL','realizedPnL','unrealizedPnL']
         
         records = []
@@ -674,7 +675,7 @@ class dbPandasContrato():
 
 
 
-    def dbUpdateInfluxPrices (self, datadf):
+    def dbUpdateInfluxPrices (self, datadf): # Migrado
         keys_prices = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE']
 
         records = []

@@ -41,14 +41,6 @@ class InfluxClient:
             self._bucket_execs = 'ib_data_lab'
             self._bucket_account = 'ib_data_lab'
             self._bucket_volume = 'ib_prices_1h'
-
-            '''
-            self._bucket_prices = 'ib_prices_lab'
-            self._bucket_ohcl = 'ib_prices_1h_lab'
-            self._bucket_pnl = 'ib_prices_lab'
-            self._bucket_execs = 'ib_prices_lab'
-            '''
-
         else:
             self._bucket_prices = 'ib_prices' 
             self._bucket_ohcl = 'ib_prices_1h'
@@ -56,13 +48,6 @@ class InfluxClient:
             self._bucket_execs = 'ib_data_prod'
             self._bucket_account = 'ib_data_prod'
             self._bucket_volume = 'ib_prices_1h'
-
-            '''
-            self._bucket_prices = 'ib_prices_prod' #Utilizo lab para tener todos. Asi están juntos
-            self._bucket_ohcl = 'ib_prices_1h_prod'
-            self._bucket_pnl = 'ib_prices_prod'
-            self._bucket_execs = 'ib_prices_prod'
-            '''
         self._client = InfluxDBClient(url="http://localhost:8086", token=token)
         
 
@@ -419,6 +404,99 @@ class InfluxClient:
         logging.debug('%s', result)
 
         return result
+
+    def influxUpdatePrices (self, symbol_, datadf):
+        keys_prices = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE']
+
+        records = []
+        datadf['timestamp'] = datadf.index
+        for index, row in datadf.iterrows():
+            
+            data = row.to_dict()
+            record = {}
+            tags = {'symbol': symbol_}
+            time = data['timestamp']
+            time = utils.dateLocal2UTC (time)
+            
+            fields_prices = {}
+    
+            
+            for key in keys_prices:
+                if key in data:
+                    fields_prices[key] = data[key]
+    
+            record = {
+                "measurement": "precios", 
+                "tags": tags,
+                "fields": fields_prices,
+                "time": time,
+            }
+            if len(fields_prices) > 0:
+                records.append(record)
+
+        #logging.info ('Escribo valor para %s: %s', symbol, records)
+
+        if len(records) > 0:
+            self.write_data(records, 'precios')
+
+    def influxUpdatePnL (self, symbol_, datadf):
+        keys_pnl = ['dailyPnL','realizedPnL','unrealizedPnL']
+        
+        records = []
+        datadf['timestamp'] = datadf.index
+        for index, row in datadf.iterrows():
+            
+            data = row.to_dict()
+            record = {}
+            tags = {'symbol': symbol_}
+            time = data['timestamp']
+            time = utils.dateLocal2UTC (time)
+            
+            fields_pnl = {}
+    
+            for key in keys_pnl:
+                if key in data:
+                    fields_pnl[key] = data[key]
+    
+    
+            record = {
+                "measurement": "pnl", 
+                "tags": tags,
+                "fields": fields_pnl,
+                "time": time,
+            }
+            if len(fields_pnl) > 0:
+                records.append(record)
+
+        if len(records) > 0:
+            self.influxIC_.write_data(records, 'pnl')
+
+    def influxUpdateVolume (self, symbol_, data):
+        keys_pnl = ['Volume']
+        
+        records = []
+        record = {}
+        tags = {'symbol': symbol_}
+        time = data['timestamp']
+        time = utils.date2UTC (time)
+        
+        fields_volume = {}
+
+        for key in keys_pnl:
+            if key in data:
+                fields_volume[key] = data[key]
+
+
+        record = {
+            "measurement": "volume", 
+            "tags": tags,
+            "fields": fields_volume,
+            "time": time,
+        }
+        records.append(record)
+
+        if len(fields_volume) > 0:
+            self.write_data(records, 'volume')
 
     def influxUpdateAccountData (self, accountId_, data):
         keys_account = [
