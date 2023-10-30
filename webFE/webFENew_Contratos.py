@@ -5,7 +5,7 @@ from dash.exceptions import PreventUpdate
 
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-from webFE.webFENew_Utils import formatCurrency
+from webFE.webFENew_Utils import formatCurrency, layout_getFigureHistorico
 import random
 import globales
 import logging
@@ -129,6 +129,7 @@ def layout_contratos_tab ():
 
     tabContratos += tabContratosWLLabel   
     tabContratos.append(modal_contratoOrdenCreate())
+    tabContratos.append(modal_contratoUpdateWathchList())
     return tabContratos
 
 def contratosObtenerFilas (contrato, update = False):
@@ -188,7 +189,7 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
     #fig = px.line(contrato['dbPandas'].dbGetDataframe(), x="timestamp", y="LAST", title="LAST Evolution") 
     #fig.update_layout(xaxis = dict(type="category")) # Para que no deje los vacios de fecha de cierre
 
-    fig = getFiguraComp (contrato)
+    fig = layout_getFigureHistorico(contrato)  # de Utils
     
                        
     graphColumn = html.Div(
@@ -199,32 +200,6 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
     )
 
     return insideDetailsData, graphColumn
-
-def getFiguraComp (contrato):
-    
-    fig = go.Figure()
-    
-    if contrato['dbPandas']:
-        #df_today = contrato['dbPandas'].dbGetDataframeToday()
-        #fig.add_trace(go.Scatter(x=df_today.index, y=df_today["LAST"], mode="lines", connectgaps = True))
-        df_comp = contrato['dbPandas'].dbGetDataframeComp()
-        fig.add_trace(go.Candlestick(x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']))
-
-    fig.update_xaxes(
-        rangebreaks=[
-            dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
-            dict(bounds=[20.25, 14.5], pattern="hour"),  # hide hours outside of 9.30am-4pm
-            #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
-        ]
-    )
-    fig.update_layout(showlegend=False, 
-                       xaxis_rangeslider_visible=False, 
-                       title_text='Historico (15min)', 
-                       title_x = 0.5,
-                       title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40))
-
-    return fig
 
 def contratosEditWatchList ():
     contractsWL = globales.G_RTlocalData_.contractReturnFixedWatchlist()
@@ -244,6 +219,26 @@ def contratosEditWatchList ():
         ]
     )
     return textareas
+
+def modal_contratoUpdateWathchList():
+    modal = html.Div(
+        [
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Actualizar Watch List", id = "modalContratoWatchListUpdateHeader")),
+                    dbc.ModalBody("", id = "modalContratoWatchListUpdateBody"),
+                    dbc.ModalFooter([
+                        dbc.Button(
+                            "Close", id="modalContratoWatchListUpdate_boton_close", className="ms-auto", n_clicks=0
+                        )
+                    ]),
+                ],
+                id="modalContratoWatchListUpdate_main",
+                is_open=False,
+            ),
+        ]
+    )
+    return modal
 
 def modal_contratoOrdenCreate():
 
@@ -502,7 +497,8 @@ def toggle_colapse_OCA(n_button, is_open):
 
 # Callback para guardar watchlist
 @callback(
-    Output({'role': 'ContractWLButtonSave'}, "value"),
+    Output("modalContratoWatchListUpdateBody", "children"), 
+    Output("modalContratoWatchListUpdate_main", "is_open"),
     Input({'role': 'ContractWLButtonSave'}, "n_clicks"),
     Input({'role': 'contratosInputWatchList'}, "value"),
     prevent_initial_call = True,
@@ -519,9 +515,13 @@ def guardarContractWL(n_button, textWL):
     contractList = textWL.rstrip().split('\n')
     logging.info ('Lista:\n %s', contractList)
 
-    globales.G_RTlocalData_.contractWriteFixedWatchlist(contractList)
+    ret = globales.G_RTlocalData_.contractWriteFixedWatchlist(contractList)
+    if ret:
+        body = 'Actualizada Correctamente'
+    else:
+        body = 'Ha habido algun error. Mira los logs'
 
-    raise PreventUpdate
+    return body, True
 
 # Callback para recargar watchlist
 @callback(
@@ -584,7 +584,7 @@ def contractRefreshSave(n_button1, n_button2):
     if ctx.triggered_id['role'] == 'yFinanceSaveButton':
         eso = globales.G_RTlocalData_.contractCompDataSave(ctx.triggered_id['gConId'])
     
-    fig = getFiguraComp (contrato)
+    fig = layout_getFigureHistorico(contrato)  # de Utils
 
     bSaveEn = not contrato['dbPandas'].toSaveComp
 

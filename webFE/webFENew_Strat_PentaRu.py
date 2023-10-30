@@ -1,10 +1,11 @@
-from webFE.webFENew_Utils import formatCurrency
+from webFE.webFENew_Utils import formatCurrency, layout_getFigureHistorico
 from dash import MATCH, ALL, Input, Output, State, ctx, no_update, callback
 from dash import html
 from dash import dcc
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from dash import dash_table
 from dash.dash_table.Format import Format, Group, Prefix, Scheme, Symbol
 import globales
@@ -130,29 +131,11 @@ def layout_getFigureHistoricoPenRu (estrategia):
         logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
         return no_update
 
-    fig1 = go.Figure()
+    fig1 = layout_getFigureHistorico(contrato)  # de Utils
 
     if contrato['dbPandas']:
         df_comp = contrato['dbPandas'].dbGetDataframeComp()
-        
-        fig1.add_trace(go.Candlestick(x=df_comp.index, open=df_comp['open'], high=df_comp['high'],low=df_comp['low'],close=df_comp['close']))
         fig1 = addZonesLinesHistoricoRu (fig1, estrategia, df_comp)
-
-    
-    fig1.update_xaxes(
-        rangebreaks=[
-            dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
-            dict(bounds=[21.1, 15], pattern="hour"),  # hide hours outside of 9.30am-4pm
-            #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
-        ]
-    )
-
-    fig1.update_layout(showlegend=False, 
-                       xaxis_rangeslider_visible=False, 
-                       title_text='Historico (15min)', 
-                       title_x = 0.5,
-                       title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40))
 
     return fig1
 
@@ -167,15 +150,15 @@ def addZonesLinesHistoricoRu (fig1, estrategia, df_comp):
 
         if zone['orderBlock'].Price_ not in limitList:
             zoneborder = [zone['orderBlock'].Price_] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None), secondary_y=True)
             limitList.append(zone['orderBlock'].Price_)
         if zone['orderBlock'].PrecioSL_ not in limitList:
             zoneborder = [zone['orderBlock'].PrecioSL_] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None), secondary_y=True)
             limitList.append(zone['orderBlock'].PrecioSL_)
         if zone['orderBlock'].PrecioTP_ not in limitList:
             zoneborder = [zone['orderBlock'].PrecioTP_] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None), secondary_y=True)
             limitList.append(zone['orderBlock'].PrecioTP_)
 
 
@@ -196,14 +179,37 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
         logging.debug ('Grafico no actualizado. No hay datos nuevos')
         return no_update
     dfToday = contrato['dbPandas'].dbGetDataframeToday()
+    LastPrice = None
+    if len(dfToday.index) > 0:
+        LastPrice = dfToday['close'][-1]
     fig2 = go.Figure()
 
     # Valores de LAST
-    fig2.add_trace(go.Candlestick(x=dfToday.index, open=dfToday['open'], high=dfToday['high'],low=dfToday['low'],close=dfToday['close']))
     #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["BID"], mode="lines", line_color="blue", connectgaps = True))
     #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["ASK"], mode="lines", line_color="green", connectgaps = True))
     #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["LAST"], mode="lines", line_color="crimson", connectgaps = True))
-    
+    fig2.add_trace(
+        go.Candlestick(
+            x=dfToday.index, 
+            open=dfToday['open'], 
+            high=dfToday['high'],
+            low=dfToday['low'],
+            close=dfToday['close']
+        )
+    )
+    if len(dfToday.index) > 0 and LastPrice != None:
+        fig2.add_annotation(
+            x = dfToday.index[-1],
+            y = LastPrice,
+            text = f"{LastPrice:0.2f}",
+            xshift=20,
+            yshift=0,
+            bordercolor='green',
+            borderwidth=2,
+            bgcolor="#CFECEC",
+            opacity=0.8,
+            showarrow=False
+        )
     # Y las zonas
     fig2 = addZonesLinesTodayRu (fig2, estrategia, dfToday)
 
@@ -214,11 +220,15 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
             #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
         ]
     )
+    fig2.update_yaxes(
+        tickformat='.2f'
+    )
 
     rannn = str(random.randint(0,1000))
     logging.debug ('Grafico actualizado con %s', rannn)
     fig2.update_layout(showlegend=False, 
                        xaxis_rangeslider_visible=False, 
+                       yaxis={'side': 'right'} ,
                        title_text='Datos Tiempo Real Hoy', 
                        title_x = 0.5,
                        title_xanchor = 'center',
@@ -261,6 +271,8 @@ def addZonesLinesTodayRu (fig2, estrategia, dfToday):
 def layout_getStrategyPenRuTableOrders (estrategia, update = False):
 
     #orden = globales.G_RTlocalData_.orderGetByOrderId(lOrderId)
+    if estrategia['classObject'] == None:
+        return no_update
     if estrategia['classObject'].ordersUpdated_ == False and update == True:
         logging.debug ('Tabla de ordenes en Strategia no actualizado. No hay datos nuevos')
         return no_update

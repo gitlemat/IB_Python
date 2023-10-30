@@ -478,12 +478,17 @@ class DataLocalRT():
 
 
     def contractWriteFixedWatchlist (self, contractList):
+        error = False
         with open('strategies/ContractsWatchList.conf', 'w') as f:
             for line in contractList:
                 f.writelines(line + '\n')
                 contractN = self.appObj_.contractFUTcreate(line.rstrip())
+                if not contractN:
+                    logging.error ('Error creando el contrato %s. No se puede añadir', line.rstrip())
+                    error = True
                 gConId = self.contractAdd(contractN)
                 self.contractIndirectoSet (gConId, False)
+        return not error
 
     def contractReturnFixedWatchlist (self):
         contractList = []
@@ -913,14 +918,15 @@ class DataLocalRT():
         firstDate = contrato['dbPandas'].dbGetFirstCompDate()
         logging.info('Sacamos yFinance de Contrato [%s] desde [%s]', symbol, firstDate)
         contrato['semaforoYfinance'] = True
-        data = yf.yfinanceGetDelta1h (symbol, firstDate)
+        data_df, vol_series = yf.yfinanceGetDelta1h (symbol, firstDate)
 
-        for cont_data in data:
+        for cont_data in data_df:
             contrato_l = self.contractGetBySymbol (cont_data)
             if not contrato_l:
                 logging.error ('No he encontrado el contrato para symbol %s', cont_data)
                 continue
-            contrato_l['dbPandas'].dbAddCompDataFrame (data[cont_data])
+            contrato_l['dbPandas'].dbAddCompDataFrame (data_df[cont_data])
+            contrato_l['dbPandas'].dbAddVolDataFrame (vol_series[cont_data])
 
         contrato['semaforoYfinance'] = False
         return True
@@ -935,7 +941,7 @@ class DataLocalRT():
 
         symbol = contrato['fullSymbol']
 
-        contrato['dbPandas'].dbUpdateInfluxCompPrices()
+        contrato['dbPandas'].dbUpdateInfluxCompVolPrices()
 
     def contractReloadCompPrices (self):
         for gConId, contrato in self.contractDict_.items():

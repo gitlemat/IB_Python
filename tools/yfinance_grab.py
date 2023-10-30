@@ -100,6 +100,7 @@ def yfinanceGetDelta1h(symbol_arg, end_date_arg = None):
     symbols = symbolList (symbol_arg)
     
     data_output = {}
+    data_output_vol_series = {}
     
     remoteTz = pytz.timezone("America/Chicago")
 
@@ -169,6 +170,13 @@ def yfinanceGetDelta1h(symbol_arg, end_date_arg = None):
         except:
             logging.error('\n%s', data_final)
 
+        try:
+            data_output_vol_series[symbol['code']] = data_final['Volume'].resample('1d').sum()
+            #data_final_vol[symbol['code']] = pd.DataFrame({'timestamp':data_output_vol_series.index, 'Volume':data_output_vol_series.values})
+        except:
+            logging.error('\n%s', data_final)
+        
+
         # Quito findes de semana, y horas fuera de mercado. 
         # Paso a TZ Madrid
         # Renombro las columnas
@@ -176,18 +184,30 @@ def yfinanceGetDelta1h(symbol_arg, end_date_arg = None):
         data_output[symbol['code']] = data_output[symbol['code']].tz_convert('Europe/Madrid')
         data_output[symbol['code']] = data_output[symbol['code']].rename(columns={"Open":"open", "Close":"close", "High":"high", "Low":"low"})
 
+        data_output_vol_series[symbol['code']] = data_output_vol_series[symbol['code']][data_output_vol_series[symbol['code']].index.dayofweek < 5]
+        data_output_vol_series[symbol['code']] = data_output_vol_series[symbol['code']].tz_convert('Europe/Madrid')
+
     if len (symbols) > 1:
         final_output = pd.DataFrame()
+        final_output_vol = pd.DataFrame()
     
         for symbol in symbols:
             if final_output.empty:
                 final_output = data_output[symbol['code']] * symbol['ratio']
             else:
                 final_output += data_output[symbol['code']] * symbol['ratio']
-    
-        data_output[symbol_arg] = final_output[final_output.index > final_output.first_valid_index()]
 
-    return data_output
+            #if len(final_output_vol.index) == 0:
+            #    final_output_vol.index = data_output_vol_series[symbol['code']].index
+            final_output_vol[symbol['code']] = data_output_vol_series[symbol['code']]
+    
+        data_output[symbol_arg] = final_output[final_output.index >= final_output.first_valid_index()]
+        data_output_vol_series[symbol_arg] = final_output_vol[final_output_vol.index >= final_output_vol.first_valid_index()].min(axis=1)
+        #data_output_vol_series[symbol_arg] = final_output_vol.min(axis=1)
+        
+        
+
+    return data_output, data_output_vol_series
 
 
 

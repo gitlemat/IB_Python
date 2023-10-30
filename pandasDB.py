@@ -8,6 +8,9 @@ import queue
 import sys
 import utils
 
+import io
+
+
 
 import logging
 
@@ -31,6 +34,10 @@ plt.rcParams.update({'font.size': 10, 'figure.figsize': (10, 8)})
 df.plot(kind='scatter', x='timestamp', y='ASK', title='Titulo')
 plt.show()
 '''
+
+##############################################
+# Account
+#
 
 class dbPandasAccount():
     #AccountType: INDIVIDUAL
@@ -128,43 +135,11 @@ class dbPandasAccount():
             #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
             self.dfAccountEvo_ = pd.concat([self.dfAccountEvo_, dfDelta]) #, ignore_index=True
             self.toPrint = True
-    '''
-    def dbUpdateInfluxAccountData (self, data):
-        keys_account = [
-            'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
-            'AvailableFunds', 'BuyingPower', 'EquityWithLoanValue', 'ExcessLiquidity', 'FullAvailableFunds',
-            'FullExcessLiquidity','FullInitMarginReq','FullMaintMarginReq','GrossPositionValue','InitMarginReq',
-            'LookAheadAvailableFunds','LookAheadExcessLiquidity','LookAheadInitMarginReq','LookAheadMaintMarginReq',
-            'MaintMarginReq','NetLiquidation','TotalCashValue'
-        ]
-        
-        records = []
-        record = {}
-        tags = {'accountId': self.accountId_}
-        time = data['timestamp']
-        time = utils.dateLocal2UTC (time)
-        
-        fields_influx = {}
-
-        for key in keys_account:
-            if key in data:
-                if data[key] != None and data[key] != UNSET_DOUBLE:
-                    fields_influx[key] = data[key]
-
-
-        record = {
-            "measurement": "account", 
-            "tags": tags,
-            "fields": fields_influx,
-            "time": time,
-        }
-
-        records.append(record)
-
-        if len(fields_influx) > 0:
-            self.influxIC_.write_data(records, 'account')
-    '''
     
+
+##############################################
+# Strategy
+#
 
 class dbPandasStrategy():
 
@@ -354,6 +329,10 @@ class dbPandasStrategy():
             self.influxIC_.write_data(records, 'executions')
 
 
+##############################################
+# Contrato
+#
+
 class dbPandasContrato():
 
     def __init__(self, symbol, influxIC):
@@ -365,24 +344,28 @@ class dbPandasContrato():
         self.dfPnl_ = None
         self.dfPnlDelta_ = None
         self.dfVolume_ = None
+        self.dfVolumePrint_ = None
         self.symbol_ = symbol
         self.influxIC_ = influxIC
         self.toSaveComp = False
         self.dateRanges = [] # aqui guardo el rango de fechas que he metido en pandas pero sin venir de influx. 
+        self.dateRangesVol = [] # aqui guardo el rango de fechas que he metido en pandas pero sin venir de influx.
         self.toPrint = True
         self.toPrintPnL = True
 
         logging.debug  ('Leemos de influx y cargamos los dataframes')
         
         self.df_ = self.dbReadInfluxPrices()   
-        if len(self.df_) > 0:
-            self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()    
+        if len(self.df_) >= 0:
+            self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()   
+        else:
+            self.dfPrint_ = self.df_['LAST']
         self.dfcomp_ = self.dbReadInfluxPricesComp()
-        if len(self.dfcomp_) > 0:
-            self.dfcompPrint_ = self.dfcomp_  
+        self.dbUpdatedfCompPrint()
         self.dfPnl_ = self.dbReadInfluxPricesPnL()
+        self.dfVolume_ = self.dbReadInfluxVolume()
+        self.dbUpdatedfVolumePrint()
         
-
     def dbReadInfluxPrices(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes por si estoy en competing')
         
@@ -401,6 +384,29 @@ class dbPandasContrato():
         ret = self.influxIC_.influxGetPnLDataFrame (self.symbol_)
         return ret
 
+    def dbReadInfluxVolume(self):
+        logging.debug  ('Leemos de influx y cargamos los dataframes de Volume')
+        
+        df_ret = self.influxIC_.influxGetVolumelDataFrame (self.symbol_)
+        if len(df_ret) > 0:
+            #df_ret = df_ret.replace(hour = 0, minute = 0, second = 0, microsecond=0)
+            df_ret.index = df_ret.index + pd.Timedelta(hours=-2)
+            #df_ret = df_ret.resample('3h').ffill()
+        return df_ret
+
+    def dbUpdatedfCompPrint(self):
+        if len(self.dfcomp_) >= 0:
+            self.dfcompPrint_ = self.dfcomp_  
+        if len(self.dfcomp_) > 150:
+            self.dfcompPrint_ = self.dfcomp_.resample('3h').agg({'open': 'first','high':'max','low':'min','close':'last'})
+            #self.dfcompPrint_.index = self.dfcompPrint_.index + pd.Timedelta(hours=17)  # Para que esté dentro del rango visible
+
+    def dbUpdatedfVolumePrint(self):
+        if len(self.dfVolume_) == 0:
+            self.dfVolumePrint_ = self.dfVolume_
+        else:  
+            self.dfVolumePrint_ = self.dfVolume_.resample('3h').ffill()
+
     def dbGetDataframeToday(self):
         #otime = self.df_.index[0]
         #otimeDT = otime.to_pydatetime()
@@ -415,7 +421,10 @@ class dbPandasContrato():
         return ret
 
     def dbGetDataframeComp(self):
-        return self.dfcomp_
+        return self.dfcompPrint_
+
+    def dbGetDataframeVolume(self):
+        return self.dfVolumePrint_
 
     def dbGetFirstCompDate(self):
         a = self.dfcomp_.first_valid_index()
@@ -444,6 +453,7 @@ class dbPandasContrato():
         else:
             logging.info ('Lo que tengo ahora:\n%s', self.dfcomp_)
 
+        self.dbUpdatedfCompPrint()
         self.toSaveComp = True
 
         start_date = data_df.index.min()
@@ -454,6 +464,55 @@ class dbPandasContrato():
         logging.info('Añado fechas. Start: %s. End: %s', start_date, end_date)
 
         #Todo lo que se meta por aquí no está en influx. Hay que indicar las fechas.
+
+    def dbAddVolDataFrame (self, data_series):
+        buf1 = io.StringIO()
+        buf2 = io.StringIO()
+        buf3 = io.StringIO()
+        
+        data_df = pd.DataFrame()
+        #data_df.index = data_series.index
+        data_df['Volume'] = data_series
+
+        data_df = data_df.astype({'Volume':'int'})
+
+        data_df.info(buf=buf1)
+        data_df.index = data_df.index.tz_localize(None)
+        data_df.index = data_df.index.tz_localize('Europe/Madrid')
+
+        s1 = buf1.getvalue()
+        logging.info ('Lo que voy a añadir:\n%s', data_df)
+        logging.info ('Info:\n%s',s1)
+
+        self.dfVolume_.info(buf=buf3)
+        s3 = buf3.getvalue()
+
+        logging.info ('Tengo esto:\n%s', self.dfVolume_)
+        logging.info ('\n%s',s3)
+
+        try:
+            self.dfVolume_ = pd.concat([data_df, self.dfVolume_]) 
+            #self.dfVolume_.index = pd.to_datetime(self.dfVolume_.index)
+            #self.dfVolume_ = self.dfVolume_.sort_index()
+        except:
+            logging.error ('Error añadiendo datos a dfVolume_')
+            return None
+        else:
+            self.dfVolume_ = self.dfVolume_[~self.dfVolume_.index.duplicated(keep='first')]
+            self.dfVolume_.info(buf=buf2)
+            s2 = buf2.getvalue()
+            logging.info ('Lo que tengo ahora:\n%s', self.dfVolume_)
+            logging.info ('\n%s',s2)
+
+        start_date = data_df.index.min()
+        end_date = data_df.index.max()
+
+        rango = {'start': start_date, 'end': end_date}
+        self.dateRangesVol.append(rango)
+        logging.info('Añado fechas Volume. Start: %s. End: %s', start_date, end_date)
+            
+        self.dbUpdatedfVolumePrint()
+        self.toSaveComp = True
 
     def dbGetLastPrices(self):
         lastPrices = {}
@@ -558,18 +617,37 @@ class dbPandasContrato():
 
     def dbUpdateAddPricesPrint (self, dataLAST):
         # el resample. Esta es una version reducida para la grafica de todsy
-        if len (self.df_) == 0:
+        if len (self.df_) == 0 or len (self.dfPrint_) == 0 :
             return
 
         if (self.df_.index[-1] - self.dfPrint_.index[-1]) > datetime.timedelta(seconds = 299):
             self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()
+        else:
+            if dataLAST > self.dfPrint_['high'].iloc[-1]:
+                self.dfPrint_['high'].iloc[-1] = dataLAST
+            if dataLAST < self.dfPrint_['low'].iloc[-1]:
+                self.dfPrint_['low'].iloc[-1] = dataLAST
+            self.dfPrint_['close'].iloc[-1] = dataLAST
+
+        if len (self.dfcompPrint_) == 0 :
             return
 
-        if dataLAST > self.dfPrint_['high'].iloc[-1]:
-            self.dfPrint_['high'].iloc[-1] = dataLAST
-        if dataLAST < self.dfPrint_['low'].iloc[-1]:
-            self.dfPrint_['low'].iloc[-1] = dataLAST
-        self.dfPrint_['close'].iloc[-1] = dataLAST
+        if (self.df_.index[-1] - self.dfcompPrint_.index[-1]) > datetime.timedelta(seconds = 0): # se redondea a la hora final
+            time = self.df_.index[-1]
+            time.replace(second=0, microsecond=0, minute=0, hour=time.hour)
+            time += + datetime.timedelta(hours=3)   # Al hacer el OCHL usa la hora final.
+            newlineL = [
+                {'timestamp': time,'open':dataLAST, 'high':dataLAST, 'low':dataLAST, 'close':dataLAST}
+            ]
+            dfDelta = pd.DataFrame.from_records(newlineL)     
+            dfDelta.set_index('timestamp', inplace=True)
+            self.dfcompPrint_ = pd.concat([self.dfcompPrint_, dfDelta]) #, ignore_index=True  
+        else:
+            if dataLAST > self.dfcompPrint_['high'].iloc[-1]:
+                self.dfcompPrint_['high'].iloc[-1] = dataLAST
+            if dataLAST < self.dfcompPrint_['low'].iloc[-1]:
+                self.dfcompPrint_['low'].iloc[-1] = dataLAST
+            self.dfcompPrint_['close'].iloc[-1] = dataLAST
 
 
     def dbUpdateAddPnL (self, data):
@@ -638,81 +716,16 @@ class dbPandasContrato():
             newlineL.append(data)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
+            dfDelta.index = dfDelta.index.tz_localize(None)
+            dfDelta.index = dfDelta.index.tz_localize('Europe/Madrid')
             self.dfVolume_ = pd.concat([self.dfVolume_, dfDelta])
+            #self.dfVolume_.index = pd.to_datetime(self.dfVolume_.index)
 
 
-    def dbUpdateInfluxPnL (self, datadf): # Migrado
-        keys_pnl = ['dailyPnL','realizedPnL','unrealizedPnL']
-        
-        records = []
-        datadf['timestamp'] = datadf.index
-        for index, row in datadf.iterrows():
-            
-            data = row.to_dict()
-            record = {}
-            tags = {'symbol': self.symbol_}
-            time = data['timestamp']
-            time = utils.dateLocal2UTC (time)
-            
-            fields_pnl = {}
-    
-            for key in keys_pnl:
-                if key in data:
-                    fields_pnl[key] = data[key]
-    
-    
-            record = {
-                "measurement": "pnl", 
-                "tags": tags,
-                "fields": fields_pnl,
-                "time": time,
-            }
-            if len(fields_pnl) > 0:
-                records.append(record)
-
-        if len(records) > 0:
-            self.influxIC_.write_data(records, 'pnl')
-
-
-
-    def dbUpdateInfluxPrices (self, datadf): # Migrado
-        keys_prices = ['BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE']
-
-        records = []
-        datadf['timestamp'] = datadf.index
-        for index, row in datadf.iterrows():
-            
-            data = row.to_dict()
-            record = {}
-            tags = {'symbol': self.symbol_}
-            time = data['timestamp']
-            time = utils.dateLocal2UTC (time)
-            
-            fields_prices = {}
-    
-            
-            for key in keys_prices:
-                if key in data:
-                    fields_prices[key] = data[key]
-    
-            record = {
-                "measurement": "precios", 
-                "tags": tags,
-                "fields": fields_prices,
-                "time": time,
-            }
-            if len(fields_prices) > 0:
-                records.append(record)
-
-        #logging.info ('Escribo valor para %s: %s', self.symbol_, records)
-
-        if len(records) > 0:
-            self.influxIC_.write_data(records, 'precios')
-
-
-    def dbUpdateInfluxCompPrices (self):
+    def dbUpdateInfluxCompVolPrices (self):
 
         pdcomp = None
+        pdvol = None
 
         if not self.toSaveComp:
             return
@@ -726,12 +739,23 @@ class dbPandasContrato():
             else:
                 pdcomp = pd.concat([pdcomp, lpdcomp])
 
+        for lrange in self.dateRangesVol:
+            lpdvol = self.dfVolume_[lrange['start'] : lrange['end']]
+            if not pdvol:
+                pdvol = lpdvol
+            else:
+                lpdval = pd.concat([pdvol, lpdvol])
+
         if len(pdcomp) < 1:
             return
 
         pdcomp.sort_index(inplace=True)
         pdcomp.index.names = ['_time']
         pdcomp['symbol'] = self.symbol_
+
+        pdvol.sort_index(inplace=True)
+        pdvol.index.names = ['_time']
+        pdvol['symbol'] = self.symbol_
 
         record_params = {
             "type": "comp",
@@ -746,35 +770,23 @@ class dbPandasContrato():
         if not ret:
             self.toSaveComp = True
             logging.error ('Problema guardando las Comp en influx')
+
+        record_params = {
+            "type": "volume",
+            "measurement": "volume", 
+            "tags": "symbol",
+        }
+
+        #logging.info ('Escribo valor para %s: %s', self.symbol_, records)
+
+        ret = self.influxIC_.write_dataframe(pdvol, record_params)
+
+        if not ret:
+            self.toSaveComp = True
+            logging.error ('Problema guardando las Comp en influx')
         else:
             self.dateRanges = []   # Borramos
 
-    def dbUpdateInfluxVolume (self, data):
-        keys_pnl = ['Volume']
-        
-        records = []
-        record = {}
-        tags = {'symbol': self.symbol_}
-        time = data['timestamp']
-        time = utils.date2UTC (time)
-        
-        fields_volume = {}
-
-        for key in keys_pnl:
-            if key in data:
-                fields_volume[key] = data[key]
-
-
-        record = {
-            "measurement": "volume", 
-            "tags": tags,
-            "fields": fields_volume,
-            "time": time,
-        }
-        records.append(record)
-
-        if len(fields_volume) > 0:
-            self.influxIC_.write_data(records, 'volume')
 
         
 

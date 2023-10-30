@@ -1,7 +1,3 @@
-import webFE.webFENew_Strategies
-import webFE.webFENew_Contratos
-
-
 from dash import MATCH, ALL, Input, Output, State, ctx, no_update, callback
 from dash import html
 from dash import dcc
@@ -10,7 +6,7 @@ from dash.dash_table.Format import Format, Group, Prefix, Scheme, Symbol
 from dash.exceptions import PreventUpdate
 
 import dash_bootstrap_components as dbc
-from webFE.webFENew_Utils import formatCurrency
+from webFE.webFENew_Utils import formatCurrency, layout_getFigureHistorico
 import logging
 import globales
 import random
@@ -47,7 +43,8 @@ def layout_summary_tab ():
 
         included_contracts.append(symbol)
 
-        fig1 = webFE.webFENew_Strategies.layout_getFigura1(estrategia)
+        #fig1 = webFE.webFENew_Strategies.layout_getFigura1(estrategia)
+        fig1 = layout_getFigureHistorico(contrato)  # de Utils
 
         this_card = create_card (contrato, fig1, estrategia)
 
@@ -63,7 +60,8 @@ def layout_summary_tab ():
         if symbol in included_contracts:
             continue
 
-        fig1 = webFE.webFENew_Contratos.getFiguraComp(contrato)
+        #fig1 = webFE.webFENew_Contratos.getFiguraComp(contrato)
+        fig1 = layout_getFigureHistorico(contrato)  # de Utils
 
         this_card = create_card (contrato, fig1, None)
 
@@ -124,6 +122,13 @@ def create_card (contrato, fig1, estrategia):
     priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
     priceSell = formatCurrency(contrato['currentPrices']['SELL'])
     priceLast = formatCurrency(contrato['currentPrices']['LAST'])
+    if priceBuy == None:
+        priceBuy = ""
+    if priceSell == None:
+        priceSell = ""
+    if priceLast == None:
+        priceLast = ""
+          
     priceTotal = "BUY:" + priceBuy + '/SELL:' + priceSell + '/LAST:' + priceLast
 
     lastPnL = contrato['dbPandas'].dbGetLastPnL()

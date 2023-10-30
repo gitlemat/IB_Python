@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 # You can generate an API token from the "API Tokens Tab" in the UI
 # influx delete --bucket "ib_prices_1h_prod" --org "rodsic.com" --predicate '_measurement="precios"' --start "2020-12-23T21:37:00Z" --stop "2023-12-23T21:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 # influx delete --bucket "ib_prices_1h_lab" --org "rodsic.com" --predicate '_measurement="precios"' --start "2020-12-23T21:37:00Z" --stop "2023-04-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
-# influx delete --bucket "ib_prices_1h_lab" --org "rodsic.com" --predicate '_measurement="precios" AND symbol="HEZ3-2HEG4+HEJ4"' --start "2020-12-23T21:37:00Z" --stop "2023-04-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
+# influx delete --bucket "ib_prices_1h" --org "rodsic.com" --predicate '_measurement="precios" AND symbol="LEM4-2LEQ4+LEV4"' --start "2020-12-23T21:37:00Z" --stop "2023-12-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
+# influx delete --bucket "ib_prices_1h" --org "rodsic.com" --predicate '_measurement="volume" AND symbol="LEM4-2LEQ4+LEV4"' --start "2020-12-23T21:37:00Z" --stop "2023-12-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 # influx delete --bucket "ib_prices_lab" --org "rodsic.com" --predicate '_measurement="executions" AND symbol="HEZ3-2HEG4+HEJ4"' --start "2020-12-23T21:37:00Z" --stop "2023-09-03T17:39:00Z" --token "t5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=="
 
 # Buscar zeros:
@@ -147,6 +148,7 @@ class InfluxClient:
         if len(result) == 0:
             df_ = pd.DataFrame(columns = ['timestamp', 'BID', 'ASK', 'LAST', 'BID_SIZE', 'ASK_SIZE', 'LAST_SIZE'])
             df_.set_index('timestamp', inplace=True)
+            df_.index = pd.to_datetime(df_.index)
             return df_
     
         result.rename(columns = {'_time':'timestamp'}, inplace = True)
@@ -211,6 +213,49 @@ class InfluxClient:
             dfcomp_ = pd.DataFrame(columns = ['timestamp','open','high','low','close'])
             dfcomp_.set_index('timestamp', inplace=True)
             return dfcomp_
+    
+        result.rename(columns = {'_time':'timestamp'}, inplace = True)
+        result.drop(columns=['result','table'], inplace=True)
+        result.set_index('timestamp', inplace=True)
+
+        try:
+            result.index = result.index.tz_convert('Europe/Madrid')
+        except:
+            result.index = result.index.tz_localize(None)
+            result.index = result.index.tz_localize('Europe/Madrid')
+        #result.index = result.index + pd.DateOffset(hours=1)
+
+        logging.debug('%s', result)
+
+        return result
+
+    def influxGetVolumelDataFrame (self, symbol):
+        logging.debug('Leyendo Volumenes de Influx para: %s', symbol)
+        todayStart = datetime.datetime.today() - datetime.timedelta(days=180)
+        todayStop = datetime.datetime.today()
+        todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)
+        todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+        todayStart = utils.dateLocal2UTC (todayStart)
+        todayStop = utils.dateLocal2UTC (todayStop)
+        param = {"_bucket": self._bucket_volume, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
+        
+        query = '''
+        from(bucket: _bucket)
+        |> range(start: _start)
+        |> filter(fn:(r) => r._measurement == "volume")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn:(r) => r._field == "Volume")
+        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> keep(columns: ["_time", "Volume"])
+        |> sort(columns: ["_time"], desc: _desc)
+        '''
+
+        result = self.query_data_frame(query, param)
+
+        if len(result) == 0:
+            dfvol_ = pd.DataFrame(columns = ['timestamp','Volume'])
+            dfvol_.set_index('timestamp', inplace=True)
+            return dfvol_
     
         result.rename(columns = {'_time':'timestamp'}, inplace = True)
         result.drop(columns=['result','table'], inplace=True)
@@ -469,7 +514,7 @@ class InfluxClient:
                 records.append(record)
 
         if len(records) > 0:
-            self.influxIC_.write_data(records, 'pnl')
+            self.write_data(records, 'pnl')
 
     def influxUpdateVolume (self, symbol_, data):
         keys_pnl = ['Volume']

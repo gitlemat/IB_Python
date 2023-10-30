@@ -539,11 +539,12 @@ class IBI_App(EWrapper, EClient):
         for contratoDict in contractcodeList:
             contractN = self.contractSimpleFUTcreate (contratoDict['code'])
             if not contractN:
+                logging.error ("Error al crear el contrato %s", contratoDict['code'])
                 return None
             try:
                 contractN = self.get_contract_details(contractN).contract
             except:
-                logging.error ("Error al recibir detalles")
+                logging.error ("Error al recibir detalles del contrato %s", contratoDict['code'])
                 return None
             ret = self.RTLocalData_.contractAdd(contractN)
 
