@@ -230,6 +230,7 @@ def layout_getFigura3(estrategia, base = False):
                        title_xanchor = 'center',
                        margin=dict(l=10, r=10, t=40, b=40),
                        legend_x=0, legend_y=1,
+                       hovermode="x unified"
                     )
 
     return fig3
