@@ -232,7 +232,8 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
                        title_text='Datos Tiempo Real Hoy', 
                        title_x = 0.5,
                        title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40))
+                       margin=dict(l=10, r=10, t=40, b=40),
+                       hovermode="x unified")
 
     contrato['dbPandas'].toPrint = False
 
@@ -413,49 +414,49 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
 
         insideDetailsStratParent = html.Tr(
             [
-                html.Td("Parent"), 
+                html.Td("Parent", style={'background-color':'transparent'}), 
                 #html.Td(str(zone['OrderId'])),
                 #html.Td(str(zone['OrderPermId'])),
-                html.Td(str(zone['orderBlock'].orderId_)),
-                html.Td(str(zone['orderBlock'].orderPermId_)),
-                html.Td(str(lmtParent)),
-                html.Td(str(typeParent)),
-                html.Td(str(actionParent)),
-                html.Td(str(statusParent)),
-                html.Td(str(posParent)),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderId_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix)),
+                html.Td(str(zone['orderBlock'].orderId_), style={'background-color':'transparent'}),
+                html.Td(str(zone['orderBlock'].orderPermId_), style={'background-color':'transparent'}),
+                html.Td(str(lmtParent), style={'background-color':'transparent'}),
+                html.Td(str(typeParent), style={'background-color':'transparent'}),
+                html.Td(str(actionParent), style={'background-color':'transparent'}),
+                html.Td(str(statusParent), style={'background-color':'transparent'}),
+                html.Td(str(posParent), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderId_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorParent}
         )
 
         insideDetailsStratTP = html.Tr(
             [
-                html.Td("T Profit", style={"textAlign": "right"}), 
+                html.Td("T Profit", style={"textAlign": "right", 'background-color':'transparent'}), 
                 #html.Td(str(zone['OrderIdTP'])),
                 #html.Td(str(zone['OrderPermIdTP'])),
-                html.Td(str(zone['orderBlock'].orderIdTP_)),
-                html.Td(str(zone['orderBlock'].orderPermIdTP_)),
-                html.Td(str(lmtTP)),
-                html.Td(str(typeTP)),
-                html.Td(str(actionTP)),
-                html.Td(str(statusTP)),
-                html.Td(str(posTP)),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderIdTP_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix)),
+                html.Td(str(zone['orderBlock'].orderIdTP_), style={'background-color':'transparent'}),
+                html.Td(str(zone['orderBlock'].orderPermIdTP_), style={'background-color':'transparent'}),
+                html.Td(str(lmtTP), style={'background-color':'transparent'}),
+                html.Td(str(typeTP), style={'background-color':'transparent'}),
+                html.Td(str(actionTP), style={'background-color':'transparent'}),
+                html.Td(str(statusTP), style={'background-color':'transparent'}),
+                html.Td(str(posTP), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderIdTP_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorTP}
         )
 
         insideDetailsStratSL = html.Tr(
             [
-                html.Td("Stop Loss", style={"textAlign": "right"}), 
+                html.Td("Stop Loss", style={"textAlign": "right", 'background-color':'transparent'}), 
                 #html.Td(str(zone['OrderIdSL'])),
                 #html.Td(str(zone['OrderPermIdSL'])),
-                html.Td(str(zone['orderBlock'].orderIdSL_)),
-                html.Td(str(zone['orderBlock'].orderPermIdSL_)),
-                html.Td(str(lmtSL)),
-                html.Td(str(typeSL)),
-                html.Td(str(actionSL)),
-                html.Td(str(statusSL)),
-                html.Td(str(posSL)),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderIdSL_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix)),
+                html.Td(str(zone['orderBlock'].orderIdSL_), style={'background-color':'transparent'}),
+                html.Td(str(zone['orderBlock'].orderPermIdSL_), style={'background-color':'transparent'}),
+                html.Td(str(lmtSL), style={'background-color':'transparent'}),
+                html.Td(str(typeSL), style={'background-color':'transparent'}),
+                html.Td(str(actionSL), style={'background-color':'transparent'}),
+                html.Td(str(statusSL), style={'background-color':'transparent'}),
+                html.Td(str(posSL), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderIdSL_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorSL}
         )
 

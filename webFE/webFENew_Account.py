@@ -69,7 +69,11 @@ def layout_getFigura (update = False):
             y=dfAccount["NetLiquidation"], 
             mode="lines", 
             connectgaps = True, 
-            name = 'NetLiquidation'
+            name = 'NetLiquidation',
+            line = dict(
+                shape='spline',
+                smoothing=0.5
+            )
         ),
     )
     if len(dfAccount.index) > 0 and LastPrice != None:
@@ -97,7 +101,8 @@ def layout_getFigura (update = False):
                        title_text='NetLiquidation', 
                        title_x = 0.5,
                        title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40))
+                       margin=dict(l=10, r=10, t=40, b=40),
+                       hovermode="x unified")
 
     globales.G_RTlocalData_.accountPandas_.toPrint = False
 

@@ -108,7 +108,9 @@ def layout_getFigureHistorico (contrato):
                        title_text='Historico', 
                        title_x = 0.5,
                        title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40))
+                       margin=dict(l=10, r=10, t=40, b=40),
+                       hovermode="x unified"
+    )
 
     return fig1
 
