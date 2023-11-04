@@ -630,3 +630,13 @@ class bracketOrderClass():
         logging.info ('     Orden SL: %s', self.orderIdSL_)
 
         return True
+
+    def orderBlockCancelOrders(self):
+        logging.info ('[Estrategia %s (%s)]. Vamos a cancelar todas las ordenes', self.strategyType_, self.symbol_)
+        logging.info ('    Cancelamos la Parent OrderId %s', self.orderId_)
+        self.RTLocalData_.orderCancelByOrderId (self.orderId_)  
+        logging.info ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
+        self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
+        logging.info ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
+        self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
+    

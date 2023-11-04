@@ -199,5 +199,44 @@ def testExecCountSum():
 
     return result
 
+def testAccount():
+
+    client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
+    keys_account = [
+        'timestamp', 'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
+        'AvailableFunds', 'BuyingPower', 'EquityWithLoanValue', 'ExcessLiquidity', 'FullAvailableFunds',
+        'FullExcessLiquidity','FullInitMarginReq','FullMaintMarginReq','GrossPositionValue','InitMarginReq',
+        'LookAheadAvailableFunds','LookAheadExcessLiquidity','LookAheadInitMarginReq','LookAheadMaintMarginReq',
+        'MaintMarginReq','NetLiquidation','TotalCashValue'
+    ]
+
+    param = {"_bucket": 'ib_data_prod', "_accountId": 'U6574479', "_desc": False}
+
+    query = '''
+    from(bucket: _bucket)
+    |> range(start: 0)
+    |> filter(fn: (r) => r["_measurement"] == "account")
+    |> filter(fn: (r) => r["accountId"] == _accountId)
+    |> drop(columns: ["accountId"])
+    |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+    |> drop(columns: ["_measurement", "_start", "_stop"])
+    |> sort(columns: ["_time"], desc: _desc)
+    '''
+
+    query_api = client.query_api()
+    result = query_api.query_data_frame(org=ORG, query=query, params = param)
+
+    result.rename(columns = {'_time':'timestamp'}, inplace = True)
+    result.drop(columns=['result','table'], inplace=True)
+    result.set_index('timestamp', inplace=True)
+
+    try:
+        result.index = result.index.tz_convert('Europe/Madrid')
+    except:
+        result.index = result.index.tz_localize(None)
+        result.index = result.index.tz_localize('Europe/Madrid')
+    #result.index = result.index + pd.DateOffset(hours=1)
+
+    return result
 
 

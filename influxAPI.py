@@ -49,7 +49,7 @@ class InfluxClient:
             self._bucket_execs = 'ib_data_prod'
             self._bucket_account = 'ib_data_prod'
             self._bucket_volume = 'ib_prices_1h'
-        self._client = InfluxDBClient(url="http://localhost:8086", token=token)
+        self._client = InfluxDBClient(url="http://192.168.2.131:8086", token=token)
         
 
     def get_bucket (self, type):

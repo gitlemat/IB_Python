@@ -233,16 +233,21 @@ class strategyPentagramaRu(strategyBaseClass):
         if self.currentPos_ != new_pos:
             if new_pos == 0 or (new_pos * self.currentPos_ < 0):
                 zero_crossing = True
+                logging.info ('[Estrategia PentagramaRu (%s)] Hemos pasado por Cero', self.symbol_)
             if self.cerrarPos_ and zero_crossing:
                 logging.info ('')
-                logging.info ('[Estrategia PentagramaRu (%s)] Hemos pasado por Cero y estrategio disabled por parametro: %s', self.symbol_, str(self.cerrarPos_))
+                logging.info ('[Estrategia PentagramaRu (%s)] Hemos pasado por Cero y vamos a cerrar todo por mandato', self.symbol_)
                 self.stratEnabled_ = False
+                self.strategyCancelarTodasOrdenes()
             self.currentPos_ = new_pos
             bChanged = True
 
         return bChanged
-        
 
+    def strategyCancelarTodasOrdenes(self):
+        for block in self.orderBlocks_:
+            block.orderBlockCancelOrders()
+        
     def strategyCalcularPosiciones (self):
         pos = 0
         for zone in self.zones_:

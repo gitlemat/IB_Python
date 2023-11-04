@@ -89,6 +89,9 @@ class dbPandasAccount():
             timestamp = utils.date2local (timestamp)
             self.last_refresh_db_ = timestamp - datetime.timedelta(hours=48) # Por poner algo
 
+    def dbGetAccountData(self):
+        return self.dfAccountEvo_
+
     def dbUpdateAddAccountData (self, data):
         
         keys_account = [
@@ -466,9 +469,6 @@ class dbPandasContrato():
         #Todo lo que se meta por aquí no está en influx. Hay que indicar las fechas.
 
     def dbAddVolDataFrame (self, data_series):
-        buf1 = io.StringIO()
-        buf2 = io.StringIO()
-        buf3 = io.StringIO()
         
         data_df = pd.DataFrame()
         #data_df.index = data_series.index
@@ -476,19 +476,10 @@ class dbPandasContrato():
 
         data_df = data_df.astype({'Volume':'int'})
 
-        data_df.info(buf=buf1)
         data_df.index = data_df.index.tz_localize(None)
         data_df.index = data_df.index.tz_localize('Europe/Madrid')
 
-        s1 = buf1.getvalue()
         logging.info ('Lo que voy a añadir:\n%s', data_df)
-        logging.info ('Info:\n%s',s1)
-
-        self.dfVolume_.info(buf=buf3)
-        s3 = buf3.getvalue()
-
-        logging.info ('Tengo esto:\n%s', self.dfVolume_)
-        logging.info ('\n%s',s3)
 
         try:
             self.dfVolume_ = pd.concat([data_df, self.dfVolume_]) 
@@ -499,10 +490,6 @@ class dbPandasContrato():
             return None
         else:
             self.dfVolume_ = self.dfVolume_[~self.dfVolume_.index.duplicated(keep='first')]
-            self.dfVolume_.info(buf=buf2)
-            s2 = buf2.getvalue()
-            logging.info ('Lo que tengo ahora:\n%s', self.dfVolume_)
-            logging.info ('\n%s',s2)
 
         start_date = data_df.index.min()
         end_date = data_df.index.max()

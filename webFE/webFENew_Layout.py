@@ -1,6 +1,7 @@
 import webFE.webFENew_Ordenes
 import webFE.webFENew_Contratos
 import webFE.webFENew_Strategies
+import webFE.webFENew_Account
 import webFE.webFENew_Logs
 import webFE.webFENew_Summary
 from dash import MATCH, ALL, Input, Output, State, ctx, no_update, callback
@@ -104,6 +105,7 @@ def layout_sidebar():
                     dbc.NavLink("Estrategias", href="/Estrategias", active="exact"),
                     dbc.NavLink("Contratos", href="/Contratos", active="exact"),
                     dbc.NavLink("Ordenes", href="/Ordenes", active="exact"),
+                    dbc.NavLink("Cuenta", href="/Account", active="exact"),
                     dbc.NavLink("Logs", href="/Logs", active="exact"),
                 ],
                 vertical=True,
@@ -151,6 +153,8 @@ def render_page_content(pathname):
         return webFE.webFENew_Contratos.layout_contratos_tab()
     elif pathname == "/Ordenes":
         return webFE.webFENew_Ordenes.layout_ordenes_tab()
+    elif pathname == "/Account":
+        return webFE.webFENew_Account.layout_account_tab()
     elif pathname == "/Logs":
         return webFE.webFENew_Logs.layout_logs_tab()
     # If the user tries to reach a different page, return a 404 message

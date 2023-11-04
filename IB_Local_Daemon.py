@@ -94,6 +94,8 @@ def run_loop(app):
 def main():
     load_dotenv()
     _mode = os.getenv('MODE')
+
+    print ('Empezamos')
     
     SetupLogger()
     logging.info ('')
@@ -127,11 +129,14 @@ def main():
     client_id = 0
     if _mode == 'Lab':
         _port = 4002
+        _host = 'lab_ib_gateway'
     elif _mode == 'Prod':
         _port = 4011 # En realidad es 4011 para prod
+        _host = 'prod_ib_gateway'
         logging.info ('# SISTEMA EN PRODUCCION !!!!!')
     else:
         _port = 4002 # En realidad es 4011 para prod
+        _host = 'prod_ib_gateway'
 
     logging.info ('#')
     logging.info ('Abriendo conexion con 127.0.0.1:%d', _port)
@@ -160,7 +165,7 @@ def main():
 
 
 
-    app = IB_API_Client.IBI_App("127.0.0.1", _port, client_id, globales.G_RTlocalData_)
+    app = IB_API_Client.IBI_App(_host, _port, client_id, globales.G_RTlocalData_)
     t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)
     t_api_thread.start()
     
