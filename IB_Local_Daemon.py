@@ -131,15 +131,15 @@ def main():
         _port = 4002
         _host = 'lab_ib_gateway'
     elif _mode == 'Prod':
-        _port = 4011 # En realidad es 4011 para prod
+        _port = 4001 # En realidad es 4001 para prod
         _host = 'prod_ib_gateway'
         logging.info ('# SISTEMA EN PRODUCCION !!!!!')
     else:
         _port = 4002 # En realidad es 4011 para prod
-        _host = 'prod_ib_gateway'
+        _host = 'lab_ib_gateway'
 
     logging.info ('#')
-    logging.info ('Abriendo conexion con 127.0.0.1:%d', _port)
+    logging.info ('Abriendo conexion con %d:%d', _host, _port)
 
     #####################
     #
