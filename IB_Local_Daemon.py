@@ -139,7 +139,7 @@ def main():
         _host = 'lab_ib_gateway'
 
     logging.info ('#')
-    logging.info ('Abriendo conexion con %d:%d', _host, _port)
+    logging.info ('Abriendo conexion con %s:%d', _host, _port)
 
     #####################
     #
