@@ -4,6 +4,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 TOKEN = 't5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=='
 ORG = 'rodsic.com'
 BUCKET = 'ib_prices'
+BUCKET_1h = 'ib_prices_1h'
 
 def testToday():
     client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
@@ -131,6 +132,50 @@ def testPnL():
     result.drop(columns=['result','table'], inplace=True)
     result.set_index('timestamp', inplace=True)
     #result.index = result.index.tz_localize(None)
+
+    return result
+
+
+def testVolume():
+    client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
+    
+    todayStart = datetime.datetime.today() - datetime.timedelta(days=60)
+    todayStop = datetime.datetime.today()
+    todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)
+    todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
+    #todayStart = utils.dateLocal2UTC (todayStart)
+    #todayStop = utils.dateLocal2UTC (todayStop)
+    param = {"_bucket": BUCKET_1h, "_start": todayStart, "_stop": todayStop, "_symbol": "HEZ3-2HEG4+HEJ4", "_desc": False}
+    
+    query = '''
+    from(bucket: _bucket)
+    |> range(start: _start)
+    |> filter(fn:(r) => r._measurement == "volume")
+    |> filter(fn:(r) => r.symbol == _symbol)
+    |> filter(fn:(r) => r._field == "Volume")
+    |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+    |> keep(columns: ["_time", "Volume"])
+    |> sort(columns: ["_time"], desc: _desc)
+    '''
+
+    print (query)
+    print (param)
+
+    query_api = client.query_api()
+    result = query_api.query_data_frame(org=ORG, query=query, params = param)
+
+    result.rename(columns = {'_time':'timestamp'}, inplace = True)
+    #result.drop(columns=['result','table'], inplace=True)
+    #result.set_index('timestamp', inplace=True)
+
+    return result
+
+    try:
+        result.index = result.index.tz_convert('Europe/Madrid')
+    except:
+        result.index = result.index.tz_localize(None)
+        result.index = result.index.tz_localize('Europe/Madrid')
+    #result.index = result.index + pd.DateOffset(hours=1)
 
     return result
 

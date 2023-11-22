@@ -70,9 +70,11 @@ def layout_summary_tab ():
     # Ahora añadimos la lista de execs a tabSummary
 
     df_execs = globales.G_RTlocalData_.strategies_.strategyGetAllExecs()
-    df_execs.sort_index(ascending=False, inplace = True)
-    df_execs['time'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
-    #df_execs.sort_values(by=['time'], inplace=True, ascending=False)
+
+    if len(df_execs) > 0:
+        df_execs.sort_index(ascending=False, inplace = True)
+        df_execs['time'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
+        #df_execs.sort_values(by=['time'], inplace=True, ascending=False)
 
     columnas = [
         {'id': "time", 'name': "Fecha", 'type': 'datetime'},
@@ -95,14 +97,12 @@ def layout_summary_tab ():
     ])
     #logging.info ('%s', df_execs)
 
-    #all_cards.append(tablaExecs)
-
     for i in range(0, len(all_cards), 2):
         logging.debug ('Card: %d, %d', i, len(all_cards))
-        column1 = dbc.Col(all_cards[i], width=6)
+        column1 = dbc.Col(all_cards[i], id='summary-card-l-'+str(i), md=6)
         column2 = None
         if i + 1 < len(all_cards):
-            column2 = dbc.Col(all_cards[i+1], width=6)
+            column2 = dbc.Col(all_cards[i+1], id='summary-card-r-'+str(i+1), md=6)
         
         row = dbc.Row(
             [
@@ -112,7 +112,13 @@ def layout_summary_tab ():
         )  
         tabSummary.append(row)
 
-    tabSummary.append(tablaExecs)
+    row = dbc.Row(
+        [
+            tablaExecs,
+        ]
+    ) 
+
+    tabSummary.append(row)
 
 
     return tabSummary
@@ -129,7 +135,7 @@ def create_card (contrato, fig1, estrategia):
     if priceLast == None:
         priceLast = ""
           
-    priceTotal = "BUY:" + priceBuy + '/SELL:' + priceSell + '/LAST:' + priceLast
+    priceTotal = "BUY:" + priceBuy + '/SELL:' + priceSell
 
     lastPnL = contrato['dbPandas'].dbGetLastPnL()
     dailyPnL = ''
@@ -177,8 +183,8 @@ def create_card (contrato, fig1, estrategia):
                         [
                             dbc.Col(
                                 [
-                                    html.H4(symbol)
-                                ], width=6,
+                                    html.H6(symbol+" ("+ priceLast +")")
+                                ],
                             )
                         ]
                     )
@@ -190,14 +196,14 @@ def create_card (contrato, fig1, estrategia):
                         [
                             dbc.Col(
                                 [
-                                    html.Div("Strategy: " + stratType, className = 'text-start'),
-                                    html.Div("Pos: " + posQty, className = 'text-start'),
+                                    html.Div("Strategy: " + stratType, className = 'text-start', id = {'role': 'Card-Strategy', 'strategy':stratType, 'symbol': symbol}),
+                                    html.Div("Pos: " + posQty, className = 'text-start', id = {'role': 'Card-Pos', 'strategy':stratType, 'symbol': symbol}),
                                 ], width=6,
                             ),
                             dbc.Col(
                                 [
-                                    html.Div("Executions: " + execString, className = 'text-end'),
-                                    html.Div("PnL: " + totalPnl, className = 'text-end'),
+                                    html.Div("Executions: " + execString, className = 'text-end', id = {'role': 'Card-Executions', 'strategy':stratType, 'symbol': symbol}),
+                                    html.Div("PnL: " + totalPnl, className = 'text-end', id = {'role': 'Card-PnL', 'strategy':stratType, 'symbol': symbol}),
                                 ], width=6,
                             ),
 
@@ -212,12 +218,12 @@ def create_card (contrato, fig1, estrategia):
                         [
                             dbc.Col(
                                 [
-                                    html.Div(priceTotal)
+                                    html.Div(priceTotal, className = 'text-start', id = {'role': 'Card-priceTotal', 'strategy':stratType, 'symbol': symbol})
                                 ], width=6,
                             ),
                             dbc.Col(
                                 [
-                                    html.Div("AvgPrice: " + AvgPriceFmt, className = 'text-end')
+                                    html.Div("AvgPrice: " + AvgPriceFmt, className = 'text-end', id = {'role': 'Card-AvgPrice', 'strategy':stratType, 'symbol': symbol})
                                 ], width=6,
                             )
                         ]

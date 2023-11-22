@@ -35,6 +35,27 @@ df.plot(kind='scatter', x='timestamp', y='ASK', title='Titulo')
 plt.show()
 '''
 
+def dbPandasConcat (df1, df2):
+
+    try:
+        df1empty = df1.empty
+    except:
+        df1empty = True
+
+    try:
+        df2empty = df2.empty
+    except:
+        df2empty = True
+
+    if df1empty:
+        df_out = df2
+    elif df2empty:
+        df_out = df1
+    else:
+        df_out = pd.concat([df1, df2])
+
+    return df_out
+
 ##############################################
 # Account
 #
@@ -136,7 +157,8 @@ class dbPandasAccount():
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
             #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
-            self.dfAccountEvo_ = pd.concat([self.dfAccountEvo_, dfDelta]) #, ignore_index=True
+            #self.dfAccountEvo_ = pd.concat([self.dfAccountEvo_, dfDelta]) #, ignore_index=True
+            self.dfAccountEvo_ = dbPandasConcat(self.dfAccountEvo_, dfDelta)
             self.toPrint = True
     
 
@@ -285,7 +307,8 @@ class dbPandasStrategy():
             newlineL.append(data)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
-            self.dfExecCount_ = pd.concat([self.dfExecCount_, dfDelta])
+            #self.dfExecCount_ = pd.concat([self.dfExecCount_, dfDelta])
+            self.dfExecCount_ = dbPandasConcat (self.dfExecCount_, dfDelta)
 
     
     def dbAddCommissionsOrderFill(self, dataFlux):
@@ -295,7 +318,8 @@ class dbPandasStrategy():
         dfDelta.set_index('timestamp', inplace=True)
         # OJJJJJOOOOOOO
         # Aqui hay que comprobar qye el ExecId no exista. Puede que IB lo mande dos veces
-        self.dfExecs_ = pd.concat([self.dfExecs_, dfDelta]) #, ignore_index=True
+        #self.dfExecs_ = pd.concat([self.dfExecs_, dfDelta]) #, ignore_index=True
+        self.dfExecs_ = dbPandasConcat(self.dfExecs_, dfDelta)
         self.dbAddExecToCount() 
         self.dbAddExecPnL(dataFlux)
         self.dbUpdateInfluxCommission (dataFlux)
@@ -449,7 +473,8 @@ class dbPandasContrato():
     def dbAddCompDataFrame (self, data_df):
         logging.info ('Lo que voy a añadir:\n%s', data_df)
         try:
-            self.dfcomp_ = pd.concat([data_df, self.dfcomp_]) 
+            #self.dfcomp_ = pd.concat([data_df, self.dfcomp_]) 
+            self.dfcomp_ = dbPandasConcat(data_df, self.dfcomp_)
         except:
             logging.error ('Error añadiendo datos a dfcomp_')
             return None
@@ -482,7 +507,8 @@ class dbPandasContrato():
         logging.info ('Lo que voy a añadir:\n%s', data_df)
 
         try:
-            self.dfVolume_ = pd.concat([data_df, self.dfVolume_]) 
+            #self.dfVolume_ = pd.concat([data_df, self.dfVolume_]) 
+            self.dfVolume_ = dbPandasConcat(data_df, self.dfVolume_)
             #self.dfVolume_.index = pd.to_datetime(self.dfVolume_.index)
             #self.dfVolume_ = self.dfVolume_.sort_index()
         except:
@@ -594,8 +620,10 @@ class dbPandasContrato():
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
             #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
-            self.dfDelta_ = pd.concat([self.dfDelta_, dfDelta]) #, ignore_index=True
-            self.df_ = pd.concat([self.df_, dfDelta]) #, ignore_index=True
+            #self.dfDelta_ = pd.concat([self.dfDelta_, dfDelta]) #, ignore_index=True
+            #self.df_ = pd.concat([self.df_, dfDelta]) #, ignore_index=True
+            self.dfDelta_ = dbPandasConcat(self.dfDelta_, dfDelta) #, ignore_index=True
+            self.df_ = dbPandasConcat(self.df_, dfDelta) #, ignore_index=True
             self.dbUpdateAddPricesPrint(data['LAST'])
             self.toPrint = True
             if len(self.dfDelta_.index) > 10:
@@ -628,7 +656,8 @@ class dbPandasContrato():
             ]
             dfDelta = pd.DataFrame.from_records(newlineL)     
             dfDelta.set_index('timestamp', inplace=True)
-            self.dfcompPrint_ = pd.concat([self.dfcompPrint_, dfDelta]) #, ignore_index=True  
+            #self.dfcompPrint_ = pd.concat([self.dfcompPrint_, dfDelta]) #, ignore_index=True  
+            self.dfcompPrint_ = dbPandasConcat (self.dfcompPrint_, dfDelta)
         else:
             if dataLAST > self.dfcompPrint_['high'].iloc[-1]:
                 self.dfcompPrint_['high'].iloc[-1] = dataLAST
@@ -675,10 +704,12 @@ class dbPandasContrato():
         if differentPnL:
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
-            self.dfPnlDelta_ = pd.concat([self.dfPnlDelta_, dfDelta]) #, ignore_index=True
+            #self.dfPnlDelta_ = pd.concat([self.dfPnlDelta_, dfDelta]) #, ignore_index=True
+            self.dfPnlDelta_ = dbPandasConcat (self.dfPnlDelta_, dfDelta)
             if len(self.dfPnlDelta_.index) > 10:
                 self.influxIC_.influxUpdatePnL (self.symbol_, self.dfPnlDelta_)
-                self.dfPnl_ = pd.concat([self.dfPnl_, self.dfPnlDelta_])
+                #self.dfPnl_ = pd.concat([self.dfPnl_, self.dfPnlDelta_])
+                self.dfPnl_ = dbPandasConcat (self.dfPnl_, self.dfPnlDelta_)
                 self.dfPnlDelta_ = None
                 self.toPrintPnL = True
 
@@ -705,7 +736,8 @@ class dbPandasContrato():
             dfDelta.set_index('timestamp', inplace=True)
             dfDelta.index = dfDelta.index.tz_localize(None)
             dfDelta.index = dfDelta.index.tz_localize('Europe/Madrid')
-            self.dfVolume_ = pd.concat([self.dfVolume_, dfDelta])
+            #self.dfVolume_ = pd.concat([self.dfVolume_, dfDelta])
+            self.dfVolume_ = dbPandasConcat(self.dfVolume_, dfDelta)
             #self.dfVolume_.index = pd.to_datetime(self.dfVolume_.index)
 
 
@@ -724,14 +756,16 @@ class dbPandasContrato():
             if not pdcomp:
                 pdcomp = lpdcomp
             else:
-                pdcomp = pd.concat([pdcomp, lpdcomp])
+                #pdcomp = pd.concat([pdcomp, lpdcomp])
+                pdcomp = dbPandasConcat(pdcomp, lpdcomp)
 
         for lrange in self.dateRangesVol:
             lpdvol = self.dfVolume_[lrange['start'] : lrange['end']]
             if not pdvol:
                 pdvol = lpdvol
             else:
-                lpdval = pd.concat([pdvol, lpdvol])
+                #lpdval = pd.concat([pdvol, lpdvol])
+                lpdval = dbPandasConcat(pdvol, lpdvol)
 
         if len(pdcomp) < 1:
             return

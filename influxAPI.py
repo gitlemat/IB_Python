@@ -187,7 +187,7 @@ class InfluxClient:
         return result
 
     def influxGetOchlDataFrame (self, symbol):
-        logging.debug('Leyendo precios OCHL de Influx para: %s', symbol)
+        logging.info('Leyendo precios OCHL de Influx para: %s', symbol)
         todayStart = datetime.datetime.today() - datetime.timedelta(days=180)
         todayStop = datetime.datetime.today()
         todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)
@@ -230,7 +230,7 @@ class InfluxClient:
         return result
 
     def influxGetVolumelDataFrame (self, symbol):
-        logging.debug('Leyendo Volumenes de Influx para: %s', symbol)
+        logging.info('Leyendo Volumenes de Influx para: %s', symbol)
         todayStart = datetime.datetime.today() - datetime.timedelta(days=180)
         todayStop = datetime.datetime.today()
         todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)

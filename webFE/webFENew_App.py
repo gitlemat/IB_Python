@@ -12,6 +12,10 @@ external_stylesheets = [dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP]
 appDashFE_ = Dash(
     server=server,
     external_stylesheets=external_stylesheets,
+    update_title=None,
+    meta_tags=[
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+    ],
 )
 appDashFE_.title = "IB RODSIC"
 

@@ -1,0 +1,33 @@
+.botonContract {
+    border-top-width: 0px;
+    border-left-width: 0px;
+    border-right-width: 0px;
+    border-bottom-width: 0px;
+    padding-left: 0px;
+    padding-right: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    color: white;
+    background-color: transparent;
+  }
+
+  .noPads {
+    padding-left: 0px;
+    padding-right: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+  }
+
+
+  @media (max-width: 768px) {
+    .text9-7 {
+        font-size: .7rem;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .text9-7 {
+        font-size: .9rem;
+    }
+    
+  }

@@ -102,13 +102,15 @@ def layout_getFigureHistorico (contrato):
     fig1.layout.yaxis2.showgrid=False
 
     fig1.update_layout(showlegend=False, 
+                       font_size=10,
+                       title_font_size=13,
                        xaxis_rangeslider_visible=False, 
                        yaxis={'side': 'left'} ,
                        yaxis2={'side': 'right'} ,
                        title_text='Historico', 
                        title_x = 0.5,
                        title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40),
+                       margin=dict(l=0, r=0, t=40, b=40),
                        hovermode="x unified"
     )
 

@@ -32,41 +32,41 @@ def layout_strategies_tab():
     logging.debug ('Empiezo a calcular tab')
 
     tabEstrategias = [
-            dbc.Row(
-                [
+        dbc.Row(
+            [
 
-                    dbc.Col(
-                        html.P("Lista de Estrategias", className='text-left mb-0 text-secondary display-6'),
-                        className = 'ps-0',
-                        width = 9
-                    ),
-                    dbc.Col(
-                        html.Div(
-                            dbc.Button("Reload Todas", id={'role': 'ZoneButtonReloadAll'}, className="me-0", n_clicks=0),
-                            className="text-end"
-                        ),
-                        className = 'pe-0',
-                        width = 3
-                    ),
-                ],
-                className = 'mb-4',
-            ),
-            dbc.Row(
-                [
-                    html.Hr()
-                ]
-            ),
-            dbc.Row(
-                [
-                    dbc.Col(html.Div("Symbol"), className = 'bg-primary mr-1', width = 3),
-                    dbc.Col(html.Div("Pos"), className = 'bg-primary mr-1', width = 1),
-                    dbc.Col(html.Div("Buy/Sell/Last"), className = 'bg-primary mr-1', width = 2),
-                    dbc.Col(html.Div("PnL (daily/real/unreal)"), className = 'bg-primary mr-1', width = 3),
-                    dbc.Col(html.Div("Exec (Hoy/Total)"), className = 'bg-primary', width = 2),
-                    dbc.Col(html.Div("Enabled"), className = 'bg-primary', width = 1),
-                ], className = 'mb-3 text-white'
+                dbc.Col(
+                    html.P("Lista de Estrategias", className='text-left mb-0 text-secondary display-6'),
+                    className = 'ps-0',
+                    width = 9
                 ),
+                dbc.Col(
+                    html.Div(
+                        dbc.Button("Reload Todas", id={'role': 'ZoneButtonReloadAll'}, className="me-0", n_clicks=0),
+                        className="text-end"
+                    ),
+                    className = 'pe-0',
+                    width = 3
+                ),
+            ],
+            className = 'mb-4',
+        ),
+        dbc.Row(
+            [
+                html.Hr()
             ]
+        ),
+        dbc.Row(
+            [
+                dbc.Col(html.Div("Symbol"), id='strat-header-symbol', className = 'bg-primary mr-1', xs=5, md=3), # xs-5 md-3
+                dbc.Col(html.Div("Pos"), id='strat-header-pos', className = 'bg-primary mr-1', xs=1, md=1),    # xs-1 
+                dbc.Col(html.Div("Buy/Sell/Last"), id='strat-header-bsl', className = 'bg-primary mr-1', xs=4, md=2), # md-2 d-none d-md-block
+                dbc.Col(html.Div("PnL (daily/real/unreal)"), id='strat-header-pnl', className = 'd-none d-md-block bg-primary mr-1', md=3), # md-3 d-none d-md-block
+                dbc.Col(html.Div("Exec (Hoy/Total)"), className = 'd-none d-md-block bg-primary', md=2), # md-2 d-none d-md-block
+                dbc.Col(html.Div("Enabled"), id='strat-header-en', className = 'md-1 bg-primary', xs=2, md=1), # xs-2
+            ], className = 'mb-3 text-white', id='strat-header'
+        ),
+    ]
 
     # Ahora cada una de las lineas
 
@@ -96,9 +96,9 @@ def layout_strategies_tab():
         fig1 = layout_getFigura1(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
         graphColumn1 = html.Div(
             dcc.Graph(
-                    id={'role': 'graphDetailsComp', 'strategy': stratType, 'symbol': symbol},
-                    animate = False,
-                    figure = fig1
+                id={'role': 'graphDetailsComp', 'strategy': stratType, 'symbol': symbol},
+                animate = False,
+                figure = fig1
             )
         )
 
@@ -129,16 +129,19 @@ def layout_strategies_tab():
                     figure = fig3
             )
         ])
-        switch_compon_base = dbc.Switch(
-            id={'role': 'switch_componentes_base', 'strategy':stratType, 'symbol': symbol},
-            label="Inicio a cero",
-            value=False,
-            className = 'mt-5' 
+        switch_compon_base = html.Div([
+            dbc.Switch(
+                id={'role': 'switch_componentes_base', 'strategy':stratType, 'symbol': symbol},
+                label="Inicio a cero",
+                value=False,
+                className = 'mt-0 mt-md-5' 
+            )],
+            id={'role': 'switch_componentes_form', 'strategy':stratType, 'symbol': symbol},
         )
 
         graphComponentes = [
-            dbc.Col(graphColumn3, width=10),
-            dbc.Col(switch_compon_base, width=2)
+            dbc.Col(graphColumn3, md=10),
+            dbc.Col(switch_compon_base, md=2)
         ]
 
         logging.debug ('Ya tengo la fig2')
@@ -224,11 +227,13 @@ def layout_getFigura3(estrategia, base = False):
     )
 
     fig3.update_layout(showlegend=True, 
+                       font_size=10,
+                       title_font_size=13,
                        xaxis_rangeslider_visible=False, 
                        title_text='Componentes', 
                        title_x = 0.5,
                        title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40),
+                       margin=dict(l=0, r=0, t=40, b=40),
                        legend_x=0, legend_y=1,
                        hovermode="x unified"
                     )
@@ -308,12 +313,12 @@ def layout_getStrategyHeader (estrategia, update = False):
     
     headerRow = dbc.Row(
         [
-            dbc.Col(dbc.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), class_name = 'bg-primary mr-1', width = 3),
-            dbc.Col(html.Div(posQty), class_name = 'bg-primary mr-1', width = 1),
-            dbc.Col(html.Div(priceTotal), class_name = 'bg-primary mr-1', width = 2),
-            dbc.Col(html.Div(totalPnl), class_name = 'bg-primary mr-1', width = 3),
-            dbc.Col(html.Div(execString), class_name = 'bg-primary mr-1', width = 2),
-            dbc.Col(dbc.Switch(id={'role': 'switchStratEnabled', 'strategy':strategyType, 'symbol': symbol}, input_class_name = color_switch, value = stratEnabled), class_name = 'bg-primary mr-1', width = 1),
+            dbc.Col(html.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), class_name = 'bg-primary mr-1', xs=5, md=3),
+            dbc.Col(html.Div(posQty), class_name = 'bg-primary mr-1', xs=1, md=1),
+            dbc.Col(html.Div(priceTotal), class_name = 'bg-primary mr-1', xs=4, md=2),
+            dbc.Col(html.Div(totalPnl), class_name = 'd-none d-md-block bg-primary mr-1', md=3),
+            dbc.Col(html.Div(execString), class_name = 'd-none d-md-block bg-primary mr-1', md=2),
+            dbc.Col(dbc.Switch(id={'role': 'switchStratEnabled', 'strategy':strategyType, 'symbol': symbol}, input_class_name = color_switch, value = stratEnabled), class_name = 'bg-primary mr-1', xs=2, md=1),
         ], className = 'text-white mb-1'
     )
     

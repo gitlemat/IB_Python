@@ -1,6 +1,7 @@
 import logging
 import datetime
 import strategyPentagramaRuNew2
+import pandasDB
 import pandas as pd
 
 
@@ -53,8 +54,8 @@ class Strategies():
         for strategy in self.stratList_:
             dfPart_ = strategy['classObject'].pandas_.dbGetExecsDataframeAll()
             dfPart_['Strategy'] = strategy['type'] + '/' + strategy['symbol']
-            df = pd.concat([df, dfPart_])
-
+            #df = pd.concat([df, dfPart_])
+            df = pandasDB.dbPandasConcat(df, dfPart_)
         return df
 
     def strategyEnableDisable (self, symbol, strategyType, state):

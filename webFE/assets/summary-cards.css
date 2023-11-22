@@ -1,0 +1,32 @@
+
+@media (max-width: 768px) {
+  [id^='{\"role\":\"Card-'] {
+      font-size: .7rem
+  }
+
+  [id^='summary-card-l-'] {
+      padding-left: 0;
+      padding-right: 0;
+  }
+  
+  [id^='summary-card-r-'] {
+      padding-left: 0;
+      padding-right: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  [id^='{\"role\":\"Card-'] {
+      font-size: .9rem
+  }
+  
+  [id^='summary-card-l-'] {
+      padding-left: 0;
+      padding-right: 12;
+  }
+  
+  [id^='summary-card-r-'] {
+      padding-left: 12;
+      padding-right: 0;
+  }
+}

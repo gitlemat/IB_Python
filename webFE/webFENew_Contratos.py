@@ -33,14 +33,14 @@ def layout_contratos_tab ():
             ),
             dbc.Row(
                 [
-                    dbc.Col(html.Div("Symbol"), className = 'bg-primary mr-1', width = 4),
-                    dbc.Col(html.Div("Pos"), className = 'bg-primary mr-1', width = 1),
-                    dbc.Col(html.Div("AvgPrice"), className = 'bg-primary', width = 1),
-                    dbc.Col(html.Div("Buy"), className = 'bg-success', width = 1),
-                    dbc.Col(html.Div("Sell"), className = 'bg-primary', width = 1),
-                    dbc.Col(html.Div("Last"), className = 'bg-primary', width = 1),
-                    dbc.Col(html.Div("Comment"), className = 'bg-primary', width = 2),
-                    dbc.Col(html.Div("Order"), className = 'bg-primary', width = 1),
+                    dbc.Col(html.Div("Symbol"), id='contract-header-symbol', className = 'text9-7 bg-primary mr-1', xs=5, md = 4),
+                    dbc.Col(html.Div("Pos"), id='contract-header-pos', className = 'text9-7 bg-primary mr-1', xs=1, md=1),
+                    dbc.Col(html.Div("AvgPrice"), id='contract-header-avg', className = 'text9-7 bg-primary', xs=2, md=1),
+                    dbc.Col(html.Div("Buy"), id='contract-header-buy', className = 'text9-7 d-none d-md-block bg-success', md = 1),
+                    dbc.Col(html.Div("Sell"), id='contract-header-sell', className = 'text9-7 d-none d-md-block bg-primary', md = 1),
+                    dbc.Col(html.Div("Last"), id='contract-header-last', className = 'text9-7 bg-primary',  xs=2, md=1),
+                    dbc.Col(html.Div("Comment"), id='contract-header-comm', className = 'text9-7 d-none d-md-block bg-primary', md = 2),
+                    dbc.Col(html.Div("Order"), id='contract-header-order', className = 'text9-7 bg-primary',  xs=2, md=1),
                 ], className = 'mb-3 text-white'
                 ),
             ]
@@ -49,19 +49,20 @@ def layout_contratos_tab ():
     #################################
     # Preparacion de Tab de contratos
     logging.info ('Contratos')
+    tabContratos_ind = []
+    tabContratos_dir = []
     for gConId, contrato in data.items():
 
         indirect = globales.G_RTlocalData_.contractIndirectoGet (gConId) # Podria leer de contrato, pero es una guarregria (como mucho de lo que hay aqui)
         logging.debug ('Contrato Indirecto %s', indirect)
-        if indirect:
-            continue
+        
         headerRowInn = contratosObtenerFilas (contrato, False)  
         random_wait = random.randint(0,2000) + 4000
 
         headerRow = html.Div(
             [
                 html.Div(
-                    headerRowInn, id ={'role':'contract_header', 'gConId': str(gConId)}
+                    headerRowInn, className = 'text9-7', id ={'role':'contract_header', 'gConId': str(gConId)}
                 ),
                 dcc.Interval(
                     id={'role': 'IntervalContractLine', 'gConId': str(gConId)},
@@ -76,16 +77,15 @@ def layout_contratos_tab ():
 
         
         bSaveEn = not contrato['dbPandas'].toSaveComp
-        buttonExpandYFinance = dbc.Button("yFinance", id={'role': 'yFinanceButton', 'gConId':str(gConId)}, className="me-2", n_clicks=0)
-        buttonSaveYFinance = dbc.Button("Guardar", id={'role': 'yFinanceSaveButton', 'gConId':str(gConId)}, className="me-2", n_clicks=0, disabled=bSaveEn)
-        buttonRefresh = dbc.Button("Refresh", id={'role': 'RefreshButton', 'gConId':str(gConId)}, className="me-2", n_clicks=0)
+        buttonExpandYFinance = dbc.Button("yFinance", id={'role': 'yFinanceButton', 'gConId':str(gConId)}, className="text9-7 me-2", n_clicks=0)
+        buttonSaveYFinance = dbc.Button("Guardar", id={'role': 'yFinanceSaveButton', 'gConId':str(gConId)}, className="text9-7 me-2", n_clicks=0, disabled=bSaveEn)
+        buttonRefresh = dbc.Button("Refresh", id={'role': 'RefreshButton', 'gConId':str(gConId)}, className="text9-7 me-2", n_clicks=0)
         
-
         # Todo lo que se oculta junto
         collapseDetails = dbc.Collapse(
             dbc.Row(
                 [
-                    dbc.Col(insideDetailsData, width = 5),
+                    dbc.Col(insideDetailsData, xs=12, md=5),
                     dbc.Col(
                         [
                             dbc.Row(graphColumn),
@@ -96,15 +96,25 @@ def layout_contratos_tab ():
                                     dbc.Col(buttonRefresh),
                                 ],
                             ),
-                        ], width = 7)
+                        ], xs=12, md=7)
                 ],
             ),
+            className = 'text9-7',
             id={'role': 'colapseContract', 'gConId': str(gConId)},
             is_open=False,
         )        
 
-        tabContratos.append(headerRow)
-        tabContratos.append(collapseDetails)
+        if indirect:
+            tabContratos_ind.append(headerRow)
+            tabContratos_ind.append(collapseDetails)
+        else:
+            tabContratos_dir.append(headerRow)
+            tabContratos_dir.append(collapseDetails)
+
+    # Añadimos los directos e indirectos
+    tabContratos += tabContratos_dir
+    tabContratos.append(html.Hr())
+    tabContratos += tabContratos_ind
 
     tabContratosWLLabel = [
         dbc.Row(
@@ -113,15 +123,20 @@ def layout_contratos_tab ():
                 html.P("Contratos WatchList", className='text-left text-secondary mb-4 ps-0 display-6')
             ]
         ),
-        contratosEditWatchList(),
+        dbc.Row(
+            [
+                contratosEditWatchList(),
+            ],
+        ),
         dbc.Row(
             [
                 dbc.Col(
                     [
-                        dbc.Button("Guardar", id={'role': 'ContractWLButtonSave'}, className="mr-3, mt-4", n_clicks=0),
-                        dbc.Button("Reload", id={'role': 'ContractWLButtonReload'}, className="mr-3, mt-4", n_clicks=0)
+                        dbc.Button("Guardar", id={'role': 'ContractWLButtonSave'}, className="text9-7 mr-3, mt-4", n_clicks=0),
+                        dbc.Button("Reload", id={'role': 'ContractWLButtonReload'}, className="text9-7 mr-3, mt-4", n_clicks=0)
                     ],
-                    width = 3
+                    className = 'noPads',
+                    xs = 12, md = 3,
                 ),
             ]
         ),
@@ -150,14 +165,14 @@ def contratosObtenerFilas (contrato, update = False):
     # Cada fila de cabecera
     headerRow = dbc.Row(
             [
-                dbc.Col(dbc.Button(symbol,id={'role': 'botonContract', 'gConId': str(gConId)}), className = 'bg-primary mr-1', width = 4),
-                dbc.Col(html.Div(posQty), className = 'bg-primary mr-1', width = 1),
-                dbc.Col(html.Div(posavgCost), className = 'bg-primary', width = 1),
-                dbc.Col(html.Div(priceBuy), className = 'bg-success', width = 1),
-                dbc.Col(html.Div(priceSell), className = 'bg-primary', width = 1),
-                dbc.Col(html.Div(priceLast), className = 'bg-primary', width = 1),
-                dbc.Col(html.Div("Comment"), className = 'bg-primary', width = 2),
-                dbc.Col(dbc.Button(html.I(className="bi bi-bag-plus me-2"),id={'role': 'boton_order_create', 'gConId': str(gConId)}), className = 'bg-primary', width = 1),
+                dbc.Col(html.Button(symbol,className = 'botonContract', id={'role': 'botonContract', 'gConId': str(gConId)}), className = 'text9-7 bg-primary mr-1', xs=5, md=4),
+                dbc.Col(html.Div(posQty), className = 'text9-7 bg-primary mr-1', xs=1, md=1),
+                dbc.Col(html.Div(posavgCost), className = 'text9-7 bg-primary', xs=2, md=1),
+                dbc.Col(html.Div(priceBuy), className = 'text9-7 d-none d-md-block bg-success', md=1),
+                dbc.Col(html.Div(priceSell), className = 'text9-7 d-none d-md-block bg-primary', md=1),
+                dbc.Col(html.Div(priceLast), className = 'text9-7 bg-primary', xs=2, md=1),
+                dbc.Col(html.Div("Comment"), className = 'text9-7 d-none d-md-block bg-primary', md=2),
+                dbc.Col(html.Button(html.I(className="bi bi-bag-plus me-2"),className = 'botonContract', id={'role': 'boton_order_create', 'gConId': str(gConId)}), className = 'text9-7 bg-primary',  xs=2, md=1),
             ], className = 'text-white mb-1',
     )  
 
@@ -214,9 +229,10 @@ def contratosEditWatchList ():
                 id = {'role': 'contratosInputWatchList'},
                 rows = n_rows, 
                 value = text.rstrip(), 
-                className="ps-0"
+                className="text9-7 ps-0"
             ),
-        ]
+        ],
+        className = 'noPads',
     )
     return textareas
 

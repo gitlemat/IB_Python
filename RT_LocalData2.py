@@ -195,35 +195,37 @@ class DataLocalRT():
                         pos_min = 0 # No son del mismo signo, no nos vale
                     logging.debug("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
                 # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
-                if pos_min != 0: # Hay algo
-                    logging.info("[Posicion] Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
-                    avgPrice = 0.0
-                    for contractLegInfo in contrato['contractReqIdLegs']:
-                        conId = contractLegInfo['conId']
-                        ratio = contractLegInfo['ratio']
-                    
-                        if contractLegInfo['action'] == 'SELL':
-                            ratio = (-1) * ratio # Normalizando a siempre positivo (BUY) o siempre negativo (SELL)
+                # UPDATE: Mejor no robar nada, y que los contratos conserven su posicion sin restar nada.
+                
+                logging.info("[Posicion] Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
+                avgPrice = 0.0
+                for contractLegInfo in contrato['contractReqIdLegs']:
+                    conId = contractLegInfo['conId']
+                    ratio = contractLegInfo['ratio']
+                
+                    if contractLegInfo['action'] == 'SELL':
+                        ratio = (-1) * ratio # Normalizando a siempre positivo (BUY) o siempre negativo (SELL)
 
-                        avgPrice += self.contractDict_[conId]['posAvgPrice'] * ratio
+                    avgPrice += self.contractDict_[conId]['posAvgPrice'] * ratio
 
-                        deltaPos = pos_min * ratio
-                        self.contractDict_[conId]['pos'] -= int(deltaPos)
-                        if self.contractDict_[conId]['pos'] == 0:
-                            self.contractDict_[conId]['posAvgPrice'] = 0.0
+                    deltaPos = pos_min * ratio
+                    #self.contractDict_[conId]['pos'] -= int(deltaPos)
+                    if self.contractDict_[conId]['pos'] == 0:
+                        self.contractDict_[conId]['posAvgPrice'] = 0.0
 
-                        logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
-                    #Finalmente, pongo pos_min al BAG
-                    if contrato['pos'] == None: # Inicializamos
-                        contrato['pos'] = 0
-                    contrato['pos'] = int(pos_min)
-                    contrato['posAvgPrice'] = avgPrice
+                    logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
+                
+                #Finalmente, pongo pos_min al BAG
+                if contrato['pos'] == None: # Inicializamos
+                    contrato['pos'] = 0
+                contrato['pos'] = int(pos_min)
+                contrato['posAvgPrice'] = avgPrice
 
     def positionDeleteAll (self):
         # Pasar por contracts y borrar posiciones
         for gConId, contrato in self.contractDict_.items():
             contrato['pos'] = None
-            contrato['posAvgPrice'] = None
+            contrato['posAvgPrice'] = 0.0
 
     def positionSummaryBrief (self, gConId):
         summaryStr = ''
@@ -358,14 +360,14 @@ class DataLocalRT():
         if gConId in self.contractDict_:
             if self.contractDict_[gConId]['contract'].conId == 0:
                 self.contractDict_[gConId]['contract'].conId = contractObj.conId
-            return
+            return gConId
 
         contrato = {}
         contrato['gConId'] = gConId
         contrato['fullSymbol'] = None
         contrato['contract'] = contractObj
         contrato['pos'] = None
-        contrato['posAvgPrice'] = None
+        contrato['posAvgPrice'] = 0.0
         if contractObj.secType == "BAG":
             contrato['fullLegData'] = False
         else:

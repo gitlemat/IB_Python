@@ -32,7 +32,7 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComp
                     label="Dejar cerrar las posiciones y no regenerar",
                     value=cerrarPos,
                 )
-        ]
+        ], id={'role': 'form_cerrarPos', 'strategy':'PentagramaRu', 'symbol': symbol}
     )
 
     # El boton de recarga
@@ -44,8 +44,8 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComp
     contenido_caja = html.Div(
         dbc.Row(
                 [
-                    dbc.Col(grupo_switches, width=10),
-                    dbc.Col(boton_reload, width=2)
+                    dbc.Col(grupo_switches, width=9),
+                    dbc.Col(boton_reload, width=3)
                 ]
             ),
         )
@@ -73,8 +73,9 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComp
     # Las ordenes ejecutadas de PentagramaRu
 
     df_execs = estrategia['classObject'].pandas_.dbGetExecsDataframeAll()
-    df_execs.sort_index(ascending=False, inplace = True)
-    df_execs['timestamp'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
+    if len(df_execs) > 0:
+        df_execs.sort_index(ascending=False, inplace = True)
+        df_execs['timestamp'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
 
     columnas = [
         {'id': "timestamp", 'name': "Fecha", 'type': 'datetime'},
@@ -100,12 +101,15 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComp
             ),
             dbc.Row(
                 [
-                    dbc.Col(graphColumn1, width=6),
-                    dbc.Col(graphColumn2, width=6)
+                    dbc.Col(graphColumn1, 'md-6'),
+                    dbc.Col(graphColumn2, 'md-6')
                 ],  className = 'mb-3' 
             ),
             dbc.Row(
-                    tablaExecs,
+                html.Div(
+                    tablaExecs, 
+                    id={'role': 'TableExecs', 'strategy':'PentagramaRu', 'symbol': symbol},
+                ),
             ),
             dbc.Row(
                     graphComponentes, className = 'mb-3' 
@@ -181,7 +185,7 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
     dfToday = contrato['dbPandas'].dbGetDataframeToday()
     LastPrice = None
     if len(dfToday.index) > 0:
-        LastPrice = dfToday['close'][-1]
+        LastPrice = dfToday['close'].iloc[-1]
     fig2 = go.Figure()
 
     # Valores de LAST
@@ -213,6 +217,31 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
     # Y las zonas
     fig2 = addZonesLinesTodayRu (fig2, estrategia, dfToday)
 
+    #######
+    # Esto es por si quiero controlar el rango de Y y concentrarme en el candle
+    # Seria util cuando estamos lejos de los niveñes de las zonas
+    #
+    '''
+    levelRanges = getZonesRanges(estrategia)
+    if len (dfToday) > 0:
+        minLevelToday = min (dfToday['open'], dfToday['high'], dfToday['low'], dfToday['close'])
+        maxLevelToday = max (dfToday['open'], dfToday['high'], dfToday['low'], dfToday['close'])
+    else:
+        minLevelToday = levelRanges['minLevel']
+        maxLevelToday = levelRanges['maxLevel']
+
+    rangeLevelToday = maxLevelToday - minLevelToday
+    display_min = minLevelToday
+    display_max = maxLevelToday
+    
+    if levelRanges['minLevel'] < minLevelToday:
+        display_min = minLevelToday - rangeLevelToday*0.25
+    if levelRanges['maxLevel'] > maxLevelToday:
+        display_max = maxLevelToday + rangeLevelToday*0.25
+    
+    '''
+    #######
+
     fig2.update_xaxes(
         rangebreaks=[
             dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
@@ -227,12 +256,14 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
     rannn = str(random.randint(0,1000))
     logging.debug ('Grafico actualizado con %s', rannn)
     fig2.update_layout(showlegend=False, 
+                       font_size=10,
+                       title_font_size=13,
                        xaxis_rangeslider_visible=False, 
                        yaxis={'side': 'right'} ,
                        title_text='Datos Tiempo Real Hoy', 
                        title_x = 0.5,
                        title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40),
+                       margin=dict(l=0, r=0, t=40, b=40),
                        hovermode="x unified")
 
     contrato['dbPandas'].toPrint = False
@@ -267,10 +298,26 @@ def addZonesLinesTodayRu (fig2, estrategia, dfToday):
 
     return fig2
 
+def getZonesRanges (estrategia):
+    maxLevel = None
+    minLevel = None
+    for zone in estrategia['classObject'].zones_:  
+        if maxLevel == None:
+            maxLevel = zone['orderBlock'].Price_
+        if minLevel == None:
+            minLevel = zone['orderBlock'].Price_
+        
+        maxLevel = max (maxLevel, zone['orderBlock'].PrecioSL_, zone['orderBlock'].PrecioTP_)
+        minLevel = max (minLevel, zone['orderBlock'].PrecioSL_, zone['orderBlock'].PrecioTP_)
 
+    ret = {'maxLevel': maxLevel, 'minLevel': minLevel}
+
+    return ret
 
 def layout_getStrategyPenRuTableOrders (estrategia, update = False):
 
+    if estrategia == None:
+        return no_update
     #orden = globales.G_RTlocalData_.orderGetByOrderId(lOrderId)
     if estrategia['classObject'] == None:
         return no_update
@@ -286,10 +333,10 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 [
                    html.Th(""), 
                    html.Th("Order Id"),
-                   html.Th("Perm Id"),
+                   html.Th("Perm Id", className = 'd-none d-md-block'),
                    html.Th("Lmt"),
-                   html.Th("Type"),
-                   html.Th("Action"),
+                   html.Th("Type", className = 'd-none d-md-block'),
+                   html.Th("Action", className = 'd-none d-md-block'),
                    html.Th("Status"),
                    html.Th("Qty"),
                    html.Th("Fix"),
@@ -321,6 +368,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 statusParent = ordenParent['params']['status']
             else:
                 statusParent = 'N/A'
+                statusParent = 'PreSubmitted'
             lmtParent = ordenParent['order'].lmtPrice
             actionParent = ordenParent['order'].action
             if ordenParent['order'].orderType == 'STP':  # No va a pasar nunca
@@ -334,6 +382,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 actionParent = 'BUY'
             typeParent = 'LMT'
             statusParent = 'N/A'
+            statusParent = 'PreSubmitted'
 
         if actionParent == 'SELL':
             posParent = posParent * (-1)
@@ -418,13 +467,13 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 #html.Td(str(zone['OrderId'])),
                 #html.Td(str(zone['OrderPermId'])),
                 html.Td(str(zone['orderBlock'].orderId_), style={'background-color':'transparent'}),
-                html.Td(str(zone['orderBlock'].orderPermId_), style={'background-color':'transparent'}),
+                html.Td(str(zone['orderBlock'].orderPermId_), className = 'd-none d-md-block', style={'background-color':'transparent'}),
                 html.Td(str(lmtParent), style={'background-color':'transparent'}),
-                html.Td(str(typeParent), style={'background-color':'transparent'}),
-                html.Td(str(actionParent), style={'background-color':'transparent'}),
+                html.Td(str(typeParent), className = 'd-none d-md-block', style={'background-color':'transparent'}),
+                html.Td(str(actionParent), className = 'd-none d-md-block', style={'background-color':'transparent'}),
                 html.Td(str(statusParent), style={'background-color':'transparent'}),
                 html.Td(str(posParent), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderId_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderId_), 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorParent}
         )
 
@@ -434,13 +483,13 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 #html.Td(str(zone['OrderIdTP'])),
                 #html.Td(str(zone['OrderPermIdTP'])),
                 html.Td(str(zone['orderBlock'].orderIdTP_), style={'background-color':'transparent'}),
-                html.Td(str(zone['orderBlock'].orderPermIdTP_), style={'background-color':'transparent'}),
+                html.Td(str(zone['orderBlock'].orderPermIdTP_), className = 'd-none d-md-block', style={'background-color':'transparent'}),
                 html.Td(str(lmtTP), style={'background-color':'transparent'}),
-                html.Td(str(typeTP), style={'background-color':'transparent'}),
-                html.Td(str(actionTP), style={'background-color':'transparent'}),
+                html.Td(str(typeTP), className = 'd-none d-md-block', style={'background-color':'transparent'}),
+                html.Td(str(actionTP), className = 'd-none d-md-block', style={'background-color':'transparent'}),
                 html.Td(str(statusTP), style={'background-color':'transparent'}),
                 html.Td(str(posTP), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderIdTP_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderIdTP_), 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorTP}
         )
 
@@ -450,13 +499,13 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 #html.Td(str(zone['OrderIdSL'])),
                 #html.Td(str(zone['OrderPermIdSL'])),
                 html.Td(str(zone['orderBlock'].orderIdSL_), style={'background-color':'transparent'}),
-                html.Td(str(zone['orderBlock'].orderPermIdSL_), style={'background-color':'transparent'}),
+                html.Td(str(zone['orderBlock'].orderPermIdSL_), className = 'd-none d-md-block', style={'background-color':'transparent'}),
                 html.Td(str(lmtSL), style={'background-color':'transparent'}),
-                html.Td(str(typeSL), style={'background-color':'transparent'}),
-                html.Td(str(actionSL), style={'background-color':'transparent'}),
+                html.Td(str(typeSL), className = 'd-none d-md-block', style={'background-color':'transparent'}),
+                html.Td(str(actionSL), className = 'd-none d-md-block', style={'background-color':'transparent'}),
                 html.Td(str(statusSL), style={'background-color':'transparent'}),
                 html.Td(str(posSL), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': zone['orderBlock'].orderIdSL_, 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderIdSL_), 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorSL}
         )
 

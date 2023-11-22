@@ -22,69 +22,51 @@ def layout_init():
 
     return layout
 
-# Los estilos están en el folder assets
-def layout_sidebar():
+# the style arguments for the sidebar. We use position:fixed and a fixed width
+SIDEBAR_STYLE = {
+    "position": "fixed",
+    "top": 0,
+    "left": 0,
+    "bottom": 0,
+    "width": "16rem",
+    "padding": "2rem 1rem",
+    "background-color": "#f8f9fa",
+}
 
-    sidebar_header = dbc.Row(
-        [
-            dbc.Col(html.Div("RODSIC", className="display-5")),
-            dbc.Col(
-                html.Button(
-                    # use the Bootstrap navbar-toggler classes to style the toggle
-                    html.Span(className="navbar-toggler-icon"),
-                    className="navbar-toggler",
-                    # the navbar-toggler classes don't set color, so we do it here
-                    style={
-                        "color": "rgba(0,0,0,.5)",
-                        "border-color": "rgba(0,0,0,.1)",
-                    },
-                    id="toggle-sidebar",
-                ),
-                # the column containing the toggle will be only as wide as the
-                # toggle, resulting in the toggle being right aligned
-                width="auto",
-                # vertically align the toggle in the center
-                align="center",
-            ),
-        ]
-    )
+# the styles for the main content position it to the right of the sidebar and
+# add some padding.
+CONTENT_STYLE = {
+    "margin-left": "18rem",
+    "margin-right": "2rem",
+    "padding": "2rem 1rem",
+}
+
+def layout_sidebar():
 
     sidebar = html.Div(
         [
-            sidebar_header,
-            # we wrap the horizontal rule and short blurb in a div that can be
-            # hidden on a small screen
-            html.Div(
-                [
-                    html.Hr(),
-                    html.P(
-                        "Yate con enanos",
-                        className="lead",
-                    ),
-                ],
-                id="blurb",
+            html.H2("RODSIC", className="display-4"),
+            html.Hr(),
+            html.P(
+                "Yate con enanos", className="lead"
             ),
-            # use the Collapse component to animate hiding / revealing links
-            dbc.Collapse(
-                dbc.Nav(
-                    [
-                        dbc.NavLink("Summary", id="nav-1", href="/Summary", active="exact"),
-                        dbc.NavLink("Estrategias", id="nav-2", href="/Estrategias", active="exact"),
-                        dbc.NavLink("Contratos", id="nav-3", href="/Contratos", active="exact"),
-                        dbc.NavLink("Ordenes", id="nav-4", href="/Ordenes", active="exact"),
-                        dbc.NavLink("Cuenta", id="nav-5", href="/Account", active="exact"),
-                        dbc.NavLink("Logs", id="nav-6", href="/Logs", active="exact"),
-                    ],
-                    vertical=True,
-                    pills=True,
-                ),
-                id="collapse-sidebar",
+            dbc.Nav(
+                [
+                    dbc.NavLink("Summary", href="/Summary", active="exact"),
+                    dbc.NavLink("Estrategias", href="/Estrategias", active="exact"),
+                    dbc.NavLink("Contratos", href="/Contratos", active="exact"),
+                    dbc.NavLink("Ordenes", href="/Ordenes", active="exact"),
+                    dbc.NavLink("Cuenta", href="/Account", active="exact"),
+                    dbc.NavLink("Logs", href="/Logs", active="exact"),
+                ],
+                vertical=True,
+                pills=True,
             ),
         ],
-        id="sidebar",
-    )    
+        style=SIDEBAR_STYLE,
+    )
 
-    content = html.Div(id="page-content-main")
+    content = html.Div(id="page-content", style=CONTENT_STYLE)
 
     layout = html.Div([dcc.Location(id="url"), sidebar, content])
 
@@ -110,7 +92,7 @@ def modal_error(usecase):
     )
     return modal
 
-@callback(Output("page-content-main", "children"), [Input("url", "pathname")])
+@callback(Output("page-content", "children"), [Input("url", "pathname")])
 def render_page_content(pathname):
     if pathname == "/":
         return webFE.webFENew_Summary.layout_summary_tab()
@@ -135,17 +117,6 @@ def render_page_content(pathname):
         ],
         className="p-3 bg-light rounded-3",
     )
-
-# Callback para el menu lateral/superior
-@callback(
-    Output("collapse-sidebar", "is_open"),
-    [Input("toggle-sidebar", "n_clicks")],
-    [State("collapse-sidebar", "is_open")],
-)
-def toggle_collapse(n, is_open):
-    if n:
-        return not is_open
-    return is_open
 
 # Callback para colapsar o mostrar filas Generico
 @callback(
