@@ -5,7 +5,7 @@ from dash.exceptions import PreventUpdate
 
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-from webFE.webFENew_Utils import formatCurrency, layout_getFigureHistorico
+from webFE.webFENew_Utils import formatCurrency, layout_getFigureHistorico, layout_getFigura_split
 import random
 import globales
 import logging
@@ -72,7 +72,11 @@ def layout_contratos_tab ():
             ]
         )
 
-        insideDetailsData, graphColumn = contratosObtenerInsideDetails (contrato, data, False)
+        ret = contratosObtenerInsideDetails (contrato, data, False)
+
+        insideDetailsData = ret['caja']
+        graphColumn = ret['graphOhcl']
+        graphSplit = ret['graphSplit']
         #insideDetailsBotonesZonas.append(dbc.Row())
 
         
@@ -83,23 +87,28 @@ def layout_contratos_tab ():
         
         # Todo lo que se oculta junto
         collapseDetails = dbc.Collapse(
-            dbc.Row(
-                [
-                    dbc.Col(insideDetailsData, xs=12, md=5),
-                    dbc.Col(
-                        [
-                            dbc.Row(graphColumn),
-                            dbc.Row(
-                                [
-                                    dbc.Col(buttonExpandYFinance),
-                                    dbc.Col(buttonSaveYFinance),
-                                    dbc.Col(buttonRefresh),
-                                ],
-                            ),
-                        ], xs=12, md=7)
-                ],
-            ),
-            className = 'text9-7',
+            [
+                dbc.Row(
+                    [
+                        dbc.Col(insideDetailsData, className = 'noPads', xs=12, md=5),
+                        dbc.Col(
+                            [
+                                dbc.Row(graphColumn),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(buttonExpandYFinance),
+                                        dbc.Col(buttonSaveYFinance),
+                                        dbc.Col(buttonRefresh),
+                                    ],
+                                ),
+                            ], xs=12, md=7)
+                    ],
+                ),
+                dbc.Row(
+                    graphSplit
+                )
+            ],
+            className = 'text9-7 mb-2',
             id={'role': 'colapseContract', 'gConId': str(gConId)},
             is_open=False,
         )        
@@ -182,23 +191,36 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
     # Los detalles que se ocultan. Dos columnas, detalles y figura 
     # Primero los detalles
     gConId = contrato['gConId']
+    symbol = contrato['fullSymbol']
     insideDetailsData = []
-    insideDetailsData.append(html.Div(children = "gConId: " + str(contrato['gConId']), style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "ConId: " + str(contrato['contract'].conId), style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "Symbol: " + str(contrato['contract'].localSymbol), style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "secType: " + str(contrato['contract'].secType), style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "indirecto: " + str(contrato['contratoIndirecto']), style = {"margin-left": "40px"}))
+    insideDetailsData.append(html.Div(children = "gConId: " + str(contrato['gConId'])))
+    insideDetailsData.append(html.Div(children = "ConId: " + str(contrato['contract'].conId)))
+    insideDetailsData.append(html.Div(children = "Local symbol: " + str(contrato['contract'].localSymbol)))
+    insideDetailsData.append(html.Div(children = "secType: " + str(contrato['contract'].secType)))
+    insideDetailsData.append(html.Div(children = "indirecto: " + str(contrato['contratoIndirecto'])))
     if contrato['contract'].secType == "BAG":
         for leg in contrato['contract'].comboLegs:
-            insideDetailsData.append(html.Div(children = "Leg: ", style = {"margin-left": "40px"}))
-            insideDetailsData.append(html.Div(children = "ConId: " + str(leg.conId), style = {"margin-left": "80px"}))
-            insideDetailsData.append(html.Div(children = "Action: " + str(leg.action), style = {"margin-left": "80px"}))
-            insideDetailsData.append(html.Div(children = "Ratio: " + str(leg.ratio), style = {"margin-left": "80px"}))
-            insideDetailsData.append(html.Div(children = "LocalSymbol: " + data[leg.conId]['contract'].localSymbol, style = {"margin-left": "80px"}))
-            insideDetailsData.append(html.Div(children = "LastOrderDate: " + data[leg.conId]['contract'].lastTradeDateOrContractMonth, style = {"margin-left": "80px"}))
+            insideDetailsData.append(html.Div(children = "Leg: "))
+            insideDetailsData.append(html.Div(children = "ConId: " + str(leg.conId), style = {"margin-left": "40px"}))
+            insideDetailsData.append(html.Div(children = "Action: " + str(leg.action), style = {"margin-left": "40px"}))
+            insideDetailsData.append(html.Div(children = "Ratio: " + str(leg.ratio), style = {"margin-left": "40px"}))
+            insideDetailsData.append(html.Div(children = "LocalSymbol: " + data[leg.conId]['contract'].localSymbol, style = {"margin-left": "40px"}))
+            insideDetailsData.append(html.Div(children = "LastOrderDate: " + data[leg.conId]['contract'].lastTradeDateOrContractMonth, style = {"margin-left": "40px"}))
 
     elif contrato['contract'].secType == "FUT":
-        insideDetailsData.append(html.Div(children = "Date: " + str(contrato['contract'].lastTradeDateOrContractMonth), style = {"margin-left": "40px"}))
+        insideDetailsData.append(html.Div(children = "Date: " + str(contrato['contract'].lastTradeDateOrContractMonth)))
+
+    contenido_caja = html.Div(
+        dbc.Row(
+                [
+                    dbc.Col(insideDetailsData, width=12),
+
+                ]
+            ),
+            className='text9-7'
+        )
+
+    caja_inicial_top = dbc.Card(contenido_caja, body=True),
 
     # El grafico
     #fig = px.line(contrato['dbPandas'].dbGetDataframe(), x="timestamp", y="LAST", title="LAST Evolution") 
@@ -214,7 +236,32 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
         )
     )
 
-    return insideDetailsData, graphColumn
+    fig3 = layout_getFigura_split(symbol)   # Lo tengo en una funcion para que sea facil actualizar
+    graphColumn3 = html.Div([
+        dcc.Graph(
+                id={'role': 'graphDetailsSpread', 'symbol': symbol},
+                animate = False,
+                figure = fig3
+        )
+    ])
+    switch_compon_base = html.Div([
+        dbc.Switch(
+            id={'role': 'switch_componentes_base', 'symbol': symbol},
+            label="Inicio a cero",
+            value=False,
+            className = 'mt-0 mt-md-5' 
+        )],
+        id={'role': 'switch_componentes_form', 'symbol': symbol},
+    )
+
+    graphComponentes = [
+        dbc.Col(graphColumn3, md=10),
+        dbc.Col(switch_compon_base, md=2)
+    ]
+
+    ret = {'caja': caja_inicial_top, 'graphOhcl': graphColumn, 'graphSplit': graphComponentes}
+
+    return ret
 
 def contratosEditWatchList ():
     contractsWL = globales.G_RTlocalData_.contractReturnFixedWatchlist()
@@ -605,3 +652,22 @@ def contractRefreshSave(n_button1, n_button2):
     bSaveEn = not contrato['dbPandas'].toSaveComp
 
     return bSaveEn, fig
+
+#Callback para actualizar grafica Split
+@callback(
+    Output({'role': 'graphDetailsSpread', 'symbol': MATCH}, 'figure'),
+    Input ({'role': 'switch_componentes_base', 'symbol': MATCH}, 'value'),
+    prevent_initial_call = True,
+)
+def actualizarFiguraComponentes (state_base):
+    if not ctx.triggered_id:
+        raise PreventUpdate
+    if globales.G_RTlocalData_.strategies_ == None:
+        raise PreventUpdate
+
+    symbol = ctx.triggered_id['symbol']
+
+    fig3 = layout_getFigura_split(symbol, state_base)
+
+    #return  zonasFilaBorderDown, no_update, no_update
+    return  fig3

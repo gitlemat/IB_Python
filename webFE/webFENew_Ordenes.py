@@ -28,7 +28,7 @@ def layout_ordenes_tab ():
                     ),
                     dbc.Col(
                         html.Div(
-                            dbc.Button("Pedir Update", id={'role': 'ZoneButtonReqOrderUpdate'}, className="me-0", n_clicks=0),
+                            dbc.Button("Pedir Update", id={'role': 'ZoneButtonReqOrderUpdate'}, className="text9-7 me-0", n_clicks=0),
                             className="text-end"
                         ),
                         className = 'pe-0',
@@ -44,15 +44,15 @@ def layout_ordenes_tab ():
             ),
             dbc.Row(
                 [
-                    dbc.Col(html.Div("OrdenId"), className = 'bg-primary mr-1', width = 1),
-                    dbc.Col(html.Div("Symbol"), className = 'bg-primary mr-1', width = 2),
-                    dbc.Col(html.Div("Action"), className = 'bg-primary', width = 1),
-                    dbc.Col(html.Div("Status"), className = 'bg-success', width = 1),
-                    dbc.Col(html.Div("Fill Status"), className = 'bg-primary', width = 1),
-                    dbc.Col(html.Div("LastFill"), className = 'bg-primary', width = 1),
-                    dbc.Col(html.Div("Estrategia"), className = 'bg-primary', width = 3),
-                    dbc.Col(html.Div("Update"), className = 'bg-primary', width = 1),
-                    dbc.Col(html.Div("Cancel"), className = 'bg-primary', width = 1),
+                    dbc.Col(html.Div("OrdenId"), className = 'text9-7 bg-primary mr-1', xs=1, md=1),
+                    dbc.Col(html.Div("Symbol"), className = 'text9-7 bg-primary mr-1', xs=5, md=2),
+                    dbc.Col(html.Div("Action"), className = 'text9-7 d-none d-md-block bg-primary', md=1),
+                    dbc.Col(html.Div("Status"), className = 'text9-7 bg-success', xs=3, md=1),
+                    dbc.Col(html.Div("Fill Status"), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
+                    dbc.Col(html.Div("LastFill"), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
+                    dbc.Col(html.Div("Estrategia"), className = 'text9-7 bg-primary', xs=3, md = 3),
+                    dbc.Col(html.Div("Update"), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
+                    dbc.Col(html.Div("Cancel"), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
                 ], className = 'mb-3 text-white'
                 ),
             ]
@@ -82,7 +82,7 @@ def layout_ordenes_tab ():
         collapseDetails = dbc.Collapse(
             dbc.Row(
                 [
-                    dbc.Col(insideDetailsData),
+                    dbc.Col(insideDetailsData, className = 'noPads'),
                 ],
             ),
             id={'role': 'colapse', 'index': lOrderId},
@@ -123,19 +123,20 @@ def ordenesObtenerFilas (orden, update = False):
     if strategy == None:
         lStrategy = 'N/A'
     else:
-        lStrategy = strategy['strategy'] + ' [' + strategy['symbol'] + ']'
+        #lStrategy = strategy['strategy'] + ' [' + strategy['symbol'] + ']'
+        lStrategy = strategy['strategy']
 
     headerRow = dbc.Row(
             [
-                dbc.Col(dbc.Button(str(lOrderId),id={'role': 'boton', 'index': lOrderId}), className = 'bg-primary mr-1', width = 1),
-                dbc.Col(html.Div(symbol), className = 'bg-primary mr-1', width = 2),
-                dbc.Col(html.Div(lAction), className = 'bg-primary', width = 1),
-                dbc.Col(html.Div(lStatus), className = 'bg-success', width = 1),
-                dbc.Col(html.Div(lFillState), className = 'bg-primary', width = 1),
-                dbc.Col(html.Div(lLastFillPrice), className = 'bg-primary', width = 1),
-                dbc.Col(html.Div(lStrategy), className = 'bg-primary', width = 3),
-                dbc.Col(dbc.Button(html.I(className="bi bi-pencil-square me-2"),id={'role': 'boton_order_update', 'orderId': str(lOrderId)}), className = 'bg-primary', width = 1),
-                dbc.Col(dbc.Button(html.I(className="bi bi-x-circle me-2"),id={'role': 'boton_order_cancel', 'orderId': str(lOrderId)}), className = 'bg-primary', width = 1),
+                dbc.Col(dbc.Button(str(lOrderId),id={'role': 'boton', 'index': lOrderId},className = 'text9-7 botonContract'), className = 'text9-7 bg-primary mr-1', xs=1, md = 1),
+                dbc.Col(html.Div(symbol), className = 'text9-7 bg-primary mr-1', xs=5, md = 2),
+                dbc.Col(html.Div(lAction), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
+                dbc.Col(html.Div(lStatus), className = 'text9-7 bg-success', xs=3, md = 1),
+                dbc.Col(html.Div(lFillState), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
+                dbc.Col(html.Div(lLastFillPrice), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
+                dbc.Col(html.Div(lStrategy), className = 'text9-7 bg-primary', xs=3,  md = 3),
+                dbc.Col(dbc.Button(html.I(className="bi bi-pencil-square me-2"),className = 'botonContract',id={'role': 'boton_order_update', 'orderId': str(lOrderId)}), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
+                dbc.Col(dbc.Button(html.I(className="bi bi-x-circle me-2"),className = 'botonContract',id={'role': 'boton_order_cancel', 'orderId': str(lOrderId)}), className = 'text9-7 d-none d-md-block bg-primary', md = 1),
             ], className = 'text-white mb-1'
     )  
     orden['toPrint'] = False
@@ -143,6 +144,7 @@ def ordenesObtenerFilas (orden, update = False):
 
 def ordenesObtenerInsideDetails (orden, update = False):
     lorderType = orden['order'].orderType
+    lOrderId = orden['order'].orderId
     lPermId = str(orden['order'].permId)
     lgConId = str(orden['contractId'])
     lLmtPrice = orden['order'].lmtPrice
@@ -151,17 +153,59 @@ def ordenesObtenerInsideDetails (orden, update = False):
     lTif = orden['order'].tif
     lOca = orden['order'].ocaGroup
 
+    lAction = orden['order'].action
+    lQty = str(orden['order'].totalQuantity)
+    lFilled = str(orden['params']['filled']) if 'filled' in orden['params'] else ''
+    lRemaining = str(orden['params']['remaining']) if 'remaining' in orden['params'] else ''
+    lLastFillPrice = orden['params']['lastFillPrice'] if 'lastFillPrice' in orden['params'] else ''
+
+    strategy = globales.G_RTlocalData_.strategies_.strategyGetStrategyByOrderId (lOrderId)
+    if strategy != None and 'strategy' in orden and orden['strategy'] != None:
+        strategy['strategy'] = orden['strategy'].straType_
+    if strategy == None:
+        lStrategy = 'N/A'
+    else:
+        #lStrategy = strategy['strategy'] + ' [' + strategy['symbol'] + ']'
+        lStrategy = strategy['strategy']
+
     lLmtPrice = formatCurrency (lLmtPrice)
+    lLastFillPrice = formatCurrency (lLastFillPrice)
 
     insideDetailsData = []
-    insideDetailsData.append(html.Div(children = "gConId: " + lgConId, style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "PermId: " + lPermId, style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "Order Type: " + lorderType, style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "Limit Price: " + lLmtPrice, style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "Time in Force: " + lTif, style = {"margin-left": "40px"}))
-    insideDetailsData.append(html.Div(children = "OCA Group: " + lOca, style = {"margin-left": "40px"}))
+    insideDetailsData.append(html.Div(children = "Action: " + lAction))
+    insideDetailsData.append(html.Div(children = "Qty: " + lQty))
+    insideDetailsData.append(html.Div(html.Br()))
+    insideDetailsData.append(html.Div(children = "Order Type: " + lorderType))
+    insideDetailsData.append(html.Div(children = "Limit Price: " + lLmtPrice))
+    insideDetailsData.append(html.Div(children = "Time in Force: " + lTif))
+    insideDetailsData.append(html.Div(children = "Last Fill Price: " + lLastFillPrice))
+    insideDetailsData.append(html.Div(html.Br()))
+    insideDetailsData.append(html.Div(children = "Filled: " + lFilled))
+    insideDetailsData.append(html.Div(children = "Remaining: " + lRemaining))
+    insideDetailsData.append(html.Div(html.Br()))
+    insideDetailsData.append(html.Div(children = "gConId: " + lgConId))
+    insideDetailsData.append(html.Div(children = "PermId: " + lPermId))
 
-    return insideDetailsData
+    insideDetailsData.append(html.Div(html.Br()))
+    insideDetailsData.append(html.Div(children = "Strategy: " + lStrategy))
+
+    boton_update = dbc.Button(html.I(className="bi bi-pencil-square me-2"),className = 'botonInside mb-2',id={'role': 'boton_order_update_in', 'orderId': str(lOrderId)})
+    boton_cancel = dbc.Button(html.I(className="bi bi-x-circle me-2"),className = 'botonInside',id={'role': 'boton_order_cancel_in', 'orderId': str(lOrderId)})
+
+    contenido_caja = html.Div(
+        dbc.Row(
+                [
+                    dbc.Col(insideDetailsData, width=9),
+                    dbc.Col([boton_update, boton_cancel], width=3),
+
+                ]
+            ),
+            className='text9-7'
+        )
+
+    caja_inicial_top = dbc.Card(contenido_caja, body=True),
+
+    return caja_inicial_top
 
 def modal_ordenCancel():
 
@@ -326,6 +370,7 @@ def modal_ordenUpdate():
     Output("order_update_parentId", "value"),
     Output("modalOrdenUpdate_main", "is_open"),
     Input({'role': 'boton_order_update', 'orderId': ALL}, "n_clicks"),
+    Input({'role': 'boton_order_update_in', 'orderId': ALL}, "n_clicks"),
     Input("order_update_symbol", "placeholder"),
     Input("order_update_orderId", "value"),
     Input("order_update_qty", "value"),
@@ -338,7 +383,7 @@ def modal_ordenUpdate():
     Input("modalOrdenUpdate_boton_close", "n_clicks"),
     State("modalOrdenUpdate_main", "is_open"), prevent_initial_call = True,
 )
-def updateOrder (n_button_open, s_symbol, orderId, n_qty, n_LmtPrice, s_action, s_orderType, s_oca, s_parentId, n_button_create, n_button_close, open_status):
+def updateOrder (n_button_open, n_button_open_in, s_symbol, orderId, n_qty, n_LmtPrice, s_action, s_orderType, s_oca, s_parentId, n_button_create, n_button_close, open_status):
 
     # Esto es por si las moscas
     if not ctx.triggered_id:
@@ -347,6 +392,9 @@ def updateOrder (n_button_open, s_symbol, orderId, n_qty, n_LmtPrice, s_action, 
     # Esto es por si las moscas
     pageLoad = True
     for button in  n_button_open:
+        if button != None:
+            pageLoad = False
+    for button in  n_button_open_in:
         if button != None:
             pageLoad = False
     if pageLoad:
@@ -461,12 +509,13 @@ def actualizarFilaOrdenes (n_intervals):
     Output("order_cancel_orderId", "value"),
     Output("modal_cancelOrder_main", "is_open"),
     Input({'role': 'boton_order_cancel', 'orderId': ALL}, "n_clicks"),
+    Input({'role': 'boton_order_cancel_in', 'orderId': ALL}, "n_clicks"),
     Input("modal_cancelOrder_boton_cancel", "n_clicks"),
     Input("modal_cancelOrder_boton_close", "n_clicks"),
     Input("order_cancel_orderId", "value"),
     State("modal_cancelOrder_main", "is_open"), prevent_initial_call = True,
 )
-def cancelOrder (n_button_open, n_button_cancel, n_button_close, orderId, open_status):
+def cancelOrder (n_button_open, n_button_open_in, n_button_cancel, n_button_close, orderId, open_status):
 
     # Esto es por si las moscas
     if not ctx.triggered_id:
@@ -475,6 +524,9 @@ def cancelOrder (n_button_open, n_button_cancel, n_button_close, orderId, open_s
     # Esto es por si las moscas
     pageLoad = True
     for button in  n_button_open:
+        if button != None:
+            pageLoad = False
+    for button in  n_button_open_in:
         if button != None:
             pageLoad = False
     if pageLoad:

@@ -49,6 +49,9 @@ def layout_account_tab ():
 
 def layout_getFigura (update = False):
 
+    if globales.G_RTlocalData_.accountPandas_ == None:
+        return no_update
+
     dfAccount = globales.G_RTlocalData_.accountPandas_.dbGetAccountData()
 
     dfAccount = dfAccount.astype({'NetLiquidation':'float'})
@@ -80,8 +83,9 @@ def layout_getFigura (update = False):
         fig2.add_annotation(
             x = dfAccount.index[-1],
             y = LastPrice,
-            #text = f"{LastPrice:0.2f}",
+            #text = f"{LastPrice:0.4s}",
             text = LastPrice,
+            #text = '1.2M',
             xshift=20,
             yshift=0,
             bordercolor='green',
@@ -92,16 +96,18 @@ def layout_getFigura (update = False):
         )
 
     fig2.update_yaxes(
-        tickformat='.2f'
+        tickformat='.3s',
     )
 
     fig2.update_layout(showlegend=False, 
+                       font_size=10,
+                       title_font_size=13,
                        xaxis_rangeslider_visible=False, 
                        yaxis={'side': 'right'} ,
                        title_text='NetLiquidation', 
                        title_x = 0.5,
                        title_xanchor = 'center',
-                       margin=dict(l=10, r=10, t=40, b=40),
+                       margin=dict(l=0, r=0, t=40, b=40),
                        hovermode="x unified")
 
     globales.G_RTlocalData_.accountPandas_.toPrint = False

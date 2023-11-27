@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import webFE.webFENew_Strat_PentaRu
-from webFE.webFENew_Utils import formatCurrency
+from webFE.webFENew_Utils import formatCurrency, layout_getFigura_split
 import globales
 import logging
 import random
@@ -121,7 +121,7 @@ def layout_strategies_tab():
             )
         ])
         
-        fig3 = layout_getFigura3(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
+        fig3 = layout_getFigura_split(symbol)   # Lo tengo en una funcion para que sea facil actualizar
         graphColumn3 = html.Div([
             dcc.Graph(
                     id={'role': 'graphDetailsSpread', 'strategy': stratType, 'symbol': symbol},
@@ -175,7 +175,7 @@ def layout_getFigura2(estrategia):
 
     return fig2
 
-
+'''
 def layout_getFigura3(estrategia, base = False):
     stratType = estrategia['type']
     fig3 = None
@@ -239,6 +239,7 @@ def layout_getFigura3(estrategia, base = False):
                     )
 
     return fig3
+'''
 
 def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphComponentes):
     stratType = estrategia['type']
@@ -570,10 +571,8 @@ def actualizarFiguraComponentes (state_base):
         raise PreventUpdate
 
     symbol = ctx.triggered_id['symbol']
-    stratType = ctx.triggered_id['strategy']
-    estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, stratType)
-
-    fig3 = layout_getFigura3(estrategia, state_base)
+  
+    fig3 = layout_getFigura_split(symbol, state_base)
 
     #return  zonasFilaBorderDown, no_update, no_update
     return  fig3

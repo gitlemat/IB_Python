@@ -34,6 +34,30 @@ def formatCurrency (cantidad):
     
     return (currency)
 
+def formatCurrencySmall (cantidad, digits):
+    try:
+        cantidad = float(cantidad)
+    except:
+        logging.error ('La cantidad no es correcta')
+        return None
+    if digits < 1:
+        return canidad
+
+    cantidad_orig = cantidad
+
+    template = 1
+    fin = False
+
+    while not fin:
+        template = template * 10
+        if (cantidad / template) >= 1:
+            fin = True
+
+    if template >= 1000000000:
+        cantidad_out = cantidad/1000000000
+        
+
+
 def layout_getFigureHistorico (contrato):
 
     fig1 = go.Figure()
@@ -116,6 +140,71 @@ def layout_getFigureHistorico (contrato):
 
     return fig1
 
+def layout_getFigura_split (symbolSpread, base = False):
+    fig3 = None
+
+    spread_list = globales.G_RTlocalData_.appObj_.contractCode2list(symbolSpread)
+    if len(spread_list) < 1:
+        return fig3
+
+    if len(spread_list) > 1:  
+        spread_list.append ({'action':'BAG', 'ratio': 1, 'code': symbolSpread})
+
+    fig3 = go.Figure()
+    fig3 = make_subplots(specs=[[{"secondary_y": True}]])
+
+    for comp in spread_list:
+        symbol = comp['code']
+        contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
+        if not contrato:
+            logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
+            break
+        if contrato['dbPandas']:
+            df_comp = contrato['dbPandas'].dbGetDataframeComp()
+            if base:
+                base_level = df_comp.iloc[0]["close"]
+            else:
+                base_level = 0
+            if comp ['action'] == 'BAG':
+                eje_sec = True
+                linel = dict(color='rgb(150,150,150)', width=1, dash='dash')
+            else:
+                eje_sec = False
+                linel = dict(width=2)
+            fig3.add_trace(
+                go.Scatter(
+                    x=df_comp.index, 
+                    y=(df_comp["close"]-base_level), 
+                    line=linel,
+                    mode="lines", 
+                    connectgaps = True, 
+                    name = symbol
+                ),
+                secondary_y=eje_sec
+            )
+
+    
+    fig3.update_xaxes(
+        rangebreaks=[
+            dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
+            dict(bounds=[21.1, 15], pattern="hour"),  # hide hours outside of 9.30am-4pm
+            #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
+        ]
+    )
+
+    fig3.update_layout(showlegend=True, 
+                       font_size=10,
+                       title_font_size=13,
+                       xaxis_rangeslider_visible=False, 
+                       title_text='Componentes', 
+                       title_x = 0.5,
+                       title_xanchor = 'center',
+                       margin=dict(l=0, r=0, t=40, b=40),
+                       legend_x=0, legend_y=1,
+                       hovermode="x unified"
+                    )
+
+    return fig3
 
 
 

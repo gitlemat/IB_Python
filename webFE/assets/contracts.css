@@ -11,6 +11,11 @@
     background-color: transparent;
   }
 
+.botonInside {
+    color: blue;
+    background-color: transparent;
+  }
+
   .noPads {
     padding-left: 0px;
     padding-right: 0px;

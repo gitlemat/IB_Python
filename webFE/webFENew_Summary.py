@@ -93,8 +93,10 @@ def layout_summary_tab ():
             columns = columnas,
             page_size=20,
             filter_action="native",
-        )
-    ])
+            )
+        ],
+        className='text9-7'
+    )
     #logging.info ('%s', df_execs)
 
     for i in range(0, len(all_cards), 2):
