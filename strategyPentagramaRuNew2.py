@@ -198,24 +198,41 @@ class strategyPentagramaRu(strategyBaseClass):
         #data:
         #    orderId -> con esto identifico la zona
         # asumimos que si el order es parent, se recrea todo, si es child, solo la OCA
-        if 'orderId' not in data:
+        if 'orderId' in data:
+            lorderId = data['orderId']
+        elif 'orderIntId' in data:
+            lorderIntId = data['orderIntId']
+        else:
             logging.error('StrategyFix sin orderId. %s', data)
-        lorderId = data['orderId']
+            return False
 
         ret = False
 
-        for zoneItem in self.zones_:
-            if zoneItem['orderBlock'].orderBlockGetIfOrderId(lorderId):
-                if lorderId == zoneItem['orderBlock'].orderId_:
-                    fixType = 'ALL'
-                else:
-                    fixType = 'OCA'
-                data = {'fixType': fixType}
-                logging.info ('[Estrategia PentagramaRu (%s)] Vamos a hacer un fix de orderId: %s, y fixType: %s', self.symbol_, lorderId , fixType)
-                ret = zoneItem['orderBlock'].orderBlockOrderFix(data)
-                if ret != None:
-                    self.ordersUpdated_ = True
-                break
+        if 'orderId' in data:
+            lorderId = data['orderId']
+
+            for zoneItem in self.zones_:
+                if zoneItem['orderBlock'].orderBlockGetIfOrderId(lorderId):
+                    if lorderId == zoneItem['orderBlock'].orderId_:
+                        fixType = 'ALL'
+                    else:
+                        fixType = 'OCA'
+                    data = {'fixType': fixType}
+                    logging.info ('[Estrategia PentagramaRu (%s)] Vamos a hacer un fix de orderId: %s, y fixType: %s', self.symbol_, lorderId , fixType)
+                    ret = zoneItem['orderBlock'].orderBlockOrderFix(data)
+                    if ret != None:
+                        self.ordersUpdated_ = True
+                    break
+        elif 'orderIntId' in data:
+            lorderIntId = data['orderIntId']
+            for zoneItem in self.zones_:
+                if zoneItem['orderBlock'].orderBlockGetIfOrderIntId(lorderIntId):
+                    data = {'fixType': 'ALL'}
+                    logging.info ('[Estrategia PentagramaRu (%s)] Vamos a hacer un fix de orderIntId: %s, y fixType: ALL', self.symbol_, lorderIntId)
+                    ret = zoneItem['orderBlock'].orderBlockOrderFix(data)
+                    if ret != None:
+                        self.ordersUpdated_ = True
+                    break
 
         return ret
 

@@ -461,6 +461,13 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         disableOcaFix = not fixOCA
         disableParentFix = not fixParent
 
+        #id="{"orderIntId":"HEM4-2HEN4+HEQ4PentagramaRu-3.0-2.8-4.5","role":"boton_fix","symbol":"HEM4-2HEN4+HEQ4"}
+
+        if zone['orderBlock'].orderId_ == None:
+            id_boton = {'role': 'boton_fix', 'orderIntId': str(zone['orderBlock'].intId_), 'symbol': symbol}
+        else:
+            id_boton = {'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderId_), 'symbol': symbol}
+
         insideDetailsStratParent = html.Tr(
             [
                 html.Td("Parent", style={'background-color':'transparent'}), 
@@ -473,7 +480,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionParent), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
                 html.Td(str(statusParent), style={'background-color':'transparent'}),
                 html.Td(str(posParent), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderId_), 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id=id_boton, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorParent}
         )
 
@@ -536,6 +543,13 @@ def modal_ordenFix():
         placeholder = "",
     )
 
+    orderOrderIntId = dcc.Input(
+        id = "order_fix_orderIntId",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
     orderStratType = dcc.Input(
         id = "order_fix_stratType",
         type = "text",
@@ -571,6 +585,11 @@ def modal_ordenFix():
             style={'margin-top': '8px', 'margin-bottom': '4px'},
             className='font-weight-bold'),
         orderOrderId,
+
+        html.P('Su Internal Id es: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderOrderIntId,
     ])
     
     modal = html.Div(
@@ -662,19 +681,22 @@ def reloadStrategyRuFiles(n_clicks):
 # Callback para fix
 @callback(
     Output("order_fix_orderId", "value"),
+    Output("order_fix_orderIntId", "value"),
     Output("order_fix_stratType", "value"),
     Output("order_fix_symbol", "value"),
     Output("modal_fixOrder_main", "is_open"),
     Input({'role': 'boton_fix', 'orderId': ALL, 'symbol': ALL}, "n_clicks"),
+    Input({'role': 'boton_fix', 'orderIntId': ALL, 'symbol': ALL}, "n_clicks"),
     Input("modal_fixOrder_boton_fix", "n_clicks"),
     Input("modal_fixOrder_boton_close", "n_clicks"),
     Input("order_fix_orderId", "value"),
+    Input("order_fix_orderIntId", "value"),
     Input("order_fix_stratType", "value"),
     Input("order_fix_symbol", "value"),
     State("modal_fixOrder_main", "is_open"), 
     prevent_initial_call = True,
 )
-def fixStrategyRuOrdenes (n_button_open, n_button_fix, n_button_close, orderId, stratType, Symbol, open_status):
+def fixStrategyRuOrdenes (n_button_open, n_button_open2, n_button_fix, n_button_close, orderId, orderIntId, stratType, Symbol, open_status):
 
     # Esto es por si las moscas
     if not ctx.triggered_id:
@@ -685,38 +707,51 @@ def fixStrategyRuOrdenes (n_button_open, n_button_fix, n_button_close, orderId, 
     for button in  n_button_open:
         if button != None:
             pageLoad = False
+    for button in  n_button_open2:
+        if button != None:
+            pageLoad = False
     if pageLoad:
         raise PreventUpdate
 
 
-    logging.debug('Trigger %s', ctx.triggered_id)
+    logging.info('Trigger %s', ctx.triggered_id)
 
     if ctx.triggered_id == "modal_fixOrder_boton_close":
-        return None, None, None, False
+        return None, None, None, None, False
     
     if ctx.triggered_id == "modal_fixOrder_boton_fix":
         
         #ahora hay que arreglar
-        logging.info('[Orden (%s)] Fix esta orden desde GUI', str(orderId))
+        if orderId != 'None' and orderId != None:
+            logging.info('[Orden (%s)] Fix esta orden desde GUI', str(orderId))
+            data = {'orderId': orderId}
+        else:
+            logging.info('[Orden (%s)] Fix esta orden desde GUI', str(orderIntId))
+            data = {'orderIntId': orderIntId}
 
         stratType = 'PentagramaRu'
 
-        data = {'orderId': orderId}
-    
         try:
             result = globales.G_RTlocalData_.strategies_.strategyIndexFix (data)
             result = True
         except:
             logging.error ("Exception occurred", exc_info=True)
 
-        return None, None, None, False
+        return None, None, None, None, False
             
+    orderId = None
+    orderIntId = None
 
     if 'orderId' in ctx.triggered_id:
         orderId = int(ctx.triggered_id['orderId'])
         Symbol = ctx.triggered_id['symbol']
         stratType = 'PentagramaRu'
-        return orderId, stratType, Symbol, True
+        return orderId, orderIntId, stratType, Symbol, True
+    elif 'orderIntId' in ctx.triggered_id:
+        orderIntId = ctx.triggered_id['orderIntId']
+        Symbol = ctx.triggered_id['symbol']
+        stratType = 'PentagramaRu'
+        return orderId, orderIntId, stratType, Symbol, True
 
 # Callback para enable/disable cerrarPos
 @callback(

@@ -1504,6 +1504,7 @@ class DataLocalRT():
         for orden in self.orderList_: 
             if orden['order'].orderId == orderId:
                 return orden
+        logging.debug ('[Orden %s] No encontrada', str(orderId))
         return None
 
     def orderGetByGconId (self, gConId):

@@ -157,7 +157,7 @@ def ordenesObtenerInsideDetails (orden, update = False):
     lQty = str(orden['order'].totalQuantity)
     lFilled = str(orden['params']['filled']) if 'filled' in orden['params'] else ''
     lRemaining = str(orden['params']['remaining']) if 'remaining' in orden['params'] else ''
-    lLastFillPrice = orden['params']['lastFillPrice'] if 'lastFillPrice' in orden['params'] else ''
+    lLastFillPrice = formatCurrency(orden['params']['lastFillPrice']) if 'lastFillPrice' in orden['params'] else ''
 
     strategy = globales.G_RTlocalData_.strategies_.strategyGetStrategyByOrderId (lOrderId)
     if strategy != None and 'strategy' in orden and orden['strategy'] != None:
@@ -169,7 +169,8 @@ def ordenesObtenerInsideDetails (orden, update = False):
         lStrategy = strategy['strategy']
 
     lLmtPrice = formatCurrency (lLmtPrice)
-    lLastFillPrice = formatCurrency (lLastFillPrice)
+    if lLmtPrice == None:
+        lLmtPrice = 'N/A'
 
     insideDetailsData = []
     insideDetailsData.append(html.Div(children = "Action: " + lAction))

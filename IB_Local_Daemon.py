@@ -342,6 +342,7 @@ def main():
                     except:
                         logging.error('Error en el loop con commissionAnalisys', exc_info=True)
                 if callbackItem['type'] == 'order':
+                    bChange = False
                     try:
                         bChange = globales.G_RTlocalData_.orderUpdate(callbackItem['data']) # Me dice si hay cambio o no
                     except:

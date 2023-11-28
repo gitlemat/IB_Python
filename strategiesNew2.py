@@ -79,17 +79,28 @@ class Strategies():
 
     def strategyIndexFix (self, data):
         # data: 
-        #   orderId
-        orderId = data['orderId']
-        
+        #   orderId  -> si lo tengo
+        #   orderIntId -> por si no tengo orderId
+
         toWrite = {}
         ret = None
-        for strategy in self.stratList_:
-            if strategy['classObject'].strategyGetIfOrderId(orderId):
-                ret = strategy['classObject'].strategyFix(data)
-                if ret:
-                    logging.info ('[Estrategia %s (%s)]. Actualizo Fichero', strategy['type'], strategy['symbol'])
-                    toWrite[strategy['type']] = True
+
+        if 'orderId' in data:
+            orderId = data['orderId']
+            for strategy in self.stratList_:
+                if strategy['classObject'].strategyGetIfOrderId(orderId):
+                    ret = strategy['classObject'].strategyFix(data)
+                    if ret:
+                        logging.info ('[Estrategia %s (%s)]. Actualizo Fichero', strategy['type'], strategy['symbol'])
+                        toWrite[strategy['type']] = True
+        elif 'orderIntId' in data:
+            orderIntId = data['orderIntId']
+            for strategy in self.stratList_:
+                if strategy['classObject'].strategyGetIfOrderIntId(orderIntId):
+                    ret = strategy['classObject'].strategyFix(data)
+                    if ret:
+                        logging.info ('[Estrategia %s (%s)]. Actualizo Fichero', strategy['type'], strategy['symbol'])
+                        toWrite[strategy['type']] = True
 
         self.strategyWriteFile(toWrite)
 
@@ -144,6 +155,8 @@ class Strategies():
     def strategyIndexOrderUpdate (self, data):
 
         orderId = data['orderId']
+        #logging.info ('Estrategia. Actualizacion en ordenId %s', str(orderId))
+
         order = self.RTLocalData_.orderGetByOrderId(orderId) # Nos va a dar su permId que usaremos para los datos guardados        
         if not order:
             return
@@ -161,6 +174,8 @@ class Strategies():
                 # Es mejor que continue para procesar cosas pendientes. Bloqueamos ordenes nuevas. Lo dejo para acrdarme de porque es mejor aí
                 if strategy['classObject'].stratEnabled_ == False:   
                     pass
+
+                #logging.info ('Estrategia: %s [%s]: Actualizacion en ordenId %s', strategy['classObject'].straType_, symbol, str(orderId))
 
                 bChanged = False
 

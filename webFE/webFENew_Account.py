@@ -9,6 +9,8 @@ import logging
 import globales
 import random
 
+from webFE.webFENew_Utils import formatCurrencySmall
+
 logger = logging.getLogger(__name__)
 logger_root = logging.getLogger()
 
@@ -64,6 +66,8 @@ def layout_getFigura (update = False):
         LastPrice = dfAccount['NetLiquidation'][-1]
     else:
         LastPrice = 0.0
+
+    LastPriceText = formatCurrencySmall(LastPrice, 2)
     fig2 = go.Figure()
 
     fig2.add_trace(
@@ -83,9 +87,7 @@ def layout_getFigura (update = False):
         fig2.add_annotation(
             x = dfAccount.index[-1],
             y = LastPrice,
-            #text = f"{LastPrice:0.4s}",
-            text = LastPrice,
-            #text = '1.2M',
+            text = LastPriceText,
             xshift=20,
             yshift=0,
             bordercolor='green',
@@ -94,6 +96,14 @@ def layout_getFigura (update = False):
             opacity=0.8,
             showarrow=False
         )
+
+    fig2.update_xaxes(
+        rangebreaks=[
+            dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
+            #dict(bounds=[20.25, 15.16], pattern="hour"),  # hide hours outside of 9.30am-4pm
+            #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
+        ]
+    )
 
     fig2.update_yaxes(
         tickformat='.3s',

@@ -797,7 +797,7 @@ class IBI_App(EWrapper, EClient):
         queueEntry = {'type':'order', 'data': data}
         self.CallbacksQueuePrio_.put(queueEntry)
 
-        time.sleep (1)
+        #time.sleep (1)
         
         self.nextorderId += 1
         return (orderId)

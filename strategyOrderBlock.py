@@ -90,6 +90,7 @@ class bracketOrderClass():
     def __init__(self, data , symbol, straType, regenerate, RTlocalData):
         # regenerate es por si queremos que se regenere o no.
         self.symbol_ = symbol
+        self.intId_ = symbol+straType
         self.orderId_ = None
         self.orderIdSL_ = None
         self.orderIdTP_ = None
@@ -131,10 +132,13 @@ class bracketOrderClass():
             self.Qty_ = data['Qty']
         if data and 'Price' in data:
             self.Price_ = data['Price']
+            self.intId_ += str(self.Price_)
         if data and 'PrecioTP' in data:
             self.PrecioTP_ = data['PrecioTP']
+            self.intId_ += str(self.PrecioTP_)
         if data and 'PrecioSL' in data:
             self.PrecioSL_ = data['PrecioSL']
+            self.intId_ += str(self.PrecioSL_)
 
         logging.info ('Order Block:')
         logging.info ('------------')
@@ -157,12 +161,20 @@ class bracketOrderClass():
 
 
     def orderBlockGetIfOrderId(self, orderId):
+        logging.debug('Buscando orderId: %s', orderId)
+        logging.debug('    Comparo con: %s, %s, %s', self.orderId_ , self.orderIdSL_ , self.orderIdTP_ )
+
         if self.orderId_ == orderId or self.orderIdSL_ == orderId or self.orderIdTP_ == orderId:
             return True
         return False
-
+    
     def orderBlockGetIfOrderPermId(self, orderPermId):
         if self.orderPermId_ == orderPermId or self.orderPermIdSL_ == orderPermId or self.orderPermIdTP_ == orderPermId:
+            return True
+        return False
+
+    def orderBlockGetIfOrderIntId(self, orderIntId):
+        if self.intId_ == orderIntId:
             return True
         return False
 

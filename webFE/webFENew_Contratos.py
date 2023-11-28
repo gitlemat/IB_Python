@@ -236,28 +236,30 @@ def contratosObtenerInsideDetails (contrato, data, update = False):
         )
     )
 
-    fig3 = layout_getFigura_split(symbol)   # Lo tengo en una funcion para que sea facil actualizar
-    graphColumn3 = html.Div([
-        dcc.Graph(
-                id={'role': 'graphDetailsSpread', 'symbol': symbol},
-                animate = False,
-                figure = fig3
+    graphComponentes = []
+    if not contrato['contratoIndirecto']:
+        fig3 = layout_getFigura_split(symbol)   # Lo tengo en una funcion para que sea facil actualizar
+        graphColumn3 = html.Div([
+            dcc.Graph(
+                    id={'role': 'graphDetailsSpread', 'symbol': symbol},
+                    animate = False,
+                    figure = fig3
+            )
+        ])
+        switch_compon_base = html.Div([
+            dbc.Switch(
+                id={'role': 'switch_componentes_base', 'symbol': symbol},
+                label="Inicio a cero",
+                value=False,
+                className = 'mt-0 mt-md-5' 
+            )],
+            id={'role': 'switch_componentes_form', 'symbol': symbol},
         )
-    ])
-    switch_compon_base = html.Div([
-        dbc.Switch(
-            id={'role': 'switch_componentes_base', 'symbol': symbol},
-            label="Inicio a cero",
-            value=False,
-            className = 'mt-0 mt-md-5' 
-        )],
-        id={'role': 'switch_componentes_form', 'symbol': symbol},
-    )
-
-    graphComponentes = [
-        dbc.Col(graphColumn3, md=10),
-        dbc.Col(switch_compon_base, md=2)
-    ]
+    
+        graphComponentes = [
+            dbc.Col(graphColumn3, md=10),
+            dbc.Col(switch_compon_base, md=2)
+        ]
 
     ret = {'caja': caja_inicial_top, 'graphOhcl': graphColumn, 'graphSplit': graphComponentes}
 

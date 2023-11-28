@@ -27,6 +27,13 @@ class strategyBaseClass():
             if ret:
                 return True
         return False
+
+    def strategyGetIfOrderIntId(self, orderIntId):
+        for orderBlock in self.orderBlocks_:
+            ret = orderBlock.orderBlockGetIfOrderIntId(orderIntId)
+            if ret:
+                return True
+        return False
     
     def strategyGetIfOrderPermId(self, orderPermId):
         for orderBlock in self.orderBlocks_:
