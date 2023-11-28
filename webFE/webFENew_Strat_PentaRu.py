@@ -366,9 +366,11 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             typeParent = ordenParent['order'].orderType
             if ordenParent['params'] != None and 'status' in ordenParent['params']:
                 statusParent = ordenParent['params']['status']
+            elif zone['orderBlock'].BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F']:
+                statusParent = 'Filled'
             else:
                 statusParent = 'N/A'
-                statusParent = 'PreSubmitted'
+                #statusParent = 'PreSubmitted'
             lmtParent = ordenParent['order'].lmtPrice
             actionParent = ordenParent['order'].action
             if ordenParent['order'].orderType == 'STP':  # No va a pasar nunca
@@ -381,8 +383,11 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             else:
                 actionParent = 'BUY'
             typeParent = 'LMT'
-            statusParent = 'N/A'
-            statusParent = 'PreSubmitted'
+            if zone['orderBlock'].BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F']:
+                statusParent = 'Filled'
+            else:
+                statusParent = 'N/A'
+            #statusParent = 'PreSubmitted'
 
         if actionParent == 'SELL':
             posParent = posParent * (-1)
