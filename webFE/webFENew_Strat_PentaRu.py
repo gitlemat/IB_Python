@@ -154,15 +154,15 @@ def addZonesLinesHistoricoRu (fig1, estrategia, df_comp):
 
         if zone['orderBlock'].Price_ not in limitList:
             zoneborder = [zone['orderBlock'].Price_] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None), secondary_y=True)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, hoverinfo='skip', connectgaps = True, fill=None), secondary_y=True)
             limitList.append(zone['orderBlock'].Price_)
         if zone['orderBlock'].PrecioSL_ not in limitList:
             zoneborder = [zone['orderBlock'].PrecioSL_] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None), secondary_y=True)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", hoverinfo='skip', line_width=1, connectgaps = True, fill=None), secondary_y=True)
             limitList.append(zone['orderBlock'].PrecioSL_)
         if zone['orderBlock'].PrecioTP_ not in limitList:
             zoneborder = [zone['orderBlock'].PrecioTP_] * len (df_comp.index)
-            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None), secondary_y=True)
+            fig1.add_trace(go.Scatter(x=df_comp.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", hoverinfo='skip', line_width=1, connectgaps = True, fill=None), secondary_y=True)
             limitList.append(zone['orderBlock'].PrecioTP_)
 
 
@@ -198,7 +198,8 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
             open=dfToday['open'], 
             high=dfToday['high'],
             low=dfToday['low'],
-            close=dfToday['close']
+            close=dfToday['close'],
+            hoverlabel_split=True
         )
     )
     if len(dfToday.index) > 0 and LastPrice != None:
@@ -281,19 +282,19 @@ def addZonesLinesTodayRu (fig2, estrategia, dfToday):
             if ordenMain != None and ordenMain['params'] != None and 'status' in ordenMain['params']:
                 if ordenMain['params']['status'] == 'Submitted':
                     zoneborder = [zone['orderBlock'].Price_] * len (dfToday.index)
-                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_color="gray", line_width=1, hoverinfo='skip', connectgaps = True, fill=None))
                     limitList.append(zone['orderBlock'].Price_)
         if zone['orderBlock'].PrecioSL_ not in limitList:
             if ordenSL != None and ordenSL['params'] != None and 'status' in ordenSL['params']:
                 if ordenSL['params']['status'] == 'Submitted':
                     zoneborder = [zone['orderBlock'].PrecioSL_] * len (dfToday.index)
-                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", hoverinfo='skip', line_width=1, connectgaps = True, fill=None))
                     limitList.append(zone['orderBlock'].PrecioSL_)
         if zone['orderBlock'].PrecioTP_ not in limitList:
             if ordenTP != None and ordenTP['params'] != None and 'status' in ordenTP['params']:
                 if ordenTP['params']['status'] == 'Submitted':
                     zoneborder = [zone['orderBlock'].PrecioTP_] * len (dfToday.index)
-                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", line_width=1, connectgaps = True, fill=None))
+                    fig2.add_trace(go.Scatter(x=dfToday.index, y=zoneborder, mode="lines", line_dash='dash', line_color="gray", hoverinfo='skip', line_width=1, connectgaps = True, fill=None))
                     limitList.append(zone['orderBlock'].PrecioTP_)
 
     return fig2
@@ -463,8 +464,19 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
         if statusSL in ['N/A']:
             backgroundColorSL = '#cf5338'
 
-        disableOcaFix = not fixOCA
-        disableParentFix = not fixParent
+        if fixParent:
+            boton_color_parent = '#000000'
+            disableParentFix = False
+        else:
+            boton_color_parent = '#A5A5A5'
+            disableParentFix = True
+
+        if fixOCA:
+            boton_color_oca = '#000000'
+            disableOcaFix = False
+        else:
+            boton_color_oca = '#A5A5A5'
+            disableOcaFix = True
 
         #id="{"orderIntId":"HEM4-2HEN4+HEQ4PentagramaRu-3.0-2.8-4.5","role":"boton_fix","symbol":"HEM4-2HEN4+HEQ4"}
 
@@ -485,13 +497,13 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionParent), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
                 html.Td(str(statusParent), style={'background-color':'transparent'}),
                 html.Td(str(posParent), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id=id_boton, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id=id_boton, style={'color': boton_color_parent, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorParent}
         )
 
         insideDetailsStratTP = html.Tr(
             [
-                html.Td("T Profit", style={"textAlign": "right", 'background-color':'transparent'}), 
+                html.Td("TP", style={"textAlign": "right", 'background-color':'transparent'}), 
                 #html.Td(str(zone['OrderIdTP'])),
                 #html.Td(str(zone['OrderPermIdTP'])),
                 html.Td(str(zone['orderBlock'].orderIdTP_), style={'background-color':'transparent'}),
@@ -501,13 +513,13 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionTP), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
                 html.Td(str(statusTP), style={'background-color':'transparent'}),
                 html.Td(str(posTP), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderIdTP_), 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderIdTP_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorTP}
         )
 
         insideDetailsStratSL = html.Tr(
             [
-                html.Td("Stop Loss", style={"textAlign": "right", 'background-color':'transparent'}), 
+                html.Td("SL", style={"textAlign": "right", 'background-color':'transparent'}), 
                 #html.Td(str(zone['OrderIdSL'])),
                 #html.Td(str(zone['OrderPermIdSL'])),
                 html.Td(str(zone['orderBlock'].orderIdSL_), style={'background-color':'transparent'}),
@@ -517,7 +529,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionSL), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
                 html.Td(str(statusSL), style={'background-color':'transparent'}),
                 html.Td(str(posSL), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderIdSL_), 'symbol': symbol}, style={'color': '#000000', 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
+                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderIdSL_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorSL}
         )
 

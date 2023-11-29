@@ -308,11 +308,19 @@ class strategyPentagramaRu(strategyBaseClass):
                     bFound = True
                     if not bError:
                         zones = sorted(zones, key=lambda d: d['Price'], reverse=True)
+                        regen = not lineStratCerrar
+                        self.zones_ = []
+                        self.orderBlocks_ = []
                         self.stratEnabled_ = lineStratEnabled
                         self.cerrarPos_ = lineStratCerrar
                         self.currentPos_ = lineCurrentPos
-                        self.zones_ = zones
                         self.ordersUpdated_ = True
+                        for zoneItem in zones:
+                            orderBlock = strategyOrderBlock.bracketOrderClass(zoneItem, self.symbol_, self.straType_, regen, self.RTLocalData_)
+                            zone = {'orderBlock': orderBlock}
+                            self.zones_.append(zone)
+                            # En todas las strats tiene que haber una lista con todos los orderBlocks
+                            self.orderBlocks_.append(orderBlock)
                         logging.info ('[Estrategia PentagramaRu (%s)] Recargada de fichero', self.symbol_)
                     else:
                         logging.error ('[Estrategia PentagramaRu (%s)] Error leyendo los valores de la estrategia', self.symbol_)

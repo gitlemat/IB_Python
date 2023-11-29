@@ -96,7 +96,8 @@ def layout_getFigureHistorico (contrato):
             go.Bar(
                 x=df_vol.index, 
                 y=df_vol['Volume'],
-                marker_color='rgb(255, 190, 190)'
+                marker_color='rgb(255, 190, 190)',
+                name='Volumen'
             ),
             secondary_y=False
         )
@@ -107,7 +108,8 @@ def layout_getFigureHistorico (contrato):
                 open=df_comp['open'], 
                 high=df_comp['high'],
                 low=df_comp['low'],
-                close=df_comp['close']
+                close=df_comp['close'],
+                hoverlabel_split=True
             ),
             secondary_y=True
         )
@@ -153,7 +155,8 @@ def layout_getFigureHistorico (contrato):
                        title_x = 0.5,
                        title_xanchor = 'center',
                        margin=dict(l=0, r=0, t=40, b=40),
-                       hovermode="x unified"
+                       hovermode="x unified",
+                       dragmode=False
     )
 
     return fig1
