@@ -61,7 +61,7 @@ def layout_strategies_tab():
                 dbc.Col(html.Div("Symbol"), id='strat-header-symbol', className = 'bg-primary mr-1', xs=5, md=3), # xs-5 md-3
                 dbc.Col(html.Div("Pos"), id='strat-header-pos', className = 'bg-primary mr-1', xs=1, md=1),    # xs-1 
                 dbc.Col(html.Div("Buy/Sell/Last"), id='strat-header-bsl', className = 'bg-primary mr-1', xs=4, md=2), # md-2 d-none d-md-block
-                dbc.Col(html.Div("PnL (daily/real/unreal)"), id='strat-header-pnl', className = 'd-none d-md-block bg-primary mr-1', md=3), # md-3 d-none d-md-block
+                dbc.Col(html.Div("PnL Estrategia"), id='strat-header-pnl', className = 'd-none d-md-block bg-primary mr-1', md=3), # md-3 d-none d-md-block
                 dbc.Col(html.Div("Exec (Hoy/Total)"), className = 'd-none d-md-block bg-primary', md=2), # md-2 d-none d-md-block
                 dbc.Col(html.Div("Enabled"), id='strat-header-en', className = 'md-1 bg-primary', xs=2, md=1), # xs-2
             ], className = 'mb-3 text-white', id='strat-header'
@@ -274,25 +274,13 @@ def layout_getStrategyHeader (estrategia, update = False):
             logging.debug ('Header estrategia no actualizado. No hay datos nuevos')
             return no_update
 
-    dailyPnL = ''
-    realizedPnL = ''
-    unrealizedPnL = ''
-    totalPnl = ''
+    totalPnl = formatCurrency(estrategia['classObject'].strategyGetExecPnL()['PnL'])
+
     priceBuy = ''
     priceSell = ''
     priceLast = ''
     priceTotal = ''
-
     if contrato != None:
-        lastPnL = contrato['dbPandas'].dbGetLastPnL()
-        if lastPnL['dailyPnL'] != None:
-            dailyPnL = formatCurrency(lastPnL['dailyPnL'])
-        if lastPnL['realizedPnL'] != None:
-            realizedPnL = formatCurrency(lastPnL['realizedPnL'])
-        if lastPnL['unrealizedPnL'] != None:
-            unrealizedPnL = formatCurrency(lastPnL['unrealizedPnL'])
-        totalPnl = dailyPnL + '/' + realizedPnL + '/' + unrealizedPnL
-        
         priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
         priceSell = formatCurrency(contrato['currentPrices']['SELL'])
         priceLast = formatCurrency(contrato['currentPrices']['LAST'])

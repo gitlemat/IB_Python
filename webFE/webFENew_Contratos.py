@@ -39,7 +39,7 @@ def layout_contratos_tab ():
                     dbc.Col(html.Div("Buy"), id='contract-header-buy', className = 'text9-7 d-none d-md-block bg-success', md = 1),
                     dbc.Col(html.Div("Sell"), id='contract-header-sell', className = 'text9-7 d-none d-md-block bg-primary', md = 1),
                     dbc.Col(html.Div("Last"), id='contract-header-last', className = 'text9-7 bg-primary',  xs=2, md=1),
-                    dbc.Col(html.Div("Comment"), id='contract-header-comm', className = 'text9-7 d-none d-md-block bg-primary', md = 2),
+                    dbc.Col(html.Div("PnL (daily/real/unreal)"), id='contract-header-comm', className = 'text9-7 d-none d-md-block bg-primary', md = 2),
                     dbc.Col(html.Div("Order"), id='contract-header-order', className = 'text9-7 bg-primary',  xs=2, md=1),
                 ], className = 'mb-3 text-white'
                 ),
@@ -170,6 +170,20 @@ def contratosObtenerFilas (contrato, update = False):
     priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
     priceSell = formatCurrency(contrato['currentPrices']['SELL'])
     priceLast = formatCurrency(contrato['currentPrices']['LAST'])
+    
+    dailyPnL = ''
+    realizedPnL = ''
+    unrealizedPnL = ''
+    totalPnl = ''
+    lastPnL = contrato['dbPandas'].dbGetLastPnL()
+    if lastPnL['dailyPnL'] != None:
+        dailyPnL = formatCurrency(lastPnL['dailyPnL'])
+    if lastPnL['realizedPnL'] != None:
+        realizedPnL = formatCurrency(lastPnL['realizedPnL'])
+    if lastPnL['unrealizedPnL'] != None:
+        unrealizedPnL = formatCurrency(lastPnL['unrealizedPnL'])
+    totalPnl = dailyPnL + '/' + realizedPnL + '/' + unrealizedPnL
+
     symbol = contrato['fullSymbol']
     # Cada fila de cabecera
     headerRow = dbc.Row(
@@ -180,7 +194,7 @@ def contratosObtenerFilas (contrato, update = False):
                 dbc.Col(html.Div(priceBuy), className = 'text9-7 d-none d-md-block bg-success', md=1),
                 dbc.Col(html.Div(priceSell), className = 'text9-7 d-none d-md-block bg-primary', md=1),
                 dbc.Col(html.Div(priceLast), className = 'text9-7 bg-primary', xs=2, md=1),
-                dbc.Col(html.Div("Comment"), className = 'text9-7 d-none d-md-block bg-primary', md=2),
+                dbc.Col(html.Div(totalPnl), className = 'text9-7 d-none d-md-block bg-primary', md=2),
                 dbc.Col(html.Button(html.I(className="bi bi-bag-plus me-2"),className = 'botonContract', id={'role': 'boton_order_create', 'gConId': str(gConId)}), className = 'text9-7 bg-primary',  xs=2, md=1),
             ], className = 'text-white mb-1',
     )  

@@ -165,7 +165,7 @@ def create_card (contrato, fig1, estrategia):
         execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
         execString = str(execToday) + '/' + str(execTotal)
         allPnL = estrategia['classObject'].strategyGetExecPnL()['PnL']
-        totalPnl = dailyPnL + '/' + formatCurrency(allPnL)
+        totalPnl = formatCurrency(allPnL)
         AvgPrice = estrategia['classObject'].strategyGetExecPnL()['avgPrice']
         AvgPriceFmt = formatCurrency(AvgPrice)
 
