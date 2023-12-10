@@ -144,7 +144,12 @@ class DataLocalRT():
         contractObj = data['contract']
         nPosition = data['position']
         avgCost = data['avgCost']
+        posEnd = data['positionEnd']
         result = True
+
+        if posEnd:
+            self.postionFixSpreads()
+            return
 
         if not contractObj == "":
             #print ('Actualizo cont')
@@ -158,10 +163,7 @@ class DataLocalRT():
 
         self.contractDict_[gConId]['pos'] = nPosition  # Solo haría falta esto cuando lo pase todo.
         self.contractDict_[gConId]['posAvgPrice'] = avgCost/lotes_contrato
-
-        self.postionFixSpreads()
-         
-                        
+                       
         return (result)
 
     def postionFixSpreads (self):

@@ -274,7 +274,7 @@ class IBI_App(EWrapper, EClient):
 
         super().position(account, contract, position, avgCost)
         #print ('position input:', contract)     
-        data = {'contract': contract, 'position': position, 'avgCost':avgCost }
+        data = {'contract': contract, 'position': position, 'avgCost':avgCost, 'positionEnd': False }
         queueEntry = {'type':'position', 'data': data}
         self.CallbacksQueuePrio_.put(queueEntry)
     
@@ -283,6 +283,9 @@ class IBI_App(EWrapper, EClient):
         super().positionEnd()
         self.initPositions_ = True
         self.semaforo_requestingPositions = False
+        data = {'positionEnd': True}
+        queueEntry = {'type':'position', 'data': data}
+        self.CallbacksQueuePrio_.put(queueEntry)
         logging.info ("[Posicion] - Todas Leidas")
 
     
