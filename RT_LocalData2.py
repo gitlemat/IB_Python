@@ -154,8 +154,6 @@ class DataLocalRT():
 
         logging.info("[Posicion] Actualizada %s: %d", contractObj.localSymbol, nPosition)
 
-        
-
         lotes_contrato = utils.getLotesContratoBySymbol (contractObj.localSymbol)
 
         self.contractDict_[gConId]['pos'] = nPosition  # Solo haría falta esto cuando lo pase todo.
@@ -168,6 +166,8 @@ class DataLocalRT():
 
     def postionFixSpreads (self):
         lenght_list = []
+        # Voy a generar una lista de las longitudes de contrato que tengo.
+        # Sirve para evaluar primero las mas largas
         for gConId, contrato in self.contractDict_.items():
             symbol = self.contractSummaryBrief(gConId)
             cl = utils.contractCode2list(symbol)
@@ -199,7 +199,7 @@ class DataLocalRT():
         # Busco las posiciones mínimas que tienen todos los legs.
         # Hay que comprobar que son todas en el mismo sentodo (con la correcccion del ratio)
         # contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'reqIdPnL': None, 'ratio': , 'action':, 'lSymbol':  },...]
-        logging.debug("Compruebo BAG %s", contrato['fullSymbol'])
+        logging.info("Compruebo BAG %s", contrato['fullSymbol'])
 
         for contractLegInfo in contrato['contractReqIdLegs']:
             conId = contractLegInfo['conId']
@@ -218,7 +218,7 @@ class DataLocalRT():
                 pos_min = min ([pos_corrected, pos_min], key = abs)  # key=abs por si son negativol (BAG en SELL)
             else: 
                 pos_min = 0 # No son del mismo signo, no nos vale
-            logging.debug("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
+            logging.info("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
         # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
         # UPDATE: Mejor no robar nada, y que los contratos conserven su posicion sin restar nada.
         
