@@ -167,59 +167,84 @@ class DataLocalRT():
         return (result)
 
     def postionFixSpreads (self):
+        lenght_list = []
         for gConId, contrato in self.contractDict_.items():
-            #Repaso todas la bags para ver si cada contrato individual tiene posiciones
-            if contrato['contract'].secType == "BAG":
-                pos_min = None
-                # Busco las posiciones mínimas que tienen todos los legs.
-                # Hay que comprobar que son todas en el mismo sentodo (con la correcccion del ratio)
-                # contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'reqIdPnL': None, 'ratio': , 'action':, 'lSymbol':  },...]
-                logging.debug("Compruebo BAG %s", contrato['fullSymbol'])
+            symbol = self.contractSummaryBrief(gConId)
+            cl = utils.contractCode2list(symbol)
+            try:
+                cl_l = len(cl)
+            except:
+                cl_l = 1
+            lenght_list.append(cl_l)
 
-                for contractLegInfo in contrato['contractReqIdLegs']:
-                    conId = contractLegInfo['conId']
-                    ratio = contractLegInfo['ratio']
-                    if contractLegInfo['action'] == 'SELL':
-                        ratio = (-1) * ratio # Normalizando a siempre positivo (BUY) o siempre negativo (SELL)
-                    
-                    currPosLeg = self.contractDict_[conId]['pos'] 
-                    if not currPosLeg:
-                        currPosLeg = 0
-                    pos_corrected = int(currPosLeg / ratio)
+        lenght_list.sort(reverse=True)
+        lenght_list = list(dict.fromkeys(lenght_list))  # sirve para quitar dupps
 
-                    if pos_min == None:  # Para el primero. Seguro que hay mejores maneras de hacerlo.
-                        pos_min = pos_corrected
-                    elif pos_corrected * pos_min >= 0:  # Esto es para comprobar que son del mismo signo. Si no no nos vale, hayq que respetar el SELL/BUY de cada leg
-                        pos_min = min ([pos_corrected, pos_min], key = abs)  # key=abs por si son negativol (BAG en SELL)
-                    else: 
-                        pos_min = 0 # No son del mismo signo, no nos vale
-                    logging.debug("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
-                # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
-                # UPDATE: Mejor no robar nada, y que los contratos conserven su posicion sin restar nada.
+        for lenth in lenght_list:    # esto es para que se hagan en orden, las mas largas primero
+            for gConId, contrato in self.contractDict_.items():
+                #Repaso todas la bags para ver si cada contrato individual tiene posiciones
+                symbol = self.contractSummaryBrief(gConId)
+                cl = utils.contractCode2list(symbol)
+                try:
+                    cl_l = len(cl)
+                except:
+                    cl_l = 1
+                if contrato['contract'].secType == "BAG" and cl_l == lenth:
+                    self.positionFixSpreadsIntra(contrato)
                 
-                logging.info("[Posicion] Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
-                avgPrice = 0.0
-                for contractLegInfo in contrato['contractReqIdLegs']:
-                    conId = contractLegInfo['conId']
-                    ratio = contractLegInfo['ratio']
-                
-                    if contractLegInfo['action'] == 'SELL':
-                        ratio = (-1) * ratio # Normalizando a siempre positivo (BUY) o siempre negativo (SELL)
 
-                    avgPrice += self.contractDict_[conId]['posAvgPrice'] * ratio
 
-                    deltaPos = pos_min * ratio
-                    #self.contractDict_[conId]['pos'] -= int(deltaPos)
-                    if self.contractDict_[conId]['pos'] == 0:
-                        self.contractDict_[conId]['posAvgPrice'] = 0.0
+    def positionFixSpreadsIntra (self, contrato):
+        pos_min = None
+        # Busco las posiciones mínimas que tienen todos los legs.
+        # Hay que comprobar que son todas en el mismo sentodo (con la correcccion del ratio)
+        # contractReqIdLegs: Lista de dicts: [{'conId': , 'reqId': None, 'reqIdPnL': None, 'ratio': , 'action':, 'lSymbol':  },...]
+        logging.debug("Compruebo BAG %s", contrato['fullSymbol'])
 
-                    logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
-                
-                #Finalmente, pongo pos_min al BAG
-                if contrato['pos'] == None: # Inicializamos
-                    contrato['pos'] = 0
-                contrato['pos'] = int(pos_min)
-                contrato['posAvgPrice'] = avgPrice
+        for contractLegInfo in contrato['contractReqIdLegs']:
+            conId = contractLegInfo['conId']
+            ratio = contractLegInfo['ratio']
+            if contractLegInfo['action'] == 'SELL':
+                ratio = (-1) * ratio # Normalizando a siempre positivo (BUY) o siempre negativo (SELL)
+            
+            currPosLeg = self.contractDict_[conId]['pos'] 
+            if not currPosLeg:
+                currPosLeg = 0
+            pos_corrected = int(currPosLeg / ratio)
+
+            if pos_min == None:  # Para el primero. Seguro que hay mejores maneras de hacerlo.
+                pos_min = pos_corrected
+            elif pos_corrected * pos_min >= 0:  # Esto es para comprobar que son del mismo signo. Si no no nos vale, hayq que respetar el SELL/BUY de cada leg
+                pos_min = min ([pos_corrected, pos_min], key = abs)  # key=abs por si son negativol (BAG en SELL)
+            else: 
+                pos_min = 0 # No son del mismo signo, no nos vale
+            logging.debug("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
+        # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
+        # UPDATE: Mejor no robar nada, y que los contratos conserven su posicion sin restar nada.
+        
+        logging.info("[Posicion] Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
+        avgPrice = 0.0
+        for contractLegInfo in contrato['contractReqIdLegs']:
+            conId = contractLegInfo['conId']
+            ratio = contractLegInfo['ratio']
+        
+            if contractLegInfo['action'] == 'SELL':
+                ratio = (-1) * ratio # Normalizando a siempre positivo (BUY) o siempre negativo (SELL)
+
+            avgPrice += self.contractDict_[conId]['posAvgPrice'] * ratio
+
+            deltaPos = pos_min * ratio
+            self.contractDict_[conId]['pos'] -= int(deltaPos)
+            if self.contractDict_[conId]['pos'] == 0:
+                self.contractDict_[conId]['posAvgPrice'] = 0.0
+
+            logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
+        
+        #Finalmente, pongo pos_min al BAG
+        if contrato['pos'] == None: # Inicializamos
+            contrato['pos'] = 0
+        contrato['pos'] = int(pos_min)
+        contrato['posAvgPrice'] = avgPrice
 
     def positionDeleteAll (self):
         # Pasar por contracts y borrar posiciones

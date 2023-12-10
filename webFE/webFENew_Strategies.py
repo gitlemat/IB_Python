@@ -92,61 +92,7 @@ def layout_strategies_tab():
 
         logging.debug ('Ya tengo la cabecera')
 
-        # Los dos graficos
-        fig1 = layout_getFigura1(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
-        graphColumn1 = html.Div(
-            dcc.Graph(
-                id={'role': 'graphDetailsComp', 'strategy': stratType, 'symbol': symbol},
-                animate = False,
-                figure = fig1
-            )
-        )
-
-
-        logging.debug ('Ya tengo la fig1')
-        
-        random_wait = random.randint(0,1000) + 10000
-
-        fig2 = layout_getFigura2(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
-        graphColumn2 = html.Div([
-            dcc.Graph(
-                    id={'role': 'graphDetailsToday', 'strategy': stratType, 'symbol': symbol},
-                    animate = False,
-                    figure = fig2
-            ),
-            dcc.Interval(
-                id={'role': 'IntervalgraphToday', 'strategy': stratType, 'symbol': symbol},
-                interval= random_wait, # in milliseconds
-                n_intervals=0
-            )
-        ])
-        
-        fig3 = layout_getFigura_split(symbol)   # Lo tengo en una funcion para que sea facil actualizar
-        graphColumn3 = html.Div([
-            dcc.Graph(
-                    id={'role': 'graphDetailsSpread', 'strategy': stratType, 'symbol': symbol},
-                    animate = False,
-                    figure = fig3
-            )
-        ])
-        switch_compon_base = html.Div([
-            dbc.Switch(
-                id={'role': 'switch_componentes_base', 'strategy':stratType, 'symbol': symbol},
-                label="Inicio a cero",
-                value=False,
-                className = 'mt-0 mt-md-5' 
-            )],
-            id={'role': 'switch_componentes_form', 'strategy':stratType, 'symbol': symbol},
-        )
-
-        graphComponentes = [
-            dbc.Col(graphColumn3, md=10),
-            dbc.Col(switch_compon_base, md=2)
-        ]
-
-        logging.debug ('Ya tengo la fig2')
-
-        collapseDetails = insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphComponentes)
+        collapseDetails = insideDetailsStrategia (estrategia)
 
         # Lo añadimos a la pagina/tab:
 
@@ -158,94 +104,11 @@ def layout_strategies_tab():
     return tabEstrategias
 
 
-def layout_getFigura1(estrategia):
-    stratType = estrategia['type']
-    fig1 = None
-    if stratType == 'PentagramaRu':
-        fig1 = webFE.webFENew_Strat_PentaRu.layout_getFigureHistoricoPenRu (estrategia)
-
-    return fig1
-
-
-def layout_getFigura2(estrategia):
-    stratType = estrategia['type']
-    fig2 = None
-    if stratType == 'PentagramaRu':
-        fig2 = webFE.webFENew_Strat_PentaRu.layout_getFigureTodayPenRu (estrategia)
-
-    return fig2
-
-'''
-def layout_getFigura3(estrategia, base = False):
-    stratType = estrategia['type']
-    fig3 = None
-
-    symbolSpread = estrategia['symbol']
-    spread_list = globales.G_RTlocalData_.appObj_.contractCode2list(symbolSpread)
-    spread_list.append ({'action':'BAG', 'ratio': 1, 'code': symbolSpread})
-
-    fig3 = go.Figure()
-    fig3 = make_subplots(specs=[[{"secondary_y": True}]])
-
-    for comp in spread_list:
-        symbol = comp['code']
-        contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
-        if not contrato:
-            logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
-            break
-        if contrato['dbPandas']:
-            df_comp = contrato['dbPandas'].dbGetDataframeComp()
-            if base:
-                base_level = df_comp.iloc[0]["close"]
-            else:
-                base_level = 0
-            if comp ['action'] == 'BAG':
-                eje_sec = True
-                linel = dict(color='rgb(150,150,150)', width=1, dash='dash')
-            else:
-                eje_sec = False
-                linel = dict(width=2)
-            fig3.add_trace(
-                go.Scatter(
-                    x=df_comp.index, 
-                    y=(df_comp["close"]-base_level), 
-                    line=linel,
-                    mode="lines", 
-                    connectgaps = True, 
-                    name = symbol
-                ),
-                secondary_y=eje_sec
-            )
-
-    
-    fig3.update_xaxes(
-        rangebreaks=[
-            dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
-            dict(bounds=[21.1, 15], pattern="hour"),  # hide hours outside of 9.30am-4pm
-            #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
-        ]
-    )
-
-    fig3.update_layout(showlegend=True, 
-                       font_size=10,
-                       title_font_size=13,
-                       xaxis_rangeslider_visible=False, 
-                       title_text='Componentes', 
-                       title_x = 0.5,
-                       title_xanchor = 'center',
-                       margin=dict(l=0, r=0, t=40, b=40),
-                       legend_x=0, legend_y=1,
-                       hovermode="x unified"
-                    )
-
-    return fig3
-'''
-
-def insideDetailsStrategia (estrategia, graphColumn1, graphColumn2, graphComponentes):
+def insideDetailsStrategia (estrategia):
     stratType = estrategia['type']
     collapseDetails = None
     if stratType == 'PentagramaRu':
-        collapseDetails = webFE.webFENew_Strat_PentaRu.insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComponentes)
+        collapseDetails = webFE.webFENew_Strat_PentaRu.insideDetailsPentagramaRu (estrategia)
     
     return collapseDetails
 
@@ -546,21 +409,3 @@ def reloadStrats (n_button_open, n_button_close, open_status):
 
     return responseHeader, responseBody, True
 
-#Callback para actualizar grafica today
-@callback(
-    Output({'role': 'graphDetailsSpread', 'strategy': MATCH, 'symbol': MATCH}, 'figure'),
-    Input ({'role': 'switch_componentes_base', 'strategy':MATCH, 'symbol': MATCH}, 'value'),
-    prevent_initial_call = True,
-)
-def actualizarFiguraComponentes (state_base):
-    if not ctx.triggered_id:
-        raise PreventUpdate
-    if globales.G_RTlocalData_.strategies_ == None:
-        raise PreventUpdate
-
-    symbol = ctx.triggered_id['symbol']
-  
-    fig3 = layout_getFigura_split(symbol, state_base)
-
-    #return  zonasFilaBorderDown, no_update, no_update
-    return  fig3

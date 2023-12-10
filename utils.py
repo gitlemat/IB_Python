@@ -58,6 +58,32 @@ def getLongestFileName ():
 
     return max_len
 
+def contractCode2list (contractCode):
+    contractList = []
+    if contractCode[0] != '+' and contractCode[0] != '-':
+        contractCode = '+' + contractCode
+    contractCode = contractCode.replace('-',',-')
+    contractCode = contractCode.replace('+',',+')
+    if contractCode[0] == ',':   # Va a pasar siempre
+        contractCode = contractCode[1:]
+    codesList = contractCode.split(',')
+    
+    for code in codesList:
+        cont = {}
+        if code[0] == '-':
+            cont['action'] = 'SELL'
+        else:
+            cont['action'] = 'BUY'
+        code = code[1:]
+        if code[0].isnumeric():
+            cont['ratio'] = int(code[0])
+            code = code [1:]
+        else:
+            cont['ratio'] = 1
+        cont ['code'] = code
+        contractList.append(cont)
+    return contractList
+
 def getLotesContratoBySymbol(symbol):
     
     mapping = {

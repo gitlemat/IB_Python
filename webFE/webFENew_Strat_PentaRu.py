@@ -1,4 +1,4 @@
-from webFE.webFENew_Utils import formatCurrency, layout_getFigureHistorico
+from webFE.webFENew_Utils import formatCurrency, layout_getFigureHistorico, layout_getStrategyPenRuTableOrders, layout_getFigura_split, layout_getFigureToday
 from dash import MATCH, ALL, Input, Output, State, ctx, no_update, callback
 from dash import html
 from dash import dcc
@@ -14,10 +14,11 @@ import random
 
 logger = logging.getLogger(__name__)
 
-def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComponentes):
+def insideDetailsPentagramaRu (estrategia):
     # Y las tablas con ordenes
 
     symbol = estrategia['symbol']
+    stratType = estrategia['type']
 
     # Hacemos los botones e info inicial
 
@@ -50,7 +51,60 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComp
             ),
         )
 
-    caja_inicial_top = dbc.Card(contenido_caja, body=True),
+    caja_inicial_top = dbc.Card(contenido_caja, body=True)
+
+    # Figura OHCL Comp
+
+    fig1 = layout_getFigureHistoricoPenRu(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
+    graphColumn1 = html.Div(
+        dcc.Graph(
+            id={'role': 'graphDetailsComp', 'strategy': stratType, 'symbol': symbol},
+            animate = False,
+            figure = fig1
+        )
+    )
+
+    # Figura Today
+
+    random_wait = random.randint(0,1000) + 10000
+    fig2 = layout_getFigureTodayPenRu(estrategia)   # Lo tengo en una funcion para que sea facil actualizar
+    graphColumn2 = html.Div([
+        dcc.Graph(
+            id={'role': 'graphDetailsToday', 'strategy': stratType, 'symbol': symbol},
+            animate = False,
+            figure = fig2
+        ),
+        dcc.Interval(
+            id={'role': 'IntervalgraphToday', 'strategy': stratType, 'symbol': symbol},
+            interval= random_wait, # in milliseconds
+            n_intervals=0
+        )
+    ])
+
+    # Figura Split
+        
+    fig3 = layout_getFigura_split(symbol)   # Lo tengo en una funcion para que sea facil actualizar
+    graphColumn3 = html.Div([
+        dcc.Graph(
+            id={'role': 'graphDetailsSpread', 'strategy': stratType, 'symbol': symbol},
+            animate = False,
+            figure = fig3
+        )
+    ])
+    switch_compon_base = html.Div([
+        dbc.Switch(
+            id={'role': 'switch_componentes_base', 'strategy':stratType, 'symbol': symbol},
+            label="Inicio a cero",
+            value=False,
+            className = 'mt-0 mt-md-5' 
+        )],
+        id={'role': 'switch_componentes_form', 'strategy':stratType, 'symbol': symbol},
+    )
+
+    graphComponentes = [
+        dbc.Col(graphColumn3, md=10),
+        dbc.Col(switch_compon_base, md=2)
+    ]
  
 
     # Hacemos la tabla de ordenes
@@ -129,17 +183,17 @@ def insideDetailsPentagramaRu (estrategia, graphColumn1, graphColumn2, graphComp
 def layout_getFigureHistoricoPenRu (estrategia):
 
     symbol = estrategia['symbol']
-    strategyType = estrategia['type']
     contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
     if not contrato:
         logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
         return no_update
+    if contrato['dbPandas'] == None:
+        return no_update
+
+    df_comp = contrato['dbPandas'].dbGetDataframeComp()
 
     fig1 = layout_getFigureHistorico(contrato)  # de Utils
-
-    if contrato['dbPandas']:
-        df_comp = contrato['dbPandas'].dbGetDataframeComp()
-        fig1 = addZonesLinesHistoricoRu (fig1, estrategia, df_comp)
+    fig1 = addZonesLinesHistoricoRu (fig1, estrategia, df_comp)
 
     return fig1
 
@@ -171,9 +225,10 @@ def addZonesLinesHistoricoRu (fig1, estrategia, df_comp):
 def layout_getFigureTodayPenRu (estrategia, update = False):
     if estrategia == None:
         return no_update
+
     symbol = estrategia['symbol']
-    strategyType = estrategia['type']
     contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
+
     if not contrato:
         logging.error ('Error cargando grafico de Hoy de %s. No tenemos el contrato cargado en RT_Data', symbol)
         return no_update
@@ -182,92 +237,14 @@ def layout_getFigureTodayPenRu (estrategia, update = False):
     if (contrato['dbPandas'].toPrint == False) and (update == True):
         logging.debug ('Grafico no actualizado. No hay datos nuevos')
         return no_update
+
     dfToday = contrato['dbPandas'].dbGetDataframeToday()
     LastPrice = None
     if len(dfToday.index) > 0:
         LastPrice = dfToday['close'].iloc[-1]
-    fig2 = go.Figure()
 
-    # Valores de LAST
-    #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["BID"], mode="lines", line_color="blue", connectgaps = True))
-    #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["ASK"], mode="lines", line_color="green", connectgaps = True))
-    #fig2.add_trace(go.Scatter(x=dfToday.index, y=dfToday["LAST"], mode="lines", line_color="crimson", connectgaps = True))
-    fig2.add_trace(
-        go.Candlestick(
-            x=dfToday.index, 
-            open=dfToday['open'], 
-            high=dfToday['high'],
-            low=dfToday['low'],
-            close=dfToday['close'],
-            hoverlabel_split=True
-        )
-    )
-    if len(dfToday.index) > 0 and LastPrice != None:
-        fig2.add_annotation(
-            x = dfToday.index[-1],
-            y = LastPrice,
-            text = f"{LastPrice:0.2f}",
-            xshift=20,
-            yshift=0,
-            bordercolor='green',
-            borderwidth=2,
-            bgcolor="#CFECEC",
-            opacity=0.8,
-            showarrow=False
-        )
-    # Y las zonas
+    fig2 = layout_getFigureToday(contrato)
     fig2 = addZonesLinesTodayRu (fig2, estrategia, dfToday)
-
-    #######
-    # Esto es por si quiero controlar el rango de Y y concentrarme en el candle
-    # Seria util cuando estamos lejos de los niveñes de las zonas
-    #
-    '''
-    levelRanges = getZonesRanges(estrategia)
-    if len (dfToday) > 0:
-        minLevelToday = min (dfToday['open'], dfToday['high'], dfToday['low'], dfToday['close'])
-        maxLevelToday = max (dfToday['open'], dfToday['high'], dfToday['low'], dfToday['close'])
-    else:
-        minLevelToday = levelRanges['minLevel']
-        maxLevelToday = levelRanges['maxLevel']
-
-    rangeLevelToday = maxLevelToday - minLevelToday
-    display_min = minLevelToday
-    display_max = maxLevelToday
-    
-    if levelRanges['minLevel'] < minLevelToday:
-        display_min = minLevelToday - rangeLevelToday*0.25
-    if levelRanges['maxLevel'] > maxLevelToday:
-        display_max = maxLevelToday + rangeLevelToday*0.25
-    
-    '''
-    #######
-
-    fig2.update_xaxes(
-        rangebreaks=[
-            dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
-            dict(bounds=[20.25, 15.16], pattern="hour"),  # hide hours outside of 9.30am-4pm
-            #dict(values=["2020-12-25", "2021-01-01"]),  # hide holidays (Christmas and New Year's, etc)
-        ]
-    )
-    fig2.update_yaxes(
-        tickformat='.2f'
-    )
-
-    rannn = str(random.randint(0,1000))
-    logging.debug ('Grafico actualizado con %s', rannn)
-    fig2.update_layout(showlegend=False, 
-                       font_size=10,
-                       title_font_size=13,
-                       xaxis_rangeslider_visible=False, 
-                       yaxis={'side': 'right'} ,
-                       title_text='Datos Tiempo Real Hoy', 
-                       title_x = 0.5,
-                       title_xanchor = 'center',
-                       margin=dict(l=0, r=0, t=40, b=40),
-                       hovermode="x unified")
-
-    contrato['dbPandas'].toPrint = False
 
     return fig2
 
@@ -298,259 +275,7 @@ def addZonesLinesTodayRu (fig2, estrategia, dfToday):
                     limitList.append(zone['orderBlock'].PrecioTP_)
 
     return fig2
-
-def getZonesRanges (estrategia):
-    maxLevel = None
-    minLevel = None
-    for zone in estrategia['classObject'].zones_:  
-        if maxLevel == None:
-            maxLevel = zone['orderBlock'].Price_
-        if minLevel == None:
-            minLevel = zone['orderBlock'].Price_
-        
-        maxLevel = max (maxLevel, zone['orderBlock'].PrecioSL_, zone['orderBlock'].PrecioTP_)
-        minLevel = max (minLevel, zone['orderBlock'].PrecioSL_, zone['orderBlock'].PrecioTP_)
-
-    ret = {'maxLevel': maxLevel, 'minLevel': minLevel}
-
-    return ret
-
-def layout_getStrategyPenRuTableOrders (estrategia, update = False):
-
-    if estrategia == None:
-        return no_update
-    #orden = globales.G_RTlocalData_.orderGetByOrderId(lOrderId)
-    if estrategia['classObject'] == None:
-        return no_update
-    if estrategia['classObject'].ordersUpdated_ == False and update == True:
-        logging.debug ('Tabla de ordenes en Strategia no actualizado. No hay datos nuevos')
-        return no_update
-
-    symbol = estrategia['classObject'].symbol_
-
-    insideDetailsTableHeader = [
-        html.Thead(
-            html.Tr(
-                [
-                   html.Th(""), 
-                   html.Th("Order Id"),
-                   html.Th("Perm Id", className = 'd-none d-md-table-cell'),
-                   html.Th("Lmt"),
-                   html.Th("Type", className = 'd-none d-md-table-cell'),
-                   html.Th("Action", className = 'd-none d-md-table-cell'),
-                   html.Th("Status"),
-                   html.Th("Qty"),
-                   html.Th("Fix"),
-                ], style={'color':'#ffffff','background-color':'#636363'}
-            )   
-        )
-    ]
-
-    insideDetailsTableBodyInside = []
-
-    for zone in estrategia['classObject'].zones_:
-        #ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderId'])
-        ordenParent = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderId_)
-        fixOCA = False
-        fixParent = False
-        if zone['orderBlock'].toFix == 1:
-            fixParent = True
-            # Parent Rota y fix necesario
-        if zone['orderBlock'].toFix == 2:
-            fixOCA = True
-            # OCA Rota y fix necesario
-        if zone['orderBlock'].toFix == 3:
-            fixParent = True
-            fixOCA = True
-        if ordenParent:
-            posParent = ordenParent['order'].totalQuantity
-            typeParent = ordenParent['order'].orderType
-            if ordenParent['params'] != None and 'status' in ordenParent['params']:
-                statusParent = ordenParent['params']['status']
-            elif zone['orderBlock'].BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F']:
-                statusParent = 'Filled'
-            else:
-                statusParent = 'N/A'
-                #statusParent = 'PreSubmitted'
-            lmtParent = ordenParent['order'].lmtPrice
-            actionParent = ordenParent['order'].action
-            if ordenParent['order'].orderType == 'STP':  # No va a pasar nunca
-                lmtParent = ordenParent['order'].auxPrice
-        else:
-            posParent = zone['orderBlock'].Qty_
-            lmtParent = zone['orderBlock'].Price_
-            if zone['orderBlock'].B_S_ == 'S':
-                actionParent = 'SELL'
-            else:
-                actionParent = 'BUY'
-            typeParent = 'LMT'
-            if zone['orderBlock'].BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F']:
-                statusParent = 'Filled'
-            else:
-                statusParent = 'N/A'
-            #statusParent = 'PreSubmitted'
-
-        if actionParent == 'SELL':
-            posParent = posParent * (-1)
-        lmtParent = formatCurrency(lmtParent)
-
-        #ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdTP'])
-        ordenTP = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdTP_)
-        if ordenTP:
-            posTP = ordenTP['order'].totalQuantity
-            typeTP = ordenTP['order'].orderType
-            if ordenTP['params'] != None and 'status' in ordenTP['params']:
-                statusTP = ordenTP['params']['status']
-            else:
-                statusTP = 'N/A'
-            lmtTP = ordenTP['order'].lmtPrice
-            actionTP = ordenTP['order'].action
-            if ordenTP['order'].orderType == 'STP':
-                lmtTP = ordenTP['order'].auxPrice
-        else:
-            posTP = zone['orderBlock'].Qty_
-            lmtTP = zone['orderBlock'].PrecioTP_
-            actionTP = "SELL" if actionParent == "BUY" else "BUY"
-            typeTP = 'LMT'
-            statusTP = 'N/A'
-
-        if actionTP == 'SELL':
-            posTP = posTP * (-1)
-        lmtTP = formatCurrency(lmtTP)
-
-        #ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['OrderIdSL'])
-        ordenSL = globales.G_RTlocalData_.orderGetByOrderId (zone['orderBlock'].orderIdSL_)
-        if ordenSL:
-            posSL = ordenSL['order'].totalQuantity
-            typeSL = ordenSL['order'].orderType
-            if ordenSL['params'] != None and 'status' in ordenSL['params']:
-                statusSL = ordenSL['params']['status']
-            else:
-                statusSL = 'N/A'
-            lmtSL = ordenSL['order'].lmtPrice
-            actionSL = ordenSL['order'].action
-            if ordenSL['order'].orderType == 'STP':
-                lmtSL = ordenSL['order'].auxPrice
-            if ordenSL['order'].action == 'SELL':
-                posSL = posSL * (-1)
-        else:
-            posSL = zone['orderBlock'].Qty_
-            lmtSL = zone['orderBlock'].PrecioSL_
-            actionSL = "SELL" if actionParent == "BUY" else "BUY"
-            typeSL = 'STP'
-            statusSL = 'N/A'
-
-        if actionSL == 'SELL':
-            posSL = posSL * (-1)
-        lmtSL = formatCurrency(lmtSL)
-
-        backgroundColorParent = '#c1c2c9'
-        backgroundColorTP = '#e4e5ed'
-        backgroundColorSL = '#e4e5ed'
-        if statusParent in ['Filled']:
-            backgroundColorParent = '#caf5c9' # Todo bien
-        if statusParent in ['N/A']:
-            if zone['orderBlock'].BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F']:
-                backgroundColorParent = '#caf5c9' # Bien
-            else:
-                backgroundColorParent = '#d6bfba' # Mal
-
-        if statusTP in ['Filled']:
-            backgroundColorTP = '#caf5c9'
-        if statusTP in ['N/A']:
-            backgroundColorTP = '#cf5338'
-        if statusSL in ['Filled']:
-            backgroundColorSL = '#cf5338'
-        if statusSL in ['N/A']:
-            backgroundColorSL = '#cf5338'
-
-        if fixParent:
-            boton_color_parent = '#000000'
-            disableParentFix = False
-        else:
-            boton_color_parent = '#A5A5A5'
-            disableParentFix = True
-
-        if fixOCA:
-            boton_color_oca = '#000000'
-            disableOcaFix = False
-        else:
-            boton_color_oca = '#A5A5A5'
-            disableOcaFix = True
-
-        #id="{"orderIntId":"HEM4-2HEN4+HEQ4PentagramaRu-3.0-2.8-4.5","role":"boton_fix","symbol":"HEM4-2HEN4+HEQ4"}
-
-        if zone['orderBlock'].orderId_ == None:
-            id_boton = {'role': 'boton_fix', 'orderIntId': str(zone['orderBlock'].intId_), 'symbol': symbol}
-        else:
-            id_boton = {'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderId_), 'symbol': symbol}
-
-        insideDetailsStratParent = html.Tr(
-            [
-                html.Td("Parent", style={'background-color':'transparent'}), 
-                #html.Td(str(zone['OrderId'])),
-                #html.Td(str(zone['OrderPermId'])),
-                html.Td(str(zone['orderBlock'].orderId_), style={'background-color':'transparent'}),
-                html.Td(str(zone['orderBlock'].orderPermId_), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(lmtParent), style={'background-color':'transparent'}),
-                html.Td(str(typeParent), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(actionParent), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(statusParent), style={'background-color':'transparent'}),
-                html.Td(str(posParent), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id=id_boton, style={'color': boton_color_parent, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
-            ], style={'color':'#000000','background-color':backgroundColorParent}
-        )
-
-        insideDetailsStratTP = html.Tr(
-            [
-                html.Td("TP", style={"textAlign": "right", 'background-color':'transparent'}), 
-                #html.Td(str(zone['OrderIdTP'])),
-                #html.Td(str(zone['OrderPermIdTP'])),
-                html.Td(str(zone['orderBlock'].orderIdTP_), style={'background-color':'transparent'}),
-                html.Td(str(zone['orderBlock'].orderPermIdTP_), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(lmtTP), style={'background-color':'transparent'}),
-                html.Td(str(typeTP), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(actionTP), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(statusTP), style={'background-color':'transparent'}),
-                html.Td(str(posTP), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderIdTP_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
-            ], style={'color':'#000000','background-color':backgroundColorTP}
-        )
-
-        insideDetailsStratSL = html.Tr(
-            [
-                html.Td("SL", style={"textAlign": "right", 'background-color':'transparent'}), 
-                #html.Td(str(zone['OrderIdSL'])),
-                #html.Td(str(zone['OrderPermIdSL'])),
-                html.Td(str(zone['orderBlock'].orderIdSL_), style={'background-color':'transparent'}),
-                html.Td(str(zone['orderBlock'].orderPermIdSL_), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(lmtSL), style={'background-color':'transparent'}),
-                html.Td(str(typeSL), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(actionSL), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
-                html.Td(str(statusSL), style={'background-color':'transparent'}),
-                html.Td(str(posSL), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(zone['orderBlock'].orderIdSL_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
-            ], style={'color':'#000000','background-color':backgroundColorSL}
-        )
-
-        insideDetailsStratEmpty = html.Tr("", style={'height':'10px'})
-
-        insideDetailsTableBodyInside.append(insideDetailsStratParent)
-        insideDetailsTableBodyInside.append(insideDetailsStratTP)
-        insideDetailsTableBodyInside.append(insideDetailsStratSL)
-        insideDetailsTableBodyInside.append(insideDetailsStratEmpty)
-
-
-    insideDetailsTableBody = [html.Tbody(insideDetailsTableBodyInside)]
-    estrategia['classObject'].ordersUpdated_ = False
-
-    ret = dbc.Table(
-        insideDetailsTableHeader + insideDetailsTableBody, 
-        bordered=True
-    )
-
-    return ret
-
+    
 def modal_ordenFix():
 
     orderOrderId = dcc.Input(
@@ -649,6 +374,9 @@ def actualizarTablaOrdenesStrategiesPenRu (n_intervals):
 
     estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
     resp = layout_getStrategyPenRuTableOrders (estrategia, True)
+
+    if resp == None:
+        resp = no_update
 
     return resp
 
@@ -791,3 +519,22 @@ def switchStrategyCerrarPos(state):
     globales.G_RTlocalData_.strategies_.strategyCerrarPosiciones (symbol, strategyType, state)
     
     return no_update
+
+#Callback para actualizar grafica today
+@callback(
+    Output({'role': 'graphDetailsSpread', 'strategy': MATCH, 'symbol': MATCH}, 'figure'),
+    Input ({'role': 'switch_componentes_base', 'strategy':MATCH, 'symbol': MATCH}, 'value'),
+    prevent_initial_call = True,
+)
+def actualizarFiguraComponentes (state_base):
+    if not ctx.triggered_id:
+        raise PreventUpdate
+    if globales.G_RTlocalData_.strategies_ == None:
+        raise PreventUpdate
+
+    symbol = ctx.triggered_id['symbol']
+  
+    fig3 = layout_getFigura_split(symbol, state_base)
+
+    #return  zonasFilaBorderDown, no_update, no_update
+    return  fig3
