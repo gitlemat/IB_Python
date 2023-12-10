@@ -234,11 +234,15 @@ class DataLocalRT():
             avgPrice += self.contractDict_[conId]['posAvgPrice'] * ratio
 
             deltaPos = pos_min * ratio
-            self.contractDict_[conId]['pos'] -= int(deltaPos)
+            logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
+            try:
+                self.contractDict_[conId]['pos'] -= int(deltaPos)
+            except:
+                logging.error("      Problema con el self.contractDict_[conId]['pos'] de %s y la nueva %d", contractLegInfo['lSymbol'], deltaPos)
+            
+            
             if self.contractDict_[conId]['pos'] == 0:
                 self.contractDict_[conId]['posAvgPrice'] = 0.0
-
-            logging.info("      %s: %d", contractLegInfo['lSymbol'], deltaPos)
         
         #Finalmente, pongo pos_min al BAG
         if contrato['pos'] == None: # Inicializamos
