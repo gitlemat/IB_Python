@@ -12,59 +12,13 @@
 }
 
 @media (max-width: 768px) {
-  [id^='{\"role\":\"ZoneButtonReloadAll'] {
-      font-size: .7rem
-  }
-  [id^='{\"role\":\"boton_strategy_header'] {
+  .text9-7 {
       font-size: .7rem;
-  }
-  [id^='{\"role\":\"estrategia_header'] {
-      font-size: .7rem
-  }
-  [id^='{\"role\":\"form_cerrarPos'] {
-    font-size: .7rem
-  }
-  [id^='{\"role\":\"ZoneButtonReload'] {
-    font-size: .7rem
-  }
-  [id^='{\"role\":\"TableStrategyOrderDetails'] {
-    font-size: .7rem
-  }
-  [id^='{\"role\":\"TableExecs'] {
-    font-size: .7rem
-  }
-  [id^='strat-header'] {
-    font-size: .7rem
-  }
-  [id^='strat-header'] {
-    font-size: .7rem
   }
 }
 
 @media (min-width: 768px) {
-  [id^='{\"role\":\"ZoneButtonReloadAll'] {
-    font-size: .9rem
-  }
-  [id^='{\"role\":\"boton_strategy_header'] {
+  .text9-7 {
       font-size: .9rem;
-  }
-  [id^='{\"role\":\"estrategia_header'] {
-      font-size: .9rem
-  }
-  [id^='{\"role\":\"form_cerrarPos'] {
-    font-size: .9rem
-  }
-  [id^='{\"role\":\"ZoneButtonReload'] {
-    font-size: .9rem
-  }
-  [id^='{\"role\":\"TableStrategyOrderDetails'] {
-    font-size: .9rem
-  }
-  [id^='{\"role\":\"TableExecs'] {
-    font-size: .9rem
-  }
-  [id^='strat-header'] {
-    font-size: .9rem
-  }
-
+  } 
 }

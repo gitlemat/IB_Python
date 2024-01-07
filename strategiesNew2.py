@@ -150,6 +150,46 @@ class Strategies():
                 if strategy['type'] == 'PentagramaRu':
                     strategyList.append (strategy)
             strategyPentagramaRuNew2.strategyWriteFile(strategyList)
+
+    def strategyGetOrdersDataFromParams (self, stratType, data):
+            
+        if stratType == 'PentagramaRu' :
+            try:
+                strategyPentagramaRuNew2.strategyGetOrdersDataFromParams(data)
+            except:
+                logging.error('Error al pedir las ordenes de la estrategia. Datos: %s', data)
+                raise
+        
+        return True
+
+    def strategyWriteNewStrategy (self, stratType, data):
+            
+        if stratType == 'PentagramaRu' :
+            try:
+                strategyPentagramaRuNew2.strategyPentagramaRuAddToFile(data)
+            except:
+                logging.error('Error al añadir la estrategia. Datos: %s', data)
+                raise
+        
+        return True
+
+    def strategyDeleteStrategy (self, stratType, data):
+            
+        if stratType == 'PentagramaRu' :
+            try:
+                strategyPentagramaRuNew2.strategyPentagramaDeleteFromFile(data)
+            except:
+                logging.error('Error borrando la estrategia. Datos: %s', data)
+                raise
+        
+        return True
+
+    '''
+    def strategyGetBuildParams (self, stratType, symbol):
+        for strategy in self.stratList_:
+            if strategy['symbol'] == symbol and strategy['type'] == stratType:
+                return strategy['classObject'].strategyGetBuildParams()
+    '''
     
     # Para cuando haya que actualizar las ordenes (de orderId a PermId)
     def strategyIndexOrderUpdate (self, data):

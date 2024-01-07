@@ -627,7 +627,7 @@ class IBI_App(EWrapper, EClient):
         
         return order  
         
-    def placeOrderBrief (self, contract_symbol, secType, action, oType, lmtPrice, qty):
+    def placeOrderBrief (self, contract_symbol, contract:Contract, secType, action, oType, lmtPrice, qty):
 
         newReq = None
         if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
@@ -638,7 +638,8 @@ class IBI_App(EWrapper, EClient):
             logging.error ("Error creando la orden para emplazar la orden")
             return None
 
-        contract = self.contractFUTcreateGlobal (contract_symbol, secType)
+        if contract == None:
+            contract = self.contractFUTcreateGlobal (contract_symbol, secType)
 
         if contract == None:
             logging.error ("Error creando el contrato para la orden. Contrato vacio")
@@ -653,14 +654,15 @@ class IBI_App(EWrapper, EClient):
             self.reqAllOpenOrders()
             return newReq
 
-    def placeOCAOrder(self, contract_symbol:str, secType:str, slAction:str, tpAction:str, quantity:Decimal, 
+    def placeOCAOrder(self, contract_symbol:str, contract:Contract, secType:str, slAction:str, tpAction:str, quantity:Decimal, 
                      takeProfitLimitPrice:float, 
                      stopLossPrice:float):
 
         if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
             return None
         
-        contract = self.contractFUTcreateGlobal (contract_symbol, secType)
+        if contract == None:
+            contract = self.contractFUTcreateGlobal (contract_symbol, secType)
         
         if contract == None:
             logging.error ("Error creando el contrato para la orden. Contrato vacio")
@@ -696,14 +698,15 @@ class IBI_App(EWrapper, EClient):
         return OcaOrders
     
     
-    def placeBracketOrder(self, contract_symbol:str, secType:str, action:str, quantity:Decimal, 
+    def placeBracketOrder(self, contract_symbol:str, contract:Contract, secType:str, action:str, quantity:Decimal, 
                      limitPrice:float, takeProfitLimitPrice:float, 
                      stopLossPrice:float):
 
         if secType != 'FUT' and secType != 'STK' and secType != 'BAG':
             return None
         
-        contract = self.contractFUTcreateGlobal (contract_symbol, secType)
+        if contract == None:
+            contract = self.contractFUTcreateGlobal (contract_symbol, secType)
         
         if contract == None:
             logging.error ("Error creando el contrato para la orden. Contrato vacio")

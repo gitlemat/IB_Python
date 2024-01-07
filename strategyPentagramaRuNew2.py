@@ -102,7 +102,7 @@ def strategyWriteFile (strategies):
     lines = []
     header = '# Symbol        , En, CurrPos, \n'
     lines.append(header)
-    header = '# B/S,Price,qty,PrecioSL,PrecioTP,OrdId,OrdPermId,OrdIdSL,OrdPermIdSL,OrdIdTP,OrdPermIdTP,\n'
+    header = '# B/S,Price,qty,PrecioSL,PrecioTP,OrdId,OrdPermId,OrdIdSL,OrdPermIdSL,OrdIdTP,OrdPermIdTP,ToBeDelete,FilledState\n'
     lines.append(header)
     lines.append(header)
     lines.append(header)
@@ -113,8 +113,11 @@ def strategyWriteFile (strategies):
         line += ' \n' if strategyItem['classObject'].currentPos_ == None else str(int(strategyItem['classObject'].currentPos_)) + '\n'
         lines.append(line)
         for zone in strategyItem['classObject'].zones_:
-            line = strategyOrderBlock.bracketOrderParseToFile(zone['orderBlock'])
-            lines.append(line)
+            ret = strategyOrderBlock.bracketOrderParseToFile(zone['orderBlock'])
+            if ret['result'] == True:
+                lines.append(ret['line'])
+            else:
+                logging.info('Borrada esta linea del fichero: %s', ret['line'])
         line = '%\n'
         lines.append(line)
     with open(STRAT_File, 'w') as f:
@@ -122,6 +125,7 @@ def strategyWriteFile (strategies):
             f.writelines(line)
 
 def strategyPentagramaRuAddToFile (data):
+    logging.info('Añadiendo estrat a RU: %s', data)
     symbol = data['symbol']
     nBuys = data['nBuys']
     nSells = data['nSells']
@@ -138,16 +142,52 @@ def strategyPentagramaRuAddToFile (data):
     for n in range(nSells):
         valueStr = str(round(value,4))
         tp = str(round(value - gain,4))
-        row += 'S,' + valueStr + ',' + qty_row + ',' + sl_sell + ',' + tp + ',,,,,,,None\n'
+        row += 'S,' + valueStr + ',' + qty_row + ',' + sl_sell + ',' + tp + ',,,,,,,,None\n'
         value -= interSpace
     for n in range(nBuys):
         valueStr = str(round(value,4))
         tp = str(round(value + gain,4))
-        row += 'B,' + valueStr + ',' + qty_row + ',' + sl_buy + ',' + tp + ',,,,,,,None\n'
+        row += 'B,' + valueStr + ',' + qty_row + ',' + sl_buy + ',' + tp + ',,,,,,,,None\n'
         value -= interSpace
-    row += '%'
-    return row
+    row += '%\n'
 
+    with open(STRAT_File, 'a') as f:
+        for line in row:
+            f.writelines(line)
+
+def strategyPentagramaDeleteFromFile (data):
+    logging.info('Borrando estrat a RU: %s', data)
+    if 'symbol' not in data:
+        logging.error ('No hay symbol en data. No se puede borrar')
+        raise Exception ('Error borrando estrategia de fichero')
+    symbol = data['symbol']
+
+    with open(STRAT_File) as f:
+        lines = f.readlines()
+        
+    lines_to_write = ""
+
+    bWrite = True
+    for line in lines:
+        if line == '':
+            continue
+        if line[0] not in ['B', 'S', '#', '%']:
+            fields = line.split(',')
+            lineSymbol = fields[0].strip()
+            if lineSymbol == symbol:
+                bWrite = False
+            else:
+                bWrite = True
+        if bWrite:
+            lines_to_write += line
+
+    with open(STRAT_File, 'w') as f:
+        for line in lines_to_write:
+            f.writelines(line)
+
+    logging.info ('Estrategia PentagramaRU %s Borrada')
+
+    return 
 
 
 class strategyPentagramaRu(strategyBaseClass):
@@ -272,7 +312,214 @@ class strategyPentagramaRu(strategyBaseClass):
             orderBlock = zone['orderBlock']
             pos += orderBlock.orderBlockPosiciones()
         return pos
-   
+
+    def strategyGetBuildParams (self):
+        nBuys = 0
+        nSells = 0
+        interSpace = None
+        gain = 0
+        first = None
+        qty_row = 0
+        sl_buy = 0
+        sl_sell = 0
+
+        prev = 0
+        for zone in self.zones_:
+            orderBlock = zone['orderBlock']
+            if orderBlock.BracketOrderTBD_ == 'TBD':
+                continue
+            if orderBlock.B_S_ == 'B':
+                sl_buy = orderBlock.PrecioSL_
+                gain = orderBlock.PrecioTP_ - orderBlock.Price_
+                nBuys += 1
+            else:
+                sl_sell = orderBlock.PrecioSL_
+                gain = orderBlock.Price_ - orderBlock.PrecioTP_
+                nSells += 1
+            if not first or orderBlock.Price_ > first:
+                first = orderBlock.Price_
+            qty_row = orderBlock.Qty_
+            interSpace = abs(orderBlock.Price_ - prev)
+            prev = orderBlock.Price_
+
+        data = {}
+        data['nBuys'] = nBuys
+        data['nSells'] = nSells
+        data['interSpace'] = round(interSpace,3)
+        data['gain'] = round(gain,3)
+        data['start'] = round(first,3)
+        data['qty_row'] = qty_row 
+        data['sl_buy'] = round(sl_buy,3)
+        data['sl_sell'] = round(sl_sell,3)
+
+        return (data)
+
+    def strategyGetOrdersDataFromParams(self, data):
+        logging.info('Calculando ordenes de estrat a RU: %s', data)
+        lista_orderblocks = []
+        lista_orderblocks_new = []
+
+        for orderBlock in self.orderBlocks_:
+            orden = {}
+            orden['B_S'] = orderBlock.B_S_
+            orden['Price'] = orderBlock.Price_
+            orden['PrecioTP'] = orderBlock.PrecioTP_
+            orden['PrecioSL'] = orderBlock.PrecioSL_
+            orden['Qty'] = orderBlock.Qty_
+            orden['TBD'] = 'TBD' 
+            orden['Status'] = orderBlock.BracketOrderFilledState_
+            lista_orderblocks.append(orden)
+
+        logging.debug ('Lista de orderblocks existentes: %s', lista_orderblocks)
+
+        if data == None:
+            return lista_orderblocks
+
+        symbol = data['symbol']
+        nBuys = data['nBuys']
+        nSells = data['nSells']
+        interSpace = data['interSpace']
+        gain = data['gain']
+        start = data['start']
+        qty_row = data['qty_row']
+        sl_buy = data['sl_buy']
+        sl_sell = data['sl_sell']
+        
+        value = start
+        for n in range(nSells):
+            value = round(value,4)
+            tp = round(value - gain,4)
+            orden = {}
+            orden['B_S'] = 'S'
+            orden['Price'] = value
+            orden['PrecioTP'] = tp
+            orden['PrecioSL'] = sl_sell
+            orden['Qty'] = qty_row
+            orden['TBD'] = 'New' 
+            orden['Status'] = ""
+            lista_orderblocks_new.append(orden)
+            value -= interSpace
+        for n in range(nBuys):
+            value = round(value,4)
+            tp = round(value + gain,4)
+            orden = {}
+            orden['B_S'] = 'B'
+            orden['Price'] = value
+            orden['PrecioTP'] = tp
+            orden['PrecioSL'] = sl_buy
+            orden['Qty'] = qty_row
+            orden['TBD'] = 'New' 
+            orden['Status'] = ""
+            lista_orderblocks_new.append(orden)
+            value -= interSpace
+
+        logging.debug ('Lista de orderblocks nuevas: %s', lista_orderblocks_new)
+
+        lista_orderblocks_new_filtered = []
+
+        for order_new in lista_orderblocks_new:
+            bIgual_out = False
+            for order in lista_orderblocks:
+                bIgual = True
+                if order['B_S'] != order_new['B_S']:
+                    bIgual = False
+                if order['Price'] != order_new['Price']:
+                    bIgual = False
+                if order['PrecioTP'] != order_new['PrecioTP']:
+                    bIgual = False
+                if order['PrecioSL'] != order_new['PrecioSL']:
+                    bIgual = False
+                if order['Qty'] != order_new['Qty']:
+                    bIgual = False
+                if bIgual:
+                    order['TBD'] = '' 
+                    #lista_orderblocks_new.remove(order_new)
+                    bIgual_out = True
+            if not bIgual_out:
+                lista_orderblocks_new_filtered.append(order_new)
+
+        lista_orderblocks += lista_orderblocks_new_filtered
+        lista_orderblocks = sorted(lista_orderblocks, key=lambda d: d['Price'], reverse=True)
+
+        logging.debug ('Lista de orderblocks final: %s', lista_orderblocks)
+
+        return lista_orderblocks
+
+    def strategyAddZone(self, data):
+
+        #data['B_S']
+        #data['Price']
+        #data['Qty'] 
+        #data['PrecioSL']
+        #data['PrecioTP']
+        
+        # Opcionales:
+        #data['OrderId'] 
+        #data['OrderPermId']
+        #data['OrderIdSL'] 
+        #data['OrderPermIdSL']
+        #data['OrderIdTP']
+        #data['OrderPermIdTP'] 
+        #data['BracketOrderTBD']
+        #data['BracketOrderFilledState']
+
+        logging.info("[Estrategia %s (%s)]. Añadiendo Zona", self.straType_, self.symbol_)
+
+        if 'B_S' not in data:
+            logging.error("     No tenemos B_S. Salimos")
+            return None
+        if 'Price' not in data:
+            logging.error("     No tenemos Price. Salimos")
+            return None
+        if 'Qty' not in data:
+            logging.error("     No tenemos Qty. Salimos")
+            return None
+        if 'PrecioSL' not in data:
+            logging.error("     No tenemos PrecioSL. Salimos")
+            return None
+        if 'PrecioTP' not in data:
+            logging.error("     No tenemos PrecioTP. Salimos")
+            return None
+
+        logging.info("     B_S: %s", data['B_S'])
+        logging.info("     Price: %s", data['Price'])
+        logging.info("     Qty: %s", data['Qty'])
+        logging.info("     PrecioTP: %s", data['PrecioTP'])
+        logging.info("     PrecioSL: %s", data['PrecioSL'])
+
+        regen = not self.cerrarPos_
+        orderBlock = strategyOrderBlock.bracketOrderClass(data, self.symbol_, self.straType_, regen, self.RTLocalData_)
+        zone = {'orderBlock': orderBlock}
+        self.zones_.append(zone)
+        self.zones_ = sorted(self.zones_, key=lambda d: d['orderBlock'].Price_, reverse=True)
+        # En todas las strats tiene que haber una lista con todos los orderBlocks
+        self.orderBlocks_.append(orderBlock)
+        self.orderBlocks_ = sorted(self.orderBlocks_, key=lambda d: d.Price_, reverse=True)
+
+        logging.info("     Parace que se ha añadido correctamente")
+
+        return True
+    
+    def strategyUpdateTBD (self, TBDnew, order_block_data):
+
+        for order_block in self.orderBlocks_:
+            if order_block.B_S_ != order_block_data['B_S']:
+                continue
+            if order_block.Price_ != order_block_data['Price']:
+                continue
+            if order_block.PrecioTP_ != order_block_data['PrecioTP']:
+                continue
+            if order_block.PrecioSL_ != order_block_data['PrecioSL']:
+                continue
+            if order_block.Qty_ != order_block_data['Qty']:
+                continue
+            # En este punto debería ser el bueno
+
+            order_block.BracketOrderTBD_ = TBDnew
+
+            return True
+
+        return False
 
     def strategyReloadFromFile(self):
         with open(STRAT_File) as f:

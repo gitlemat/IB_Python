@@ -14,6 +14,27 @@ import random
 
 logger = logging.getLogger(__name__)
 
+def createStratBoton ():
+    boton = dbc.Button("CrearPentaRu", id={'role': 'boton_create_strat', 'stratType': 'PentagramaRu'}, className="text9-7 me-0", n_clicks=0)
+    return boton
+
+def insideModalsPentagramaRu ():
+    modals = []
+
+    modalFix = modal_ordenFix()
+    modalConfirm = modal_StrategyConfirmar()
+    modalCreateStrat = modal_addStrategy()
+
+    store1 = dcc.Store(id='memory-symbol')
+
+    modals.append(modalFix)
+    modals.append(modalCreateStrat)
+    modals.append(modalConfirm)
+    modals.append(store1)
+
+    return modals
+
+
 def insideDetailsPentagramaRu (estrategia):
     # Y las tablas con ordenes
 
@@ -33,25 +54,53 @@ def insideDetailsPentagramaRu (estrategia):
                     label="Dejar cerrar las posiciones y no regenerar",
                     value=cerrarPos,
                 )
-        ], id={'role': 'form_cerrarPos', 'strategy':'PentagramaRu', 'symbol': symbol}
+        ], 
+        id={'role': 'form_cerrarPos', 'strategy':'PentagramaRu', 'symbol': symbol},
+        className="text9-7",
     )
 
-    # El boton de recarga
+    # Los botones
 
-    boton_reload = dbc.Button("Recargar desde Fichero", id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="me-2", n_clicks=0)
+    breload_text = html.Div('Recargar', className="text9-7 d-inline-block")
+    breload_icon = html.I(className="bi bi-file-earmark-arrow-up me-2 d-inline-block")
+    breload_content = html.Span([breload_icon, breload_text])
+    boton_reload = dbc.Button(breload_content, id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    
+    bedit_text = html.Div('Editar', className="text9-7 d-inline-block")
+    bedit_icon = html.I(className="bi bi-pencil-square me-2 d-inline-block")
+    bedit_content = html.Span([bedit_icon, bedit_text])
+    boton_update = dbc.Button(bedit_content, id={'role': 'ZoneButtonUpdate', 'strategy':'PentagramaRu', 'symbol': symbol}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    
+    bdelete_text = html.Div('Borrar', className="text9-7 d-inline-block")
+    bdelete_icon = html.I(className="bi bi-trash me-2 d-inline-block")
+    bdelete_content = html.Span([bdelete_icon, bdelete_text])
+    boton_delete = dbc.Button(bdelete_content, id={'role': 'ZoneButtonBorrar', 'strategy':'PentagramaRu', 'symbol': symbol}, className="d-inline-block me-0", n_clicks=0)
+
+    botonesUp = html.Div(
+        [
+            boton_reload,
+            boton_update,
+            boton_delete
+        ],
+        className="d-grid gap-2 d-flex justify-content-end",
+    )
 
     # Contenigo de caja
     
     contenido_caja = html.Div(
         dbc.Row(
                 [
-                    dbc.Col(grupo_switches, width=9),
-                    dbc.Col(boton_reload, width=3)
+                    dbc.Col(grupo_switches, width=6),
+                    dbc.Col(botonesUp, width=6)
                 ]
             ),
         )
 
     caja_inicial_top = dbc.Card(contenido_caja, body=True)
+
+    # Aquí hay que añadir lo de editar
+
+    colapsar = layout_modifyStrat(symbol)
 
     # Figura OHCL Comp
 
@@ -116,6 +165,7 @@ def insideDetailsPentagramaRu (estrategia):
         html.Div(
             insideTable, 
             id={'role': 'TableStrategyOrderDetails', 'strategy':'PentagramaRu', 'symbol': symbol},
+            className='text9-7',
         ),
         dcc.Interval(
             id={'role': 'IntervalOrderTable', 'strategy':'PentagramaRu', 'symbol': symbol},
@@ -154,6 +204,9 @@ def insideDetailsPentagramaRu (estrategia):
                     caja_inicial_top, className = 'mb-3' 
             ),
             dbc.Row(
+                    colapsar, className = 'mb-3'
+            ),
+            dbc.Row(
                 [
                     dbc.Col(graphColumn1, 'md-6'),
                     dbc.Col(graphColumn2, 'md-6')
@@ -163,6 +216,7 @@ def insideDetailsPentagramaRu (estrategia):
                 html.Div(
                     tablaExecs, 
                     id={'role': 'TableExecs', 'strategy':'PentagramaRu', 'symbol': symbol},
+                    className = 'text9-7',
                 ),
             ),
             dbc.Row(
@@ -171,7 +225,7 @@ def insideDetailsPentagramaRu (estrategia):
             dbc.Row(
                     insideOrdenes,
             ), 
-            modal_ordenFix()
+            #modal_ordenFix()
         ],
         id={'role': 'colapse_strategy', 'strategy':'PentagramaRu', 'symbol': symbol},
         is_open=False,
@@ -275,7 +329,267 @@ def addZonesLinesTodayRu (fig2, estrategia, dfToday):
                     limitList.append(zone['orderBlock'].PrecioTP_)
 
     return fig2
+
+def layout_modifyStrat(symbol):
+
+    estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
+
+    #data = globales.G_RTlocalData_.strategies_.strategyGetBuildParams('PentagramaRu', symbol)
+    data = estrategia['classObject'].strategyGetBuildParams()
+
+    qty = dcc.Input(
+        id = {'role': 'strategy_update_qty', 'strategy':'PentagramaRu', 'symbol': symbol},
+        type = "number",
+        value = data['qty_row'],
+    )
+
+    nBuys = dcc.Input(
+        id = {'role': 'strategy_update_nBuys', 'strategy':'PentagramaRu', 'symbol': symbol},
+        type = "number",
+        value = data['nBuys'],
+    )
+
+    nSells = dcc.Input(
+        id = {'role': 'strategy_update_nSells', 'strategy':'PentagramaRu', 'symbol': symbol},
+        type = "number",
+        value = data['nSells'],
+    )
+
+    interSpace = dcc.Input(
+        id = {'role': 'strategy_update_interSpace', 'strategy':'PentagramaRu', 'symbol': symbol},
+        type = "number",
+        value = data['interSpace'],
+    )
+
+    gain = dcc.Input(
+        id = {'role': 'strategy_update_gain', 'strategy':'PentagramaRu', 'symbol': symbol},
+        type = "number",
+        value = data['gain'],
+    )
+
+    first = dcc.Input(
+        id = {'role': 'strategy_update_first', 'strategy':'PentagramaRu', 'symbol': symbol},
+        type = "number",
+        value = data['start'],
+    )
+
+    slBuy = dcc.Input(
+        id = {'role': 'strategy_update_slBuy', 'strategy':'PentagramaRu', 'symbol': symbol},
+        type = "number",
+        value = data['sl_buy'],
+    )
+
+    slSell = dcc.Input(
+        id = {'role': 'strategy_update_slSell', 'strategy':'PentagramaRu', 'symbol': symbol},
+        type = "number",
+        value = data['sl_sell'],
+    )
+
+    fig1 = go.Figure()
+    graphUpdateStrat = html.Div(
+        dcc.Graph(
+            id = {'role': 'strategy_update_graph', 'strategy':'PentagramaRu', 'symbol': symbol},
+            animate = False,
+            figure = fig1
+        )
+    )
+
+    bpreview_text = html.Div('Preview', className="text9-7 d-inline-block")
+    bpreview_icon = html.I(className="bi bi-eye me-2 d-inline-block")
+    bpreview_content = html.Span([bpreview_icon, bpreview_text])
+    boton_preview = dbc.Button(bpreview_content, id={'role': 'strategy_update_button_preview', 'strategy':'PentagramaRu', 'symbol': symbol}, className="text9-7 d-inline-block me-0", n_clicks=0)
     
+    bcommit_text = html.Div('Ejecutar', className="text9-7 d-inline-block")
+    bcommit_icon = html.I(className="bi bi-check2-square me-2 d-inline-block")
+    bcommit_content = html.Span([bcommit_icon, bcommit_text])
+    boton_commit = dbc.Button(bcommit_content, id={'role': 'strategy_update_button_commit', 'strategy':'PentagramaRu', 'symbol': symbol}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    
+    breset_text = html.Div('Restaurar', className="text9-7 d-inline-block")
+    breset_icon = html.I(className="bi bi-arrow-counterclockwise me-2 d-inline-block")
+    breset_content = html.Span([breset_icon, breset_text])
+    boton_reset = dbc.Button(breset_content, id={'role': 'strategy_update_button_reset', 'strategy':'PentagramaRu', 'symbol': symbol}, className="d-inline-block me-0", n_clicks=0)
+
+    botonesStrategyUpdate = html.Div(
+        [
+            boton_preview,
+            boton_reset,
+            boton_commit
+        ],
+        className="d-grid gap-2 d-flex justify-content-end",
+    )
+
+    swTBD = dbc.Switch(id={'role': 'switchStratUpdateTBDView', 'strategy':'PentagramaRU', 'symbol': symbol}, className="d-inline-block", value = False)
+
+    OrdersTableHeader = [
+        html.Thead(
+            html.Tr(
+                [
+                   html.Th("B/S"),
+                   html.Th("Price"),
+                   html.Th("TP"),
+                   html.Th("SL"),
+                   html.Th("Qty"),
+                   html.Th(html.Span(["New/TDB", swTBD]), className="d-grid gap-2 d-flex justify-content-end"),
+                   html.Th("Status"),
+                ], style={'color':'#ffffff','background-color':'#636363'}
+            )   
+        )
+    ]
+
+    NewOrdersTable = dbc.Table(
+        OrdersTableHeader, 
+        id={'role':'strategy_update_table', 'strategy':'PentagramaRu', 'symbol': symbol},
+        className="text9-7",
+        bordered=True
+    )
+            
+    stratUpdatePart = dbc.Collapse(
+        [
+            dbc.Card(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.P('Numero de BUY:',
+                                        style={'margin-top': '8px', 'margin-bottom': '4px'},
+                                        className='font-weight-bold'),
+                                    nBuys,
+                                    html.P('Numero de SELL:',
+                                        style={'margin-top': '8px', 'margin-bottom': '4px'},
+                                        className='font-weight-bold'),
+                                    nSells,
+                                    html.P('Primer LMT:',
+                                        style={'margin-top': '8px', 'margin-bottom': '4px'},
+                                        className='font-weight-bold'),
+                                    first,
+                                    html.P('Espaciado:',
+                                        style={'margin-top': '8px', 'margin-bottom': '4px'},
+                                        className='font-weight-bold'),
+                                    interSpace,
+                                ]
+                            ),
+                            dbc.Col(
+                                [
+                                    html.P('Qty:',
+                                        style={'margin-top': '8px', 'margin-bottom': '4px'},
+                                        className='font-weight-bold'),
+                                    qty,
+                                    html.P('Ganancia TP:',
+                                        style={'margin-top': '8px', 'margin-bottom': '4px'},
+                                        className='font-weight-bold'),
+                                    gain,
+                                    html.P('Stop Loss BUY:',
+                                        style={'margin-top': '8px', 'margin-bottom': '4px'},
+                                        className='font-weight-bold'),
+                                    slBuy,
+                                    html.P('Stop Loss SELL:',
+                                        style={'margin-top': '8px', 'margin-bottom': '4px'},
+                                        className='font-weight-bold'),
+                                    slSell,
+                                ]
+                            )
+                        ], className = 'mb-3' 
+                    ),
+                    dbc.Row(
+                        botonesStrategyUpdate, className = 'mb-3' 
+                    ),
+                    dbc.Row(
+                        dbc.Alert("", className="mb-3" , color="primary", id={'role': 'StrategyUpdateAlert', 'strategy':'PentagramaRu', 'symbol': symbol},dismissable=True,is_open=False)
+                    ),
+                    dbc.Row(
+                        html.Div(NewOrdersTable), className = 'mb-3' 
+                    ),
+                    dbc.Row(
+                        html.Div(graphUpdateStrat)
+                    )
+                ],
+                className = 'text9-7',
+                body=True
+            )   
+        ], 
+        id={'role': 'colapse_strategy_modify', 'strategy':'PentagramaRu', 'symbol': symbol},
+        is_open=False,
+    )
+
+    return stratUpdatePart
+    
+    
+def layout_getFigureLinesFromParams (contract, data = False):
+
+    fig1 = go.Figure()
+
+    nBuys = data['nBuys']
+    nSells = data['nSells']
+    interSpace = data['interSpace']
+    gain = data['gain']
+    first = data['start']
+    sl_buy = data['sl_buy']
+    sl_sell = data['sl_sell']
+
+    if contract != None:
+        df_comp = contract['dbPandas'].dbGetDataframeComp()
+        longitud = len (df_comp.index)
+        x_refer = df_comp.index
+        fig1.add_trace(
+            go.Candlestick(
+                x=x_refer, 
+                open=df_comp['open'], 
+                high=df_comp['high'],
+                low=df_comp['low'],
+                close=df_comp['close'],
+                hoverinfo='skip'
+            ),
+        )
+    else:
+        longitud = 10
+        x_refer = list (range(10))
+
+    value = first
+    for n in range(nSells):
+        tp = value - gain
+        fig1.add_trace(go.Scatter(x=x_refer, y=[value]*longitud, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+        fig1.add_trace(go.Scatter(x=x_refer, y=[tp]*longitud, mode="lines", line_dash='dash', line_width=1, line_color="gray", connectgaps = True, fill=None))
+        value -= interSpace
+    for n in range(nBuys):
+        tp = value + gain
+        fig1.add_trace(go.Scatter(x=x_refer, y=[value]*longitud, mode="lines", line_color="gray", line_width=1, connectgaps = True, fill=None))
+        fig1.add_trace(go.Scatter(x=x_refer, y=[tp]*longitud, mode="lines", line_dash='dash', line_width=1, line_color="gray", connectgaps = True, fill=None))
+        value -= interSpace
+
+    fig1.add_trace(go.Scatter(x=x_refer, y=[sl_buy]*longitud, mode="lines", line_dash='dash', line_width=1, line_color="gray", connectgaps = True, fill=None))
+    fig1.add_trace(go.Scatter(x=x_refer, y=[sl_sell]*longitud, mode="lines", line_dash='dash', line_width=1, line_color="gray", connectgaps = True, fill=None))
+
+    if contract != None:    
+        fig1.add_trace(
+            go.Candlestick(
+                x=df_comp.index, 
+                open=df_comp['open'], 
+                high=df_comp['high'],
+                low=df_comp['low'],
+                close=df_comp['close'],
+                hoverinfo='skip'
+            ),
+        )
+
+    fig1.update_yaxes(
+        tickformat='.2f', 
+    )
+
+    fig1.update_layout(showlegend=False, 
+                       font_size=10,
+                       title_font_size=13,
+                       xaxis_rangeslider_visible=False, 
+                       yaxis={'side': 'right'} ,
+                       title_text='Niveles Estrategia', 
+                       title_x = 0.5,
+                       title_xanchor = 'center',
+                       margin=dict(l=0, r=0, t=40, b=40),
+                       dragmode=False
+    )
+
+    return fig1
+
 def modal_ordenFix():
 
     orderOrderId = dcc.Input(
@@ -334,29 +648,189 @@ def modal_ordenFix():
         orderOrderIntId,
     ])
     
-    modal = html.Div(
+    modal = dbc.Modal(
         [
-            dbc.Modal(
+            dbc.ModalHeader(dbc.ModalTitle("Regenerar Orden", id = "modal_fixOrder")),
+            dbc.ModalBody(responseBody, id = "OrdenFixBody"),
+            dbc.ModalFooter(
                 [
-                    dbc.ModalHeader(dbc.ModalTitle("Regenerar Orden", id = "modal_fixOrder")),
-                    dbc.ModalBody(responseBody, id = "OrdenFixBody"),
-                    dbc.ModalFooter(
-                        [
-                            dbc.Button(
-                                "Fix", id="modal_fixOrder_boton_fix", className="ms-auto", n_clicks=0
-                            ),
-                            dbc.Button(
-                                "Close", id="modal_fixOrder_boton_close", className="ms-auto", n_clicks=0
-                            )
-                        ]
+                    dbc.Button(
+                        "Fix", id="modal_fixOrder_boton_fix", className="ms-auto", n_clicks=0
                     ),
-                ],
-                id="modal_fixOrder_main",
-                is_open=False,
+                    dbc.Button(
+                        "Close", id="modal_fixOrder_boton_close", className="ms-auto", n_clicks=0
+                    )
+                ]
             ),
-        ]
+        ],
+        id="modal_fixOrder_main",
+        is_open=False,
     )
     return modal
+
+def modal_addStrategy():
+
+    # Aquí habria que añadir un id para el tipo de estrategia, y con un callback decidir el responseBody
+
+    contratosAll = globales.G_RTlocalData_.contractGetListUnique()
+
+    Symbol = dcc.Dropdown(
+        options = contratosAll,
+        id = "strategy_create_symbol",
+    )
+
+    Qty = dcc.Input(
+        id = "strategy_create_qty",
+        type = "number",
+        placeholder = "1",
+    )
+
+    nBuys = dcc.Input(
+        id = "strategy_create_nBuys",
+        type = "number",
+        placeholder = "0",
+    )
+
+    nSells = dcc.Input(
+        id = "strategy_create_nSells",
+        type = "number",
+        placeholder = "0",
+    )
+
+    interSpace = dcc.Dropdown(
+        options = [.250, .300, .350], 
+        value = .250, 
+        id = 'strategy_create_interSpace'
+    )
+
+    gain = dcc.Input(
+        id = "strategy_create_gain",
+        type = "number",
+        placeholder = "0",
+    )
+
+    first = dcc.Input(
+        id = "strategy_create_first",
+        type = "number",
+        placeholder = "0",
+    )
+
+    slBuy = dcc.Input(
+        id = "strategy_create_slBuy",
+        type = "number",
+        placeholder = "0",
+    )
+
+    slSell = dcc.Input(
+        id = "strategy_create_slSell",
+        type = "number",
+        placeholder = "0",
+    )
+
+    fig1 = go.Figure()
+    graphCreateStrat = html.Div(
+        dcc.Graph(
+            id = "strategy_create_graph",
+            animate = False,
+            figure = fig1
+        )
+    )
+
+    responseBody = html.Div([
+        html.P('Simbolo Estrategia: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        Symbol,
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.P('Numero de BUY:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        nBuys,
+                        html.P('Numero de SELL:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        nSells,
+                        html.P('Primer LMT:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        first,
+                        html.P('Espaciado:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        interSpace,
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        html.P('Qty:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        Qty,
+                        html.P('Ganancia TP:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        gain,
+                        html.P('Stop Loss BUY:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        slBuy,
+                        html.P('Stop Loss SELL:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        slSell,
+                    ]
+                )
+            ]
+        ),
+        dbc.Alert("", className="mt-2" , color="primary", id='modalStrategyCreateAlert',dismissable=True,is_open=False),
+        html.Div(graphCreateStrat)
+    ])
+    
+    modal = dbc.Modal(
+        [
+            dbc.ModalHeader(dbc.ModalTitle("Crear Estrategia", id = "modalStrategyCreateHeader")),
+            dbc.ModalBody(responseBody, id = "modalStrategyCreateBody"),
+            dbc.ModalFooter([
+                dbc.Button(
+                    "Preview", id="modalStrategyCreate_boton_show", className="ms-auto", n_clicks=0
+                ),
+                dbc.Button(
+                    "Crear", id="modalStrategyCreate_boton_create", className="ms-auto", n_clicks=0
+                ),
+                dbc.Button(
+                    "Close", id="modalStrategyCreate_boton_close", className="ms-auto", n_clicks=0
+                )
+            ]),
+        ],
+        id="modalStrategyCreate_main",
+        is_open=False,
+    )
+    return modal
+
+def modal_StrategyConfirmar():
+    modal = dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Borrar estrategia", id = "modalStratConfirmarHeader")),
+                    dbc.ModalBody("Seguro que quieres borrarla?", id = "modalStratConfirmarBody"),
+                    dbc.ModalFooter([
+                        dbc.Button(
+                            "Aceptar", id="modalStratConfirmar_boton_accept", className="ms-auto", n_clicks=0
+                        ),
+                        dbc.Button(
+                            "Close", id="modalStratConfirmar_boton_close", className="ms-auto", n_clicks=0
+                        )
+                    ]),
+                ],
+                id="modalStratConfirmar_main",
+                is_open=False,
+    )
+    return modal
+
+def getListaOrders (symbol):
+    pass
 
 #Callback para actualizar tabla de ordenes en Strategy
 @callback(
@@ -422,6 +896,449 @@ def reloadStrategyRuFiles(n_clicks):
     globales.G_RTlocalData_.strategies_.strategyReload ('PentagramaRu', symbol)
 
     return  no_update
+
+# Callback para colapsar o mostrar filas Strategias
+@callback(
+    Output({'role': 'colapse_strategy_modify', 'strategy':'PentagramaRu', 'symbol': MATCH}, "is_open"),
+    Input({'role': 'ZoneButtonUpdate', 'strategy':'PentagramaRu', 'symbol': MATCH}, "n_clicks"),
+    State({'role': 'colapse_strategy_modify', 'strategy':'PentagramaRu', 'symbol': MATCH}, "is_open"),
+    prevent_initial_call = True,
+)
+def toggle_colapse_strategy_edit(n_button, is_open):
+    if n_button:
+        return not is_open
+    return is_open
+
+    
+# Callback para borrar strat
+@callback(
+    Output("modalStratConfirmar_main", "is_open"),
+    Output("memory-symbol", "data"),
+    Input({'role': 'ZoneButtonBorrar', 'strategy':'PentagramaRu', 'symbol': ALL}, "n_clicks"),
+    Input("modalStratConfirmar_boton_accept", "n_clicks"),
+    Input("modalStratConfirmar_boton_close", "n_clicks"),
+    Input("memory-symbol", "data"),
+    prevent_initial_call = True,
+)
+def DeleteStrat ( n_button_borrar, n_button_aceptar, n_button_cerrar, data):
+
+    # Esto es por si las moscas
+    #logging.info('Trigger 2 %s', ctx.triggered_id)
+    #data = ""
+    if (n_button_aceptar is None and n_button_borrar is None and n_button_cerrar is None) or (not ctx.triggered_id):
+        raise PreventUpdate
+    
+    '''
+    pageLoad = True
+    for button in  n_button_borrar:
+        if button != None:
+            pageLoad = False
+    if pageLoad:
+        raise PreventUpdate
+    '''
+    
+    logging.info('LLamando a borrar Estrategia. Trigger: %s', ctx.triggered_id)
+    
+    if 'role' in ctx.triggered_id and ctx.triggered_id['role'] == 'ZoneButtonBorrar':
+        data = ctx.triggered_id['symbol']
+        return True, data
+
+    if ctx.triggered_id == "modalStratConfirmar_boton_close":
+        return False, no_update
+
+    if ctx.triggered_id == "modalStratConfirmar_boton_accept":
+        symbol = data
+        data_delete = {'symbol': symbol}
+        try:
+            result = globales.G_RTlocalData_.strategies_.strategyDeleteStrategy ('PentagramaRu', data_delete)
+        except:
+            logging.error ("Exception occurred borrando estrategia", exc_info=True)
+            return False, no_update
+        else:
+            try:
+                globales.G_RTlocalData_.strategies_.strategyInit ()
+            except:
+                logging.error ("Exception occurred cargando las estrategias", exc_info=True)
+                return False, no_update
+
+        data = None
+        return False, data
+
+    return no_update, no_update
+    
+
+
+# Callback para Crear Strat - Abrir Cerror
+@callback(
+    Output("modalStrategyCreate_main", "is_open", allow_duplicate=True),
+    Input({'role': 'boton_create_strat', 'stratType': 'PentagramaRu'}, "n_clicks"),
+    Input("modalStrategyCreate_boton_close", "n_clicks"),
+    State("modalStrategyCreate_main", "is_open"), 
+    prevent_initial_call = True,
+)
+def CreateStratRuOpenClose (n_button_open, n_button_close, open_status):
+
+    # Esto es por si las moscas
+    #logging.info('Trigger 2 %s', ctx.triggered_id)
+    if (n_button_open is None and n_button_close is None) or (not ctx.triggered_id):
+        raise PreventUpdate
+
+    logging.info('LLamando a Crear Estrategia. Trigger: %s', ctx.triggered_id)
+
+    if ctx.triggered_id == "modalStrategyCreate_boton_close":
+        return False
+    
+    if 'stratType' in ctx.triggered_id:
+        return True
+
+
+# Callback para Crear Strat - Generar
+@callback(
+    Output("strategy_create_graph", "figure"),
+    Output("modalStrategyCreate_main", "is_open"),
+    Output("modalStrategyCreateAlert", "is_open"),
+    Output("modalStrategyCreateAlert", "children"),
+    Output("modalStrategyCreateAlert", "color"),
+    Input("modalStrategyCreate_boton_show", "n_clicks"),
+    Input("modalStrategyCreate_boton_create", "n_clicks"),
+    Input("strategy_create_symbol", "value"),
+    Input("strategy_create_qty", "value"),
+    Input("strategy_create_nBuys", "value"),
+    Input("strategy_create_nSells", "value"),
+    Input("strategy_create_interSpace", "value"),
+    Input("strategy_create_gain", "value"),
+    Input("strategy_create_first", "value"),
+    Input("strategy_create_slBuy", "value"),
+    Input("strategy_create_slSell", "value"),
+    prevent_initial_call = True,
+)
+def CreateStratRuGenerar (n_button_show, n_button_create, symbol, qty, nBuys, nSells, interSpace, gain, first, slBuy, slSell):
+
+    # Esto es por si las moscas
+    logging.debug('Trigger %s', ctx.triggered_id)
+    
+    if (n_button_show is None and n_button_create is None) or (not ctx.triggered_id):
+        raise PreventUpdate
+
+    data = {}
+    data['symbol'] = symbol
+    data['nBuys'] = nBuys
+    data['nSells'] = nSells
+    data['interSpace'] = interSpace
+    data['gain'] = gain
+    data['start'] = first
+    data['qty_row'] = qty
+    data['sl_buy'] = slBuy
+    data['sl_sell'] = slSell
+
+    if ctx.triggered_id == "modalStrategyCreate_boton_show":
+        error_msg = ""
+        try:
+            nSells = int(nSells)
+        except:
+            error_msg = "Error en el nSells"
+            logging.error ('Error en el nSells')
+            #return no_update, True, no_update, no_update, no_update
+            return no_update, True, True, error_msg, "danger"
+        try:
+            nBuys = int(nBuys)
+        except:
+            error_msg = "Error en el nBuys"
+            logging.error ('Error en el nBuys')
+            #return no_update, True, no_update, no_update, no_update
+            return no_update, True, True, error_msg, "danger"
+        try:
+            qty = int(qty)
+        except:
+            error_msg = "Error en el qty"
+            logging.error ('Error en el qty')
+            #return no_update, True, no_update, no_update, no_update
+            return no_update, True, True, error_msg, "danger"
+        try:
+            first = float(first)
+        except:
+            error_msg = "Error en el first"
+            logging.error ('Error en el first')
+            #return no_update, True, no_update, no_update, no_update
+            return no_update, True, True, error_msg, "danger"
+        try:
+            gain = float(gain)
+        except:
+            error_msg = "Error en el gain"
+            logging.error ('Error en el gain')
+            #return no_update, True, no_update, no_update, no_update
+            return no_update, True, True, error_msg, "danger"
+        try:
+            interSpace = float(interSpace)
+        except:
+            error_msg = "Error en el interSpace"
+            logging.error ('Error en el interSpace')
+            #return no_update, True, no_update, no_update, no_update
+            return no_update, True, True, error_msg, "danger"
+        try:
+            slBuy = float(slBuy)
+        except:
+            error_msg = "Error en el slBuy"
+            logging.error ('Error en el slBuy')
+            #return no_update, True, no_update, no_update, no_update
+            return no_update, True, True, error_msg, "danger"
+        try:
+            slSell = float(slSell)
+        except:
+            error_msg = "Error en el slSell"
+            logging.error ('Error en el slSell')
+            #return no_update, True, no_update, no_update, no_update
+            return no_update, True, True, error_msg, "danger"
+
+        contract = globales.G_RTlocalData_.contractGetBySymbol(symbol)
+
+        fig1 = layout_getFigureLinesFromParams(contract, data)
+        
+        return fig1, no_update, False, "", "success"
+    
+    elif ctx.triggered_id == "modalStrategyCreate_boton_create":
+
+        estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
+        if estrategia != None:
+            #return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update, True, "Este simbolo ya está en esta estrategia", "warning"
+            #Esto quiere decir que ya hay una estrategia para este simbolo en Ru
+        
+        #ahora hay que crear todo
+        try:
+            result = globales.G_RTlocalData_.strategies_.strategyWriteNewStrategy ('PentagramaRu', data)
+        except:
+            logging.error ("Exception occurred añadiendo estrategia", exc_info=True)
+            return no_update, True, True, "Error Creando Estrategia", "danger"
+        else:
+            try:
+                globales.G_RTlocalData_.strategies_.strategyInit ()
+            except:
+                logging.error ("Exception occurred cargando las estrategias", exc_info=True)
+                return no_update, True, True, "Error Creando Estrategia", "danger"
+
+        #return no_update, True, True, header, body
+        return no_update, True, True, "Estrategia creada correctamente. Recarga navegador", "success"
+
+    else:
+        raise PreventUpdate
+
+# Callback para Editar Strat - Restore
+@callback(
+    Output({'role': 'strategy_update_qty', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Output({'role': 'strategy_update_nBuys', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Output({'role': 'strategy_update_nSells', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Output({'role': 'strategy_update_interSpace', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Output({'role': 'strategy_update_gain', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Output({'role': 'strategy_update_first', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Output({'role': 'strategy_update_slBuy', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Output({'role': 'strategy_update_slSell', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_button_reset', 'strategy':'PentagramaRu', 'symbol': MATCH}, "n_clicks"),
+    prevent_initial_call = True,
+)
+def UpdateStratRuRestore (n_button_restore):
+
+    if (n_button_restore is None) or (not ctx.triggered_id):
+        raise PreventUpdate
+
+    if not 'symbol' in ctx.triggered_id:
+        raise PreventUpdate
+
+    symbol = ctx.triggered_id['symbol']
+    estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
+    data = estrategia['classObject'].strategyGetBuildParams()
+
+    nBuys = data['nBuys']
+    nSells = data['nSells']
+    interSpace = data['interSpace']
+    gain = data['gain']
+    first = data['start']
+    qty = data['qty_row']
+    slBuy = data['sl_buy']
+    slSell = data['sl_sell']
+        
+    return qty, nBuys, nSells, interSpace, gain, first, slBuy, slSell
+
+# Callback para Editar Strat
+@callback(
+    Output({'role': 'strategy_update_graph', 'strategy':'PentagramaRu', 'symbol': MATCH}, "figure"),
+    Output({'role': 'strategy_update_table', 'strategy':'PentagramaRu', 'symbol': MATCH}, "children"),
+    Output({'role': 'StrategyUpdateAlert', 'strategy':'PentagramaRu', 'symbol': MATCH}, "is_open"),
+    Output({'role': 'StrategyUpdateAlert', 'strategy':'PentagramaRu', 'symbol': MATCH}, "children"),
+    Output({'role': 'StrategyUpdateAlert', 'strategy':'PentagramaRu', 'symbol': MATCH}, "color"),
+    Input({'role': 'strategy_update_button_preview', 'strategy':'PentagramaRu', 'symbol': MATCH}, "n_clicks"),
+    Input({'role': 'strategy_update_button_commit', 'strategy':'PentagramaRu', 'symbol': MATCH}, "n_clicks"),
+    Input({'role': 'switchStratUpdateTBDView', 'strategy':'PentagramaRU', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_qty', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_nBuys', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_nSells', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_interSpace', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_gain', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_first', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_slBuy', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    Input({'role': 'strategy_update_slSell', 'strategy':'PentagramaRu', 'symbol': MATCH}, "value"),
+    prevent_initial_call = True,
+)
+def UpdateStratRuPreview (n_button_preview, n_button_commit, switchTBD, qty, nBuys, nSells, interSpace, gain, first, slBuy, slSell):
+
+    # Esto es por si las moscas
+    logging.info('Trigger %s', ctx.triggered_id)
+
+    if (n_button_preview is None and n_button_preview is None) or (not ctx.triggered_id):
+        raise PreventUpdate
+    
+    logging.info ('Preview de Strat Updata: %s', ctx.triggered_id)
+
+    if 'role' in ctx.triggered_id and ctx.triggered_id['role'] in ['strategy_update_button_preview', 'switchStratUpdateTBDView']:
+        symbol = ctx.triggered_id['symbol']
+
+        logging.info ('Preview de Strat Updata: %s', symbol)
+
+        data = {}
+        data['symbol'] = symbol
+        data['nBuys'] = nBuys
+        data['nSells'] = nSells
+        data['interSpace'] = interSpace
+        data['gain'] = gain
+        data['start'] = first
+        data['qty_row'] = qty
+        data['sl_buy'] = slBuy
+        data['sl_sell'] = slSell
+
+        estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
+        contract = globales.G_RTlocalData_.contractGetBySymbol(symbol)
+        fig1 = layout_getFigureLinesFromParams(contract, data)
+
+        swTBD = dbc.Switch(id={'role': 'switchStratUpdateTBDView', 'strategy':'PentagramaRU', 'symbol': symbol}, className="d-inline-block", value = switchTBD)
+
+        NewOrdersTableHeader = [
+            html.Thead(
+                html.Tr(
+                    [
+                       html.Th("B/S"),
+                       html.Th("Price"),
+                       html.Th("TP"),
+                       html.Th("SL"),
+                       html.Th("Qty"),
+                       html.Th(html.Span(["New/TDB", swTBD]), className="d-grid gap-2 d-flex justify-content-end"),
+                       html.Th("Status"),
+                    ], style={'color':'#ffffff','background-color':'#636363'}
+                )   
+            )
+        ]
+    
+        try:
+            #lista_orderblocks = globales.G_RTlocalData_.strategies_.strategyGetOrdersDataFromParams ('PentagramaRu', data)
+            lista_orderblocks = estrategia['classObject'].strategyGetOrdersDataFromParams(data)
+        except:
+            logging.error ("Exception pidiendo las ordenes", exc_info=True)
+            alert_msg = "Error calculando ordenes nuevas"
+            alert_color = 'danger'
+            return no_update, no_update, True, alert_msg, alert_color
+
+        NewOrdersTableContent = []
+
+        for orderblock in lista_orderblocks:
+            backgroundColorRow = '#ffffff'
+            if orderblock['TBD'] == 'TBD':
+                backgroundColorRow = '#d6bfba' # TDB
+                if not switchTBD:
+                    continue
+            if orderblock['TBD'] == 'New':
+                backgroundColorRow = '#c1c2c9' # New
+
+            NewOrdersTableRow = html.Tr(
+                [
+                    html.Td(orderblock['B_S'], style={'background-color':'transparent'}), 
+                    html.Td(orderblock['Price'], style={'background-color':'transparent'}), 
+                    html.Td(orderblock['PrecioTP'], style={'background-color':'transparent'}), 
+                    html.Td(orderblock['PrecioSL'], style={'background-color':'transparent'}), 
+                    html.Td(orderblock['Qty'], style={'background-color':'transparent'}), 
+                    html.Td(orderblock['TBD'], style={'background-color':'transparent'}), 
+                    html.Td(orderblock['Status'], style={'background-color':'transparent'}), 
+                ], 
+                style={'color':'#000000','background-color':backgroundColorRow},
+            )
+
+            NewOrdersTableContent.append(NewOrdersTableRow)
+            NewOrdersTableBody = [html.Tbody(NewOrdersTableContent)]
+
+
+        NewOrdersTable = NewOrdersTableHeader + NewOrdersTableBody
+
+        alert_msg = "Preview generado correctamente"
+        alert_color = 'success'
+
+        return fig1, NewOrdersTable, True, alert_msg, alert_color
+
+    if 'role' in ctx.triggered_id and ctx.triggered_id['role'] in ['strategy_update_button_commit']:
+        symbol = ctx.triggered_id['symbol']
+        data = {}
+        data['symbol'] = symbol
+        data['nBuys'] = nBuys
+        data['nSells'] = nSells
+        data['interSpace'] = interSpace
+        data['gain'] = gain
+        data['start'] = first
+        data['qty_row'] = qty
+        data['sl_buy'] = slBuy
+        data['sl_sell'] = slSell
+
+        error = False
+        alert_msg = ""
+        alert_color = 'danger'
+
+        estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
+        try:
+            #lista_orderblocks = globales.G_RTlocalData_.strategies_.strategyGetOrdersDataFromParams ('PentagramaRu', data)
+            lista_orderblocks = estrategia['classObject'].strategyGetOrdersDataFromParams(data)
+        except:
+            logging.error ("Exception occurred añadiendo estrategia", exc_info=True)
+            alert_msg = "Error adquiriendo las zonas desde los params"
+            return no_update, no_update, True, alert_msg, alert_color
+
+        # Aqui tenemos una lista de order_blocks a generar y borrar, pero todo lo puede hacer la clase orderbracket.
+        # Aquí solo hay que actualizar el fichero y config
+
+        for order_block in lista_orderblocks:
+            if order_block['TBD'] == 'New':
+                try:
+                    estrategia['classObject'].strategyAddZone(order_block)
+                except:
+                    alert_msg = "Error añadiendo zona en estrategia"
+                    logging.error('Error añadiendo zona en estrategia.', exc_info=True)
+                    error = True
+            elif order_block['TBD'] == 'TBD':
+                try:
+                    ret = estrategia['classObject'].strategyUpdateTBD('TBD', order_block)
+                except:
+                    alert_msg = "Error cambiando TBD en estrategia"
+                    logging.error('Error cambiando TBD en estrategia.', exc_info=True)
+                    error = True
+                else:
+                    if ret == False:
+                        alert_msg = "Error cambiando TBD en estrategia"
+                        logging.error('Error cambiando TBD en estrategia. Zona no encontrada')
+                        error = True
+
+        if not error:
+            toWrite = {'PentagramaRu': True}
+            try:
+                globales.G_RTlocalData_.strategies_.strategyWriteFile(toWrite)
+            except:
+                alert_msg = "Error escribiendo estrategia en fichero"
+                logging.error('Error escribiendo estrategia.', exc_info=True)
+            else:
+                alert_color = 'success'
+                alert_msg = "Zonas añadidas correctamente. Recarga"
+                logging.info ('Commit de Strat Updata: %s. Todo correcto', symbol)
+        
+
+        return no_update, no_update, True, alert_msg, alert_color
+
+
+    return no_update, no_update, no_update, no_update, no_update
+
 
 # Callback para fix
 @callback(

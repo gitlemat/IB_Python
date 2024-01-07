@@ -31,6 +31,8 @@ def layout_strategies_tab():
 
     logging.debug ('Empiezo a calcular tab')
 
+    botonCreateStrat1 = webFE.webFENew_Strat_PentaRu.createStratBoton()
+
     tabEstrategias = [
         dbc.Row(
             [
@@ -38,15 +40,21 @@ def layout_strategies_tab():
                 dbc.Col(
                     html.P("Lista de Estrategias", className='text-left mb-0 text-secondary display-6'),
                     className = 'ps-0',
-                    width = 9
+                    width = 7
                 ),
                 dbc.Col(
-                    html.Div(
-                        dbc.Button("Reload Todas", id={'role': 'ZoneButtonReloadAll'}, className="me-0", n_clicks=0),
-                        className="text-end"
-                    ),
+                    [
+                        html.Div(
+                            dbc.Button("Reload Todas", id={'role': 'ZoneButtonReloadAll'}, className="text9-7 me-0", n_clicks=0),
+                            className="text-end"
+                        ),
+                        html.Div(
+                            botonCreateStrat1,
+                            className="text-end"
+                        )
+                    ],
                     className = 'pe-0',
-                    width = 3
+                    width = 5
                 ),
             ],
             className = 'mb-4',
@@ -58,13 +66,13 @@ def layout_strategies_tab():
         ),
         dbc.Row(
             [
-                dbc.Col(html.Div("Symbol"), id='strat-header-symbol', className = 'bg-primary mr-1', xs=5, md=3), # xs-5 md-3
-                dbc.Col(html.Div("Pos"), id='strat-header-pos', className = 'bg-primary mr-1', xs=1, md=1),    # xs-1 
-                dbc.Col(html.Div("Buy/Sell/Last"), id='strat-header-bsl', className = 'bg-primary mr-1', xs=4, md=2), # md-2 d-none d-md-block
-                dbc.Col(html.Div("PnL Estrategia"), id='strat-header-pnl', className = 'd-none d-md-block bg-primary mr-1', md=3), # md-3 d-none d-md-block
-                dbc.Col(html.Div("Exec (Hoy/Total)"), className = 'd-none d-md-block bg-primary', md=2), # md-2 d-none d-md-block
-                dbc.Col(html.Div("Enabled"), id='strat-header-en', className = 'md-1 bg-primary', xs=2, md=1), # xs-2
-            ], className = 'mb-3 text-white', id='strat-header'
+                dbc.Col(html.Div("Symbol"), id='strat-header-symbol', className = 'text9-7 bg-primary mr-1', xs=5, md=3), # xs-5 md-3
+                dbc.Col(html.Div("Pos"), id='strat-header-pos', className = 'text9-7 bg-primary mr-1', xs=1, md=1),    # xs-1 
+                dbc.Col(html.Div("Buy/Sell/Last"), id='strat-header-bsl', className = 'text9-7 bg-primary mr-1', xs=4, md=2), # md-2 d-none d-md-block
+                dbc.Col(html.Div("PnL Estrategia"), id='strat-header-pnl', className = 'text9-7 d-none d-md-block bg-primary mr-1', md=3), # md-3 d-none d-md-block
+                dbc.Col(html.Div("Exec (Hoy/Total)"), className = 'text9-7 d-none d-md-block bg-primary', md=2), # md-2 d-none d-md-block
+                dbc.Col(html.Div("Enabled"), id='strat-header-en', className = 'text9-7 md-1 bg-primary', xs=2, md=1), # xs-2
+            ], className = 'mb-3 text-white', id='text9-7 strat-header'
         ),
     ]
 
@@ -80,7 +88,7 @@ def layout_strategies_tab():
         headerRow = html.Div(
             [
                 html.Div(
-                    headerRowInn, id ={'role':'estrategia_header', 'strategy': stratType, 'symbol': symbol}
+                    headerRowInn, id ={'role':'estrategia_header', 'strategy': stratType, 'symbol': symbol}, className="text9-7"
                 ),
                 dcc.Interval(
                     id={'role': 'IntervalHeaderStrategy', 'strategy': stratType, 'symbol': symbol},
@@ -98,11 +106,21 @@ def layout_strategies_tab():
 
         tabEstrategias.append(headerRow)
         tabEstrategias.append(collapseDetails)    
+        #tabEstrategias.append(modal_contratoOrdenCreate())
 
-        logging.debug ('Ya tengo todo')    
+    # Por ultimo los modals
+    modals = modalsStrategia()
+    tabEstrategias.append(html.Div(modals))
+
+    logging.debug ('Ya tengo todo')    
 
     return tabEstrategias
 
+def modalsStrategia ():
+    modals = []
+    modals += webFE.webFENew_Strat_PentaRu.insideModalsPentagramaRu ()
+    
+    return modals
 
 def insideDetailsStrategia (estrategia):
     stratType = estrategia['type']
@@ -165,7 +183,7 @@ def layout_getStrategyHeader (estrategia, update = False):
     
     headerRow = dbc.Row(
         [
-            dbc.Col(html.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), class_name = 'bg-primary mr-1', xs=5, md=3),
+            dbc.Col(html.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), class_name = 'text9-7 bg-primary mr-1', xs=5, md=3),
             dbc.Col(html.Div(posQty), class_name = 'bg-primary mr-1', xs=1, md=1),
             dbc.Col(html.Div(priceTotal), class_name = 'bg-primary mr-1', xs=4, md=2),
             dbc.Col(html.Div(totalPnl), class_name = 'd-none d-md-block bg-primary mr-1', md=3),
@@ -179,146 +197,7 @@ def layout_getStrategyHeader (estrategia, update = False):
     
     return headerRow
 
-def modal_addStrategy():
 
-    # Aquí habria que añadir un id para el tipo de estrategia, y con un callback decidir el responseBody
-
-    Symbol = dcc.Input(
-        id = "strategy_create_symbol",
-        type = "text",
-        placeholder = "",
-    )
-
-    Qty = dcc.Input(
-        id = "strategy_create_qty",
-        type = "number",
-        placeholder = "0",
-    )
-
-    nBuys = dcc.Input(
-        id = "strategy_create_nBuys",
-        type = "number",
-        placeholder = "0",
-    )
-
-    nSells = dcc.Input(
-        id = "strategy_create_nSells",
-        type = "number",
-        placeholder = "0",
-    )
-
-    interSpace = dcc.Dropdown(
-        options = [250, 300, 350], 
-        value = 250, 
-        id = 'strategy_create_interSpace'
-    )
-
-    gain = dcc.Input(
-        id = "strategy_create_gain",
-        type = "number",
-        placeholder = "0",
-    )
-
-    first = dcc.Input(
-        id = "strategy_create_first",
-        type = "number",
-        placeholder = "0",
-    )
-
-    slBuy = dcc.Input(
-        id = "strategy_create_slBuy",
-        type = "number",
-        placeholder = "0",
-    )
-
-    slSell = dcc.Input(
-        id = "strategy_create_slSell",
-        type = "number",
-        placeholder = "0",
-    )
-
-
-    responseBody = html.Div([
-        html.P('Simbolo Estrategia: ',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        Symbol,
-        html.P('Numero de BUY:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        nBuys,
-        html.P('Numero de SELL:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        nSells,
-        html.P('Primer LMT:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        first,
-        html.P('Espaciado:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        interSpace,
-        html.P('Qty:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        Qty,
-        html.P('Ganancia TP:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        gain,
-        html.P('Stop Loss BUY:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        slBuy,
-        html.P('Stop Loss SELL:',
-            style={'margin-top': '8px', 'margin-bottom': '4px'},
-            className='font-weight-bold'),
-        slSell,
-    ])
-    
-    modal = html.Div(
-        [
-            dbc.Modal(
-                [
-                    dbc.ModalHeader(dbc.ModalTitle("Crear Ordem", id = "modalStrategyCreateHeader")),
-                    dbc.ModalBody(responseBody, id = "modalStrategyCreateBody"),
-                    dbc.ModalFooter([
-                        dbc.Button(
-                            "Crear", id="modalStrategyCreate_boton_create", className="ms-auto", n_clicks=0
-                        ),
-                        dbc.Button(
-                            "Close", id="modalStrategyCreate_boton_close", className="ms-auto", n_clicks=0
-                        )
-                    ]),
-                ],
-                id="modalStrategyCreate_main",
-                is_open=False,
-            ),
-        ]
-    )
-    return modal
-'''
-# Callback para general una orden en el contrato
-@callback(
-    Output("contract_orders_create_symbol", "placeholder"),
-    Output("modalContratoOrdenCreate_main", "is_open"),
-    Input({'role': 'boton_order_create', 'gConId': ALL}, "n_clicks"),
-    Input("contract_orders_create_symbol", "placeholder"),
-    Input("contract_orders_create_qty", "value"),
-    Input("contract_orders_create_LmtPrice", "value"),
-    Input("contract_orders_create_action", "value"),
-    Input("contract_orders_create_orderType", "value"),
-    Input("modalContratoOrdenCreate_boton_create", "n_clicks"),
-    Input("modalContratoOrdenCreate_boton_close", "n_clicks"),
-    State("modalContratoOrdenCreate_main", "is_open"), prevent_initial_call = True,
-)
-def createStrategy (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderType, n_button_create, n_button_close, open_status):
-
-    # Esto es por si las moscas
-    if not ctx.triggered_id:
-        raise PreventUpdate
-'''
 # Callback para enable/disable estrategia
 @callback(
     Output({'role': 'switchStratEnabled', 'strategy':MATCH, 'symbol': MATCH}, "input_class_name"),

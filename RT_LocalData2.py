@@ -161,7 +161,8 @@ class DataLocalRT():
 
         lotes_contrato = utils.getLotesContratoBySymbol (contractObj.localSymbol)
 
-        self.contractDict_[gConId]['pos'] = nPosition  # Solo haría falta esto cuando lo pase todo.
+        # self.contractDict_[gConId]['pos'] = nPosition  # Solo haría falta esto cuando lo pase todo.
+        self.contractDict_[gConId]['pos_total'] = nPosition  # Solo haría falta esto cuando lo pase todo.
         self.contractDict_[gConId]['posAvgPrice'] = avgCost/lotes_contrato
 
         return (result)
@@ -178,6 +179,7 @@ class DataLocalRT():
             except:
                 cl_l = 1
             lenght_list.append(cl_l)
+            contrato['pos'] = contrato['pos_total']   # Reseteo las posiciones
 
         lenght_list.sort(reverse=True)
         lenght_list = list(dict.fromkeys(lenght_list))  # sirve para quitar dupps
@@ -222,7 +224,6 @@ class DataLocalRT():
                 pos_min = 0 # No son del mismo signo, no nos vale
             logging.info("      %s: %d(%d)", contractLegInfo['lSymbol'], currPosLeg, pos_min)
         # pos_min es las que tengo que robar (multiplicado por el ratio de cada uno) a cada conId, para darselo al BAG
-        # UPDATE: Mejor no robar nada, y que los contratos conserven su posicion sin restar nada.
         
         logging.info("[Posicion] Actualizo BAG %s con esta position: %d", contrato['fullSymbol'], pos_min)
         avgPrice = 0.0
@@ -397,7 +398,8 @@ class DataLocalRT():
         contrato['gConId'] = gConId
         contrato['fullSymbol'] = None
         contrato['contract'] = contractObj
-        contrato['pos'] = None
+        contrato['pos'] = None         # En esta tengo las que presento en pantalla normalizadas (quitando las quw van a bags)
+        contrato['pos_total'] = None   # Aqui están todas tal cual viene de ib
         contrato['posAvgPrice'] = 0.0
         if contractObj.secType == "BAG":
             contrato['fullLegData'] = False
@@ -514,13 +516,17 @@ class DataLocalRT():
         error = False
         with open('strategies/ContractsWatchList.conf', 'w') as f:
             for line in contractList:
+                symbol = line.rstrip()
                 f.writelines(line + '\n')
-                contractN = self.appObj_.contractFUTcreate(line.rstrip())
-                if not contractN:
-                    logging.error ('Error creando el contrato %s. No se puede añadir', line.rstrip())
-                    error = True
-                gConId = self.contractAdd(contractN)
-                self.contractIndirectoSet (gConId, False)
+                contract = self.contractGetBySymbol(symbol)
+                if contract == None:
+                    logging.info ('En la watchlist hay un contrato con simbolo %s que no existe. Lo creamos.', symbol)
+                    contractN = self.appObj_.contractFUTcreate(symbol)
+                    if not contractN:
+                        logging.error ('Error creando el contrato %s. No se puede añadir', symbol)
+                        error = True
+                    gConId = self.contractAdd(contractN)
+                    self.contractIndirectoSet (gConId, False)
         return not error
 
     def contractReturnFixedWatchlist (self):
@@ -577,6 +583,12 @@ class DataLocalRT():
             contrato['pnl']['unrealizedPnL'] = lastPnL['unrealizedPnL']
             contrato['pnl']['realizedPnL'] = lastPnL['realizedPnL']
 
+
+    def contractGetListUnique(self):
+        contratos = []
+        for gConId, contrato in self.contractDict_.items():
+            contratos.append(contrato['fullSymbol'])
+        return contratos
 
     def contractUpdateTicks(self, reqId):
         # Tenemos por un lado los contratos BAG
@@ -1567,16 +1579,16 @@ class DataLocalRT():
                 return True
         return False
 
-    def orderPlaceBrief (self, symbol, secType, action, oType, lmtPrice, qty):
-        newreqDownId = self.appObj_.placeOrderBrief (symbol, secType, action, oType, lmtPrice, qty) 
+    def orderPlaceBrief (self, symbol, contractObj, secType, action, oType, lmtPrice, qty):
+        newreqDownId = self.appObj_.placeOrderBrief (symbol, contractObj, secType, action, oType, lmtPrice, qty) 
         return newreqDownId
 
-    def orderPlaceBracket (self, symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice):
-        ordersIds = self.appObj_.placeBracketOrder (symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice) 
+    def orderPlaceBracket (self, symbol, contractObj, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice):
+        ordersIds = self.appObj_.placeBracketOrder (symbol, contractObj, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice) 
         return ordersIds
 
-    def orderPlaceOCA (self, symbol, secType, actionSL, actionTP, qty, LmtPriceTP, LmtPriceSL):
-        ordersIds = self.appObj_.placeOCAOrder (symbol, secType, actionSL, actionTP, qty, LmtPriceTP, LmtPriceSL) 
+    def orderPlaceOCA (self, symbol, contractObj, secType, actionSL, actionTP, qty, LmtPriceTP, LmtPriceSL):
+        ordersIds = self.appObj_.placeOCAOrder (symbol, contractObj, secType, actionSL, actionTP, qty, LmtPriceTP, LmtPriceSL) 
         return ordersIds
 
     def orderUpdateOrder (self, symbol, contractObj, orderObj):

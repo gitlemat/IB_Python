@@ -522,7 +522,7 @@ def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderT
                     logging.error ("Error con el n_LmtPriceSL")
                     return contractText, False
                 try:
-                    result = globales.G_RTlocalData_.orderPlaceOCA (s_symbol, secType, s_action, s_action, n_qty, n_LmtPrice, n_LmtPriceSL)
+                    result = globales.G_RTlocalData_.orderPlaceOCA (s_symbol, contrato['contract'], secType, s_action, s_action, n_qty, n_LmtPrice, n_LmtPriceSL)
                     result = True
                 except:
                     logging.error ("Exception occurred", exc_info=True)
@@ -537,7 +537,7 @@ def createOrder (n_button_open, s_symbol,  n_qty, n_LmtPrice, s_action, s_orderT
                 mesg += "  Orden STP:\n"
                 logging.info (mesg)
                 try:
-                    result = globales.G_RTlocalData_.orderPlaceBrief (s_symbol, secType, s_action, s_orderType, n_LmtPrice, n_qty)
+                    result = globales.G_RTlocalData_.orderPlaceBrief (s_symbol, contrato['contract'], secType, s_action, s_orderType, n_LmtPrice, n_qty)
                     result = True
                 except:
                     logging.error ("Exception occurred", exc_info=True)

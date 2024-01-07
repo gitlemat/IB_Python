@@ -4,19 +4,20 @@ import datetime
 logger = logging.getLogger(__name__)
 
 orderChildErrorStatus = ['Inactive']
-orderChildValidExecStatusParentFilled = ['Filled', 'Submitted', 'Cancelled', 'PreSubmitted', 'PendingCancel', 'ApiCancelled']
+orderChildValidExecStatusParentFilled = ['Filled', 'Submitted', 'Cancelled', 'PendingSubmit', 'PreSubmitted', 'PendingCancel', 'ApiCancelled']
 orderChildInvalidExecStatusParentNotFilled = ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
 orderInactiveStatus = ['Cancelled', 'PendingCancel', 'Inactive', 'ApiCancelled']
 
 bracketStatusAll = [None, 'ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 'ParentFilled+EC', '+EC', '+EP']
 bracketStatusParentNotExec = [None, '+EC', '+EP']
+bracketStatusParentExec = ['ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 'ParentFilled+EC']
 
 Error_orders_timer_dt = datetime.timedelta(seconds=90)
 
 # Cada block tiene un BracketOrderFilledState que puede ser:
 # - ParentFilled: La parent se ha ejecutado, el resto tienen que estar en submitted/cancel/Filled
 # - ParentFilled+F: La parent se ha ejecutado, y una child ya ha ejecutado
-# - ParentFilled+C: La parent se ha ejecutado, y una child cancelada (la otra debería estar rellenada, pero igual está por llegar)
+# - ParentFilled+C: La parent se ha ejecutado, y una child cancelada (la otra debería estar rellenada, pero igual esta por llegar)
 # - ParentFilled+EP: La parent se ha ejecutado, y la parent tiene error. Se da cuando despues de ejecutar la parent, desaparece la child. Todo hecho?
 # - ParentFilled+EC: La parent se ha ejecutado, y error en childs
 # - +EC            : Parent NO ejecutada y error en childs
@@ -25,6 +26,19 @@ Error_orders_timer_dt = datetime.timedelta(seconds=90)
 def bracketOrderParseFromFile(fields):
     bError = False
     bracketOrder = {}
+    #bracketOrder['B_S']
+    #bracketOrder['Price']
+    #bracketOrder['Qty'] 
+    #bracketOrder['PrecioSL']
+    #bracketOrder['PrecioTP']
+    #bracketOrder['OrderId'] 
+    #bracketOrder['OrderPermId']
+    #bracketOrder['OrderIdSL'] 
+    #bracketOrder['OrderPermIdSL']
+    #bracketOrder['OrderIdTP']
+    #bracketOrder['OrderPermIdTP'] 
+    #bracketOrder['BracketOrderTBD']
+    #bracketOrder['BracketOrderFilledState']
     try:
         bracketOrder['B_S'] = fields[0].strip()
         bracketOrder['Price'] = float(fields[1].strip())
@@ -57,8 +71,12 @@ def bracketOrderParseFromFile(fields):
         bracketOrder['OrderPermIdTP'] = None
     else:
         bracketOrder['OrderPermIdTP'] = int (fields[10].strip())
-    if fields[11].strip() in bracketStatusAll:
-        bracketOrder['BracketOrderFilledState'] = fields[11].strip()
+    if fields[11].strip() == 'TBD':
+        bracketOrder['BracketOrderTBD'] = fields[11].strip()
+    else:
+        bracketOrder['BracketOrderTBD'] = None
+    if fields[12].strip() in bracketStatusAll:
+        bracketOrder['BracketOrderFilledState'] = fields[12].strip()
     else:
         bracketOrder['BracketOrderFilledState'] = None
     
@@ -81,9 +99,17 @@ def bracketOrderParseToFile(bracketOrder):
     line += str(bracketOrder.orderPermIdSL_) + ','
     line += str(bracketOrder.orderIdTP_) + ','
     line += str(bracketOrder.orderPermIdTP_) + ','
+    line += str(bracketOrder.BracketOrderTBD_) + ','
     line += str(bracketOrder.BracketOrderFilledState_)
     line += '\n'
-    return line
+
+    result = True
+    if bracketOrder.BracketOrderTBD_ == 'TBD' and bracketOrder.BracketOrderFilledState_ == 'ParentFilled+F':
+        result = False # Si es TBD y ya se ha ejecutado todo, la borramos
+
+    ret = {'line':line, 'result': result}
+
+    return ret
 
 class bracketOrderClass():
 
@@ -97,6 +123,7 @@ class bracketOrderClass():
         self.orderPermId_ = None
         self.orderPermIdSL_ = None
         self.orderPermIdTP_ = None
+        self.BracketOrderTBD_ = None
         self.BracketOrderFilledState_ = None
         self.B_S_ = None
         self.Qty_ = None
@@ -123,6 +150,8 @@ class bracketOrderClass():
             self.orderPermIdSL_ = data['OrderPermIdSL']
         if data and 'OrderPermIdTP' in data:
             self.orderPermIdTP_ = data['OrderPermIdTP']
+        if data and 'BracketOrderTBD' in data:
+            self.BracketOrderTBD_ = data['BracketOrderTBD']
         if data and 'BracketOrderFilledState' in data:
             self.BracketOrderFilledState_ = data['BracketOrderFilledState']
 
@@ -143,6 +172,9 @@ class bracketOrderClass():
         logging.info ('Order Block:')
         logging.info ('------------')
         logging.info ('Symbol: %s', self.symbol_)
+        logging.info ('Price: %s', self.Price_)
+        logging.info ('PrecioTP: %s', self.PrecioTP_)
+        logging.info ('PrecioSL: %s', self.PrecioSL_)
         logging.info ('orderId: %s', self.orderId_)
         logging.info ('orderIdSL: %s', self.orderIdSL_)
         logging.info ('orderIdTP: %s', self.orderIdTP_)
@@ -212,6 +244,7 @@ class bracketOrderClass():
         bRehacerNoError = False
         bRehacerTodoConError = False
         bRehacerOCAConError = False
+        bBorrarOrderBlock = False
         bNoHacerNada = False
         bErrorParent = False
 
@@ -234,40 +267,44 @@ class bracketOrderClass():
         #   En este caso, cualquier error obliga a rehacer todo (no puedo asociar OCA a parent)
         #logging.info ('%s: %s', self.symbol_, self.BracketOrderFilledState_)
         if self.BracketOrderFilledState_ in bracketStatusParentNotExec:
-            if self.orderId_ == None:
-                err_msg += "\n[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
-                err_msg += "    \nEl parentId es None"
+            if self.BracketOrderTBD_ == 'TBD':
+                err_msg += "\n" + " "*66 + "[Estrategia %s (%s)]. Parent NoExec y TBD." % (self.strategyType_, self.symbol_)
+                err_msg += "\n" + " "*66 + "Hay que borrar el orderblock"
+                bBorrarOrderBlock = True
+            elif self.orderId_ == None:
+                err_msg += "\n" + " "*66 + "[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
+                err_msg += "\n" + " "*66 + "El parentId es None"
                 bRehacerTodoConError = True
                 bErrorParent = True
             elif not bParentOrderExists:
-                err_msg += "\n[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
-                err_msg += "    \nEl parentId [%s] no existe segun IB" % self.orderId_
+                err_msg += "\n" + " "*66 + "[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
+                err_msg += "\n" + " "*66 + "El parentId [%s] no existe segun IB" % self.orderId_
                 bRehacerTodoConError = True
                 bErrorParent = True
             elif bParentOrderStatus in orderInactiveStatus:
-                err_msg += "\n[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
-                err_msg += "    \nEl parentId [%s] tiene un estado invalido: %s" % (self.orderId_, bParentOrderStatus)
+                err_msg += "\n" + " "*66 + "[Estrategia %s (%s)]. Error en parentId" % (self.strategyType_, self.symbol_)
+                err_msg += "\n" + " "*66 + "El parentId [%s] tiene un estado invalido: %s" % (self.orderId_, bParentOrderStatus)
                 bRehacerTodoConError = True
                 bErrorParent = True
-            # Parent no ejecutada y está perfectamente, y error en child ( hay que rehacer todo)
+            # Parent no ejecutada y esta perfectamente, y error en child ( hay que rehacer todo)
             elif bSLOrderStatus in orderChildInvalidExecStatusParentNotFilled:
-                err_msg += "    \nEl SLOrder [%s] tiene un estado invalido: %s" % (self.orderIdSL_,bSLOrderStatus)
+                err_msg += "\n" + " "*66 + "El SLOrder [%s] tiene un estado invalido: %s" % (self.orderIdSL_,bSLOrderStatus)
                 bRehacerTodoConError = True
             elif bTPOrderStatus in orderChildInvalidExecStatusParentNotFilled:
-                err_msg += "    \nEl TPOrder [%s] tiene un estado invalido: %s" % (self.orderIdTP_,bTPOrderStatus)
+                err_msg += "\n" + " "*66 + "El TPOrder [%s] tiene un estado invalido: %s" % (self.orderIdTP_,bTPOrderStatus)
                 bRehacerTodoConError = True
             elif self.orderIdSL_ == None:
-                err_msg += "    \nEl SLOrderId es None, y la parent [%s] no esta ejecutada" % (self.orderId_)
+                err_msg += "\n" + " "*66 + "El SLOrderId es None, y la parent [%s] no esta ejecutada" % (self.orderId_)
                 bRehacerTodoConError = True
             elif not bSLOrderExists:
-                err_msg += "    \nEl SLOrder [%s] no existe segun IB" % self.orderIdSL_
+                err_msg += "\n" + " "*66 + "El SLOrder [%s] no existe segun IB" % self.orderIdSL_
                 bRehacerTodoConError = True
             # Si la OrderTP no existe: error siempre
             elif self.orderIdTP_ == None:
-                err_msg += "    \nEl TPOrderId es None, y la parent [%s] no esta ejecutada" % (self.orderId_)
+                err_msg += "\n" + " "*66 + "El TPOrderId es None, y la parent [%s] no esta ejecutada" % (self.orderId_)
                 bRehacerTodoConError = True
             elif not bTPOrderExists:
-                err_msg += "    \nEl TPOrder [%s] no existe segun IB" % self.orderIdTP_
+                err_msg += "\n" + " "*66 + "El TPOrder [%s] no existe segun IB" % self.orderIdTP_
                 bRehacerTodoConError = True
 
         # Caso 2: Parent Exec y Child ejecutados
@@ -281,40 +318,46 @@ class bracketOrderClass():
         #   Aqui rehacemos OCA              
         else:
             if bSLOrderStatus == 'Filled' and bTPOrderStatus == 'Cancelled': # Todo ejecutado
-                bRehacerNoError = True
+                if self.BracketOrderTBD_ == 'TBD':
+                    bBorrarOrderBlock = True
+                else:
+                    bRehacerNoError = True
             if bSLOrderStatus == 'Cancelled' and bTPOrderStatus == 'Filled':
-                bRehacerNoError = True
+                if self.BracketOrderTBD_ == 'TBD':
+                    bBorrarOrderBlock = True
+                else:
+                    bRehacerNoError = True
             if not bSLOrderExists:
-                err_msg += "    \nLa parent [%s] está executada." % self.orderId_
-                err_msg += "    \nEl SLOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdSL_
+                err_msg += "\n" + " "*66 + "La parent [%s] esta executada." % self.orderId_
+                err_msg += "\n" + " "*66 + "El SLOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdSL_
                 bRehacerTodoConError = True 
                 bRehacerOCAConError = True # Puede que sea un problema de OCA
             if not bTPOrderExists:
-                err_msg += "    \nLa parent [%s] está executada." % self.orderId_
-                err_msg += "    \nEl TPOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdTP_
+                err_msg += "\n" + " "*66 + "La parent [%s] esta executada." % self.orderId_
+                err_msg += "\n" + " "*66 + "El TPOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdTP_
                 bRehacerTodoConError = True 
                 bRehacerOCAConError = True
             if bSLOrderStatus in orderInactiveStatus and bTPOrderStatus in orderInactiveStatus:
-                err_msg += "    \nEl SLOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderId_)
-                err_msg += "    \nEl TPOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderId_)
+                err_msg += "\n" + " "*66 + "El SLOrder [%s] tiene un estado invalido: %s, y la parent [%s] esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderId_)
+                err_msg += "\n" + " "*66 + "El TPOrder [%s] tiene un estado invalido: %s, y la parent [%s] esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderId_)
                 bRehacerOCAConError = True
             if bSLOrderStatus in orderInactiveStatus and bTPOrderStatus not in ['Filled']:
-                err_msg += "    \nEl SLOrder [%s] tiene un estado inválido: %s, y la TP [%s] no esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderIdTP_)
+                err_msg += "\n" + " "*66 + "El SLOrder [%s] tiene un estado invalido: %s, y la TP [%s] no esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderIdTP_)
                 bRehacerOCAConError = True
             if bTPOrderStatus in orderInactiveStatus and bSLOrderStatus not in ['Filled']:
-                err_msg += "    \nEl TPOrder [%s] tiene un estado inválido: %s, y la SL [%s] no esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderIdSL_)
+                err_msg += "\n" + " "*66 + "El TPOrder [%s] tiene un estado invalido: %s, y la SL [%s] no esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderIdSL_)
                 bRehacerOCAConError = True
             if bSLOrderStatus not in orderChildValidExecStatusParentFilled:
-                err_msg += "    \nEl SLOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderId_)
+                err_msg += "\n" + " "*66 + "El SLOrder [%s] tiene un estado invalido: %s, y la parent [%s] esta ejecutada" % (self.orderIdSL_,bSLOrderStatus, self.orderId_)
                 bRehacerOCAConError = True
             if bTPOrderStatus not in orderChildValidExecStatusParentFilled:
-                err_msg += "    \nEl TPOrder [%s] tiene un estado inválido: %s, y la parent [%s] esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderId_)
+                err_msg += "\n" + " "*66 + "El TPOrder [%s] tiene un estado invalido: %s, y la parent [%s] esta ejecutada" % (self.orderIdTP_,bTPOrderStatus, self.orderId_)
                 bRehacerOCAConError = True
             if self.orderIdSL_ == None:
-                err_msg += "    \nEl SLOrderId es None, y la parent [%s] esta ejecutada" % (self.orderId_)
+                err_msg += "\n" + " "*66 + "El SLOrderId es None, y la parent [%s] esta ejecutada" % (self.orderId_)
                 bRehacerOCAConError = True
             if self.orderIdTP_ == None:
-                err_msg += "    \nEl TPOrderId es None, y la parent [%s] esta ejecutada" % (self.orderId_)
+                err_msg += "\n" + " "*66 + "El TPOrderId es None, y la parent [%s] esta ejecutada" % (self.orderId_)
                 bRehacerOCAConError = True            
 
         ##########################################################
@@ -322,20 +365,29 @@ class bracketOrderClass():
         #  Ahora vemos qué se hace por cada error.
         #  Este paso es de limpieza (cancel orders), y de chequear timers
 
+        err_msg = "Errores en las ordenes" + err_msg
+
 
         # Caso 1: No hacer nada
-        #   Es solo para temas de prueba. No está en el codigo 
+        #   Es solo para temas de prueba. No esta en el codigo 
         if bNoHacerNada:
             return bBracketUpdated
 
-        # Caso 2: Hay que rehacer, pero no es error
+        # Caso 2: Es TDB y hay que borrar el order Blocl
+        #   
+        elif bBorrarOrderBlock:
+            # Hay que borrar las ordenes si existen
+            bBracketUpdated = -2
+            return bBracketUpdated
+
+        # Caso 3: Hay que rehacer, pero no es error
         #   Es solo para temas de prueba
         elif bRehacerNoError:
             if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
                 return bBracketUpdated
         
-        # Caso 3: Hay que rehacer todo y es error
-        #   La parentId no está, y no está ejecutada. Borramos todas y rehacemos
+        # Caso 4: Hay que rehacer todo y es error
+        #   La parentId no esta, y no esta ejecutada. Borramos todas y rehacemos
         #   Si hemos detectado error en parent, borramos todas si no existen
         elif bRehacerTodoConError: # 
             if (datetime.datetime.now() - self.timelasterror_) < Error_orders_timer_dt:
@@ -353,7 +405,7 @@ class bracketOrderClass():
                     logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
                     self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
 
-        # Caso 4: Error en las child (con o sin error en parent)
+        # Caso 5: Error en las child (con o sin error en parent)
         #   Si hemos detectado error en alguna child, las borramos para recrear
         #   Si no esta exec: borramos todo y recrear
         #   Si ya esta exec: Hacemos a mano la TP y SL
@@ -380,7 +432,9 @@ class bracketOrderClass():
             self.timelasterror_ = datetime.datetime.now()
             ret = None
             if bRehacerNoError:
-                if self.regenerate_:
+                if self.BracketOrderTBD_ == 'TBD':
+                    ret = -2 # Sirve para el upstream dispare el actualizar el fichero, y borre el orderBlock
+                elif self.regenerate_:
                     logging.info ('[Estrategia %s (%s)]. Todo ejecutado rehacemos', self.strategyType_, self.symbol_)
                     ret = self.orderBlockCreateBracketOrder () # Este actualiza BracketOrderFilledState_ a None
                     if ret:
@@ -407,12 +461,12 @@ class bracketOrderClass():
                         self.BracketOrderFilledState_ = 'ParentFilled+EP'
 
                     ret = -1
-                    if bRehacerOCAConError: # Caso especial en el que la Parent está exec, y ha pasado algo con las child. No sé si child exec o fallo.
+                    if bRehacerOCAConError: # Caso especial en el que la Parent esta exec, y ha pasado algo con las child. No sé si child exec o fallo.
                         self.toFix = 3 # permito a la gui rehacer todo o solo OCA
                     else: 
                         self.toFix = 1
                 
-            elif bRehacerOCAConError: # Aqui se llega solo si la Parent está exec, y hay error en Child
+            elif bRehacerOCAConError: # Aqui se llega solo si la Parent esta exec, y hay error en Child
                 if self.autofix_:
                     logging.error ('[Estrategia %s (%s)]. Rehacemos OCA para childs', self.strategyType_, self.symbol_)
                     ret = self.orderBlockCreateChildOca ()
@@ -430,6 +484,8 @@ class bracketOrderClass():
             if ret == None:
                 if self.BracketOrderFilledState_ != origState:
                     bBracketUpdated = True
+            elif ret == -1:
+                bBracketUpdated = -1
             else:
                 bBracketUpdated = True
                 
@@ -543,7 +599,7 @@ class bracketOrderClass():
         orderParent = self.RTLocalData_.orderGetByOrderId(self.orderId_)
         qty = 0
         if not orderParent:
-            if self.BracketOrderFilledState_ == 'ParentFilled':
+            if self.BracketOrderFilledState_ in bracketStatusParentExec:
                 qty = self.Qty_
         elif 'filled' in orderParent['params']:
             qty = orderParent['params']['filled']
@@ -579,7 +635,7 @@ class bracketOrderClass():
             logging.info ('     Precio LMT: %.3f', lmtPrice)
             logging.info ('     Precio TP : %.3f', takeProfitLimitPrice)
             logging.info ('     Precio SL : %.3f', stopLossPrice)
-            orderIds = self.RTLocalData_.orderPlaceBracket (symbol, secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice)
+            orderIds = self.RTLocalData_.orderPlaceBracket (symbol, contract['contract'], secType, action, qty, lmtPrice, takeProfitLimitPrice, stopLossPrice)
         except:
             logging.error('Error lanzando las barcket orders', exc_info = True)
             return None
@@ -624,7 +680,7 @@ class bracketOrderClass():
             logging.info ('[Estrategia %s (%s)]. Vamos a crear las ordenes SL/TP como OCA', self.strategyType_,  symbol)
             logging.info ('     Precio TP (%s): %.3f', action1, takeProfitLimitPrice)
             logging.info ('     Precio SL (%s): %.3f', action2, stopLossPrice)
-            orderIds = self.RTLocalData_.orderPlaceOCA (symbol, secType, action1, action2, qty, takeProfitLimitPrice, stopLossPrice)
+            orderIds = self.RTLocalData_.orderPlaceOCA (symbol, contract['contract'], secType, action1, action2, qty, takeProfitLimitPrice, stopLossPrice)
         except:
             logging.error('Error lanzando las OCA orders', exc_info=True)
             return None

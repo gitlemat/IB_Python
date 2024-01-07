@@ -74,9 +74,14 @@ class strategyBaseClass():
                 bStrategyUpdated = True
                 self.ordersUpdated_ = True
             if ret == -1:
-                ## Esto es cuando una bracket o OCA ha sido ejecutada entera, y no rehecha
+                ## Esto es cuando una bracket o OCA ha sido ejecutada entera, y no rehecha. Probablente no hace falta
+                bStrategyUpdated = True
                 self.ordersUpdated_ = True
-                pass
+            if ret == -2:
+                # Esto es cuando hay que borrar el orderBlock
+                
+                bStrategyUpdated = True
+                self.ordersUpdated_ = True
 
         return bStrategyUpdated
 
@@ -98,15 +103,9 @@ class strategyBaseClass():
         # To override
         return None
 
-    def strategyOrderIdUpdated (self, ordenObj):
-        # To override
+    def strategyGetBuildParams(self):
         return None
 
-    def strategyOrderExecuted (self = None, data = None):
-        #To override
-        return None
-
-    def strategyOrderCommission (symbol = None, commissionReport = None):
-        #To override
+    def strategyGetOrdersDataFromParams (self, data):
         return None
         
