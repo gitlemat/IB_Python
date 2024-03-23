@@ -232,7 +232,16 @@ class strategyPentagramaRu(strategyBaseClass):
 
     def strategyLoopCheck (self): 
         # Nada fuera de lo normal. Hacemos solo lo standard de la clase base
-        super().strategyLoopCheck()
+        ret = super().strategyLoopCheck()
+
+        # Ahora tenemos que revisar si algun orderblock está en TDBready. Esos se borrar (junto con sus zonas)
+        for block in self.orderBlocks_:
+            if block.BracketOrderTBD_ == 'TBDready':
+                pass
+        for zoneItem in self.zones_:
+            if zoneItem['orderBlock'].BracketOrderTBD_ == 'TBDready':
+                pass
+        return ret
 
     def strategyFix (self, data):
         #data:
@@ -326,7 +335,7 @@ class strategyPentagramaRu(strategyBaseClass):
         prev = 0
         for zone in self.zones_:
             orderBlock = zone['orderBlock']
-            if orderBlock.BracketOrderTBD_ == 'TBD':
+            if orderBlock.BracketOrderTBD_ in ['TBD', 'TBDready']:
                 continue
             if orderBlock.B_S_ == 'B':
                 sl_buy = orderBlock.PrecioSL_

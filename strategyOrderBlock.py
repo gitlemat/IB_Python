@@ -266,6 +266,9 @@ class bracketOrderClass():
         #   Si no tengo constancia de que se halla comprado la parent, si no existe es error
         #   En este caso, cualquier error obliga a rehacer todo (no puedo asociar OCA a parent)
         #logging.info ('%s: %s', self.symbol_, self.BracketOrderFilledState_)
+        if self.BracketOrderTBD_ == 'TBDready':  # Aqui ya no hay nada que hacer. Tampoco debería haber llegado aqui
+            logging.error ('[Estrategia PentagramaRu (%s)]. TBDready, por alguna razon no se ha borrado y hemos llegado aqui', self.symbol_)
+            return -2
         if self.BracketOrderFilledState_ in bracketStatusParentNotExec:
             if self.BracketOrderTBD_ == 'TBD':
                 err_msg += "\n" + " "*66 + "[Estrategia %s (%s)]. Parent NoExec y TBD." % (self.strategyType_, self.symbol_)
@@ -373,10 +376,21 @@ class bracketOrderClass():
         if bNoHacerNada:
             return bBracketUpdated
 
-        # Caso 2: Es TDB y hay que borrar el order Blocl
+        # Caso 2: Es TBD y hay que borrar el order Blocl
         #   
-        elif bBorrarOrderBlock:
+        elif bBorrarOrderBlock:   # Este es el TBD
             # Hay que borrar las ordenes si existen
+            logging.error ('[Estrategia PentagramaRu (%s)]. TBD por lo que hay que cancelar todas las ordenes', self.symbol_)
+            if bParentOrderExists:
+                logging.error ('    Cancelamos la Parent OrderId %s', self.orderId_)
+                self.RTLocalData_.orderCancelByOrderId (self.orderId_)  
+            if bSLOrderExists:
+                logging.error ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
+                self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
+            if bSLOrderExists:
+                logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
+                self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
+            self.BracketOrderTBD_ = 'TBDready'
             bBracketUpdated = -2
             return bBracketUpdated
 
@@ -432,7 +446,7 @@ class bracketOrderClass():
             self.timelasterror_ = datetime.datetime.now()
             ret = None
             if bRehacerNoError:
-                if self.BracketOrderTBD_ == 'TBD':
+                if self.BracketOrderTBD_ == 'TBD':  # Aqui no se debería llegar nunca
                     ret = -2 # Sirve para el upstream dispare el actualizar el fichero, y borre el orderBlock
                 elif self.regenerate_:
                     logging.info ('[Estrategia %s (%s)]. Todo ejecutado rehacemos', self.strategyType_, self.symbol_)
