@@ -151,6 +151,7 @@ class Strategies():
                     strategyList.append (strategy)
             strategyPentagramaRuNew2.strategyWriteFile(strategyList)
 
+    '''
     def strategyGetOrdersDataFromParams (self, stratType, data):
             
         if stratType == 'PentagramaRu' :
@@ -161,7 +162,7 @@ class Strategies():
                 raise
         
         return True
-
+    '''
     def strategyWriteNewStrategy (self, stratType, data):
             
         if stratType == 'PentagramaRu' :

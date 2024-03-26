@@ -14,13 +14,18 @@ bracketStatusParentExec = ['ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 
 
 Error_orders_timer_dt = datetime.timedelta(seconds=90)
 
-# Cada block tiene un BracketOrderFilledState que puede ser:
+# BracketOrderFilledState que puede ser:
 # - ParentFilled: La parent se ha ejecutado, el resto tienen que estar en submitted/cancel/Filled
 # - ParentFilled+F: La parent se ha ejecutado, y una child ya ha ejecutado
 # - ParentFilled+C: La parent se ha ejecutado, y una child cancelada (la otra debería estar rellenada, pero igual esta por llegar)
 # - ParentFilled+EP: La parent se ha ejecutado, y la parent tiene error. Se da cuando despues de ejecutar la parent, desaparece la child. Todo hecho?
 # - ParentFilled+EC: La parent se ha ejecutado, y error en childs
 # - +EC            : Parent NO ejecutada y error en childs
+# - +EP            : Parent NO ejecutada y error en parent
+
+# BracketOrderTBD
+# - TBD: Hay que borrar el bloque, per aun no está listo
+# - TBDready: Hay que borrar el bloque y ya está listo para borrar
 
 
 def bracketOrderParseFromFile(fields):
@@ -242,6 +247,7 @@ class bracketOrderClass():
 
         err_msg = ""
         bRehacerNoError = False
+        bCancelarParent = False # Es para el caso de no comprar mas
         bRehacerTodoConError = False
         bRehacerOCAConError = False
         bBorrarOrderBlock = False
@@ -262,15 +268,24 @@ class bracketOrderClass():
         #  AAnalizamos el estado de las ordenes para ver si estan bien
         #
 
-        # Caso 1: Parent no exec
-        #   Si no tengo constancia de que se halla comprado la parent, si no existe es error
-        #   En este caso, cualquier error obliga a rehacer todo (no puedo asociar OCA a parent)
-        #logging.info ('%s: %s', self.symbol_, self.BracketOrderFilledState_)
+        # Caso 0: TBDReady
+        #   Si esta TBDReady -> No deberia llegar (por?) y salimos con -2
+
         if self.BracketOrderTBD_ == 'TBDready':  # Aqui ya no hay nada que hacer. Tampoco debería haber llegado aqui
             logging.error ('[Estrategia PentagramaRu (%s)]. TBDready, por alguna razon no se ha borrado y hemos llegado aqui', self.symbol_)
             return -2
+
+        # Caso 1: Parent no exec
+        #   Si esta en TBD -> Se indica que hay que borrar todo y punto
+        #   Si no tengo constancia de que se halla comprado la parent, si no existe es error
+        #   En este caso, cualquier error obliga a rehacer todo (no puedo asociar OCA a parent)
+
         if self.BracketOrderFilledState_ in bracketStatusParentNotExec:
-            if self.BracketOrderTBD_ == 'TBD':
+            if not self.regenerate_ and bParentOrderExists and (bParentOrderStatus in ['Submitted','PendingSubmit', 'PreSubmitted']):
+                err_msg += "\n" + " "*66 + "[Estrategia %s (%s)]. Parent NoExec y hemos decidido no comprar mas." % (self.strategyType_, self.symbol_)
+                err_msg += "\n" + " "*66 + "Hay que borrar el parent"
+                bCancelarParent = True
+            elif self.BracketOrderTBD_ == 'TBD':
                 err_msg += "\n" + " "*66 + "[Estrategia %s (%s)]. Parent NoExec y TBD." % (self.strategyType_, self.symbol_)
                 err_msg += "\n" + " "*66 + "Hay que borrar el orderblock"
                 bBorrarOrderBlock = True
@@ -314,7 +329,10 @@ class bracketOrderClass():
         #   Este es el caso perfecto, todo ha ido bien
         #   Aqui hay que regenerar sin error
         elif self.BracketOrderFilledState_ in ['ParentFilled+F']:
-            bRehacerNoError = True
+            if self.BracketOrderTBD_ == 'TBD':
+                bBorrarOrderBlock = True
+            else:
+                bRehacerNoError = True
 
         # Caso 3: Parent Exec, pero child no.
         #   Si la parentOrder se ha ejecutado, las child tienen que estar en un estado valido. Si no error.  
@@ -330,6 +348,9 @@ class bracketOrderClass():
                     bBorrarOrderBlock = True
                 else:
                     bRehacerNoError = True
+            if bSLOrderStatus == 'Cancelled' and bTPOrderStatus == 'Cancelled':
+                if self.BracketOrderTBD_ == 'TBD':
+                    bBorrarOrderBlock = True
             if not bSLOrderExists:
                 err_msg += "\n" + " "*66 + "La parent [%s] esta executada." % self.orderId_
                 err_msg += "\n" + " "*66 + "El SLOrder [%s] no existe segun IB. Asumimos que todo se ha hecho" % self.orderIdSL_
@@ -370,7 +391,6 @@ class bracketOrderClass():
 
         err_msg = "Errores en las ordenes" + err_msg
 
-
         # Caso 1: No hacer nada
         #   Es solo para temas de prueba. No esta en el codigo 
         if bNoHacerNada:
@@ -380,18 +400,33 @@ class bracketOrderClass():
         #   
         elif bBorrarOrderBlock:   # Este es el TBD
             # Hay que borrar las ordenes si existen
-            logging.error ('[Estrategia PentagramaRu (%s)]. TBD por lo que hay que cancelar todas las ordenes', self.symbol_)
+            # Aqui solo llegamos si:
+            # - la parent no se ha exec
+            # - Se han ejecutado las parent y child (todo cerrado)
+            # Si la exec está ejecutada, pero las child no, hay que esperar a cerrar las child.
+            #
+            # Resultado:
+            # - Borrar todo (si existe)
+            # - Marcar como TBDready par borrar el block.
+
+            logging.info ('[Estrategia PentagramaRu (%s)]. TBD por lo que hay que cancelar todas las ordenes', self.symbol_)
             if bParentOrderExists:
-                logging.error ('    Cancelamos la Parent OrderId %s', self.orderId_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderId_)  
-            if bSLOrderExists:
-                logging.error ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
-            if bSLOrderExists:
-                logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
-                self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
-            self.BracketOrderTBD_ = 'TBDready'
-            bBracketUpdated = -2
+                try:
+                    logging.info ('    Cancelamos la Parent OrderId %s', self.orderId_)
+                    self.RTLocalData_.orderCancelByOrderId (self.orderId_)  
+                    if bSLOrderExists:
+                        logging.info ('    Cancelamos la SLOrder OrderId %s', self.orderIdSL_)
+                        self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
+                    if bSLOrderExists:
+                        logging.info ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
+                        self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
+                except:
+                    logging.error ('    Error cancelando la Orden') 
+                else:
+                    self.BracketOrderTBD_ = 'TBDready'
+                    bBracketUpdated = -2
+            else:
+                self.BracketOrderTBD_ = 'TBDready'
             return bBracketUpdated
 
         # Caso 3: Hay que rehacer, pero no es error
@@ -436,6 +471,11 @@ class bracketOrderClass():
                     logging.error ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
                     self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)  
 
+        # Caso 6: La parent esta bien y hemos decidido no compara mas
+        #   Hay que borrar la parent
+        elif bCancelarParent:
+            logging.error ('    Cancelamos la Parent OrderId %s', self.orderId_)
+            self.RTLocalData_.orderCancelByOrderId (self.orderId_)  
 
         ##########################################################
         # Paso 3: 
@@ -466,9 +506,14 @@ class bracketOrderClass():
                         self.BracketOrderFilledState_ = None
                 else:
                     logging.error ('[Estrategia %s (%s)]. Necesitamos rehacer todo, pero no lo hacemos y salimos', self.strategyType_, self.symbol_)
+                    # La parent no esta, y las child están bien -> Asumimos exec.
                     if self.BracketOrderFilledState_ in bracketStatusParentNotExec:    # Si parent no Exec
                         if bErrorParent:
-                            self.BracketOrderFilledState_ = '+EP'
+                            if bSLOrderStatus in orderChildValidExecStatusParentFilled and bTPOrderStatus in orderChildValidExecStatusParentFilled:
+                                # Si la parent no esta y las child estan en estado valido para parent_exec: asumo que esta exec
+                                self.BracketOrderFilledState_ = 'ParentFilled+EP'
+                            else:
+                                self.BracketOrderFilledState_ = '+EP'
                         else:
                             self.BracketOrderFilledState_ = '+EC'
                     else:
@@ -721,4 +766,17 @@ class bracketOrderClass():
         self.RTLocalData_.orderCancelByOrderId (self.orderIdSL_)  
         logging.info ('    Cancelamos la OrderIdTP OrderId %s', self.orderIdTP_)
         self.RTLocalData_.orderCancelByOrderId (self.orderIdTP_)
+
+    def orderBlockCancelParentOrder(self):
+        bParentOrderExists = self.RTLocalData_.orderCheckIfExistsByOrderId(self.orderId_)
+        bParentOrderStatus = self.RTLocalData_.orderGetStatusbyOrderId (self.orderId_)
+        logging.info ('    Cancelamos la Parent OrderId %s', self.orderId_)
+
+        if bParentOrderExists and (bParentOrderStatus in ['Submitted','PendingSubmit', 'PreSubmitted']):
+            try:
+                self.RTLocalData_.orderCancelByOrderId (self.orderId_)
+            except:
+                logging.info ('    Error cancelando la Parent OrderId %s', self.orderId_)
+
+
     

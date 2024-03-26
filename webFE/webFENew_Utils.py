@@ -388,7 +388,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             if ordenParent['params'] != None and 'status' in ordenParent['params']:
                 statusParent = ordenParent['params']['status']
             elif orderBlock.BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 'ParentFilled+EC']:
-                statusParent = 'Filled'
+                statusParent = 'Filled (derived)'
             else:
                 statusParent = 'N/A'
                 #statusParent = 'PreSubmitted'
@@ -405,7 +405,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 actionParent = 'BUY'
             typeParent = 'LMT'
             if orderBlock.BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 'ParentFilled+EC']:
-                statusParent = 'Filled'
+                statusParent = 'Filled (derived)'
             else:
                 statusParent = 'N/A'
             #statusParent = 'PreSubmitted'

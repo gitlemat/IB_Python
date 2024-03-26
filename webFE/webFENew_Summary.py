@@ -129,7 +129,9 @@ def create_card (contrato, fig1, estrategia):
     symbol = contrato['fullSymbol']
     priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
     priceSell = formatCurrency(contrato['currentPrices']['SELL'])
-    priceLast = formatCurrency(contrato['currentPrices']['LAST'])
+    priceLastNum = contrato['currentPrices']['LAST']
+    priceLast = formatCurrency(priceLastNum)
+
     if priceBuy == None:
         priceBuy = ""
     if priceSell == None:
@@ -152,6 +154,7 @@ def create_card (contrato, fig1, estrategia):
     
     if estrategia == None:
         stratType = 'N/A'
+        posQtyNum = None
         posQty = 'N/A'
         execToday = 'N/A'
         execTotal = 'N/A'
@@ -160,7 +163,8 @@ def create_card (contrato, fig1, estrategia):
         AvgPriceFmt = 'N/A'
     else:
         stratType = estrategia['type']
-        posQty = str(estrategia['classObject'].currentPos_)
+        posQtyNum = estrategia['classObject'].currentPos_
+        posQty = str(posQtyNum)
         execToday = estrategia['classObject'].pandas_.dbGetExecCountToday()
         execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
         execString = str(execToday) + '/' + str(execTotal)
@@ -168,6 +172,31 @@ def create_card (contrato, fig1, estrategia):
         totalPnl = formatCurrency(allPnL)
         AvgPrice = estrategia['classObject'].strategyGetExecPnL()['avgPrice']
         AvgPriceFmt = formatCurrency(AvgPrice)
+        try:
+            unrealNum = estrategia['classObject'].strategyGetExecPnLUnrealized()
+        except:
+            unrealNum = 0
+
+        unreal = formatCurrency(unrealNum)
+        if unrealNum < 0:
+            unreal = html.Div(unreal, style={'color':'#ff0000'})
+        else:
+            unreal = html.Div(unreal, style={'color':'#366b22'})
+
+        if allPnL < 0:
+            totalPnl = html.Div(totalPnl, style={'color':'#ff0000'})
+        else:
+            totalPnl = html.Div(totalPnl, style={'color':'#366b22'})
+
+        #totalPnl = totalPnl + '/' + unreal
+        totalPnl = html.Span(
+                                [
+                                    html.Div('PnL:'),
+                                    html.Div(totalPnl),
+                                    html.Div('/'),
+                                    html.Div(unreal)
+                                ], className="d-grid gap-2 d-flex justify-content-end"
+                            )
 
     graphColumn1 = html.Div(
         dcc.Graph(
@@ -176,6 +205,21 @@ def create_card (contrato, fig1, estrategia):
                 figure = fig1
         )
     )
+    #, style={'color':'#ffffff','background-color':'#636363'}
+    priceLastColor = '#366b22'
+    if posQtyNum != None:
+        if posQtyNum > 0:
+            if priceLastNum < AvgPrice:
+                priceLastColor = '#ff0000'
+        elif posQtyNum < 0:
+            if priceLastNum > AvgPrice:
+                priceLastColor = '#ff0000'
+        else:
+            priceLastColor = '#000000'
+    else:
+        priceLastColor = '#000000'
+
+    h6priceList = html.H6("("+ priceLast +")", style={'color':priceLastColor})
 
     this_card = dbc.Card(
         [
@@ -185,7 +229,13 @@ def create_card (contrato, fig1, estrategia):
                         [
                             dbc.Col(
                                 [
-                                    html.H6(symbol+" ("+ priceLast +")")
+                                    html.Span(
+                                        [
+                                            html.H6(symbol),
+                                            h6priceList
+                                        ], className="d-grid gap-2 d-flex"
+                                    )
+                                    #html.H6(symbol+" ("+ priceLast +")")
                                 ],
                             )
                         ]
@@ -205,7 +255,7 @@ def create_card (contrato, fig1, estrategia):
                             dbc.Col(
                                 [
                                     html.Div("Executions: " + execString, className = 'text-end', id = {'role': 'Card-Executions', 'strategy':stratType, 'symbol': symbol}),
-                                    html.Div("PnL: " + totalPnl, className = 'text-end', id = {'role': 'Card-PnL', 'strategy':stratType, 'symbol': symbol}),
+                                    html.Div(totalPnl, className = 'text-end', id = {'role': 'Card-PnL', 'strategy':stratType, 'symbol': symbol}),
                                 ], width=6,
                             ),
 

@@ -3,6 +3,8 @@ import datetime
 import pandasDB
 import strategyOrderBlock
 from strategyClass2 import strategyBaseClass
+import utils
+
 
 
 logger = logging.getLogger(__name__)
@@ -228,19 +230,28 @@ class strategyPentagramaRu(strategyBaseClass):
         for block in self.orderBlocks_:
             block.oderBlockRegenChange(regen)
         self.cerrarPos_ = value
+
+        if value == True:
+            self.strategyCancelarOrdenesNuevasPosiciones()
         return True
 
     def strategyLoopCheck (self): 
         # Nada fuera de lo normal. Hacemos solo lo standard de la clase base
         ret = super().strategyLoopCheck()
 
-        # Ahora tenemos que revisar si algun orderblock está en TDBready. Esos se borrar (junto con sus zonas)
-        for block in self.orderBlocks_:
-            if block.BracketOrderTBD_ == 'TBDready':
-                pass
+        new_pos = self.strategyCalcularPosiciones()
+
+        if self.currentPos_ != new_pos:
+            self.currentPos_ = new_pos
+            if ret == None:
+                ret = True
+
+        # Ahora tenemos que revisar si algun orderblock está en TBDready. Esos se borrar (junto con sus zonas)
         for zoneItem in self.zones_:
             if zoneItem['orderBlock'].BracketOrderTBD_ == 'TBDready':
-                pass
+                self.strategyDeleteZone(zoneItem)
+                if ret == None:
+                    ret = True
         return ret
 
     def strategyFix (self, data):
@@ -288,6 +299,26 @@ class strategyPentagramaRu(strategyBaseClass):
     def strategyGetExecPnL (self):
         return self.pandas_.dbGetExecPnL()
 
+    def strategyGetExecPnLUnrealized (self):
+        ExecData = self.pandas_.dbGetExecPnL()
+        lotes_contrato = utils.getLotesContratoBySymbol (self.symbol_)
+        count = ExecData['count']
+        avgPrice = ExecData['avgPrice'] * lotes_contrato
+        tPnL = ExecData['PnL']
+
+        contrato = self.RTLocalData_.contractGetBySymbol(self.symbol_)
+        priceLast = contrato['currentPrices']['LAST'] * lotes_contrato
+
+        comprado = avgPrice * self.currentPos_
+        vendido_potencial = priceLast * self.currentPos_
+
+        unreal = self.currentPos_ * (priceLast - avgPrice)
+        logging.info ('Pos: %s', self.currentPos_)
+        logging.info ('avgPrice: %s', avgPrice)
+        logging.info ('priceLast: %s', priceLast)
+
+        return unreal
+
 
     def strategyOrderUpdated (self, data):
 
@@ -313,6 +344,10 @@ class strategyPentagramaRu(strategyBaseClass):
     def strategyCancelarTodasOrdenes(self):
         for block in self.orderBlocks_:
             block.orderBlockCancelOrders()
+
+    def strategyCancelarOrdenesNuevasPosiciones(self):
+        for block in self.orderBlocks_:
+            block.orderBlockCancelParentOrder()
         
     def strategyCalcularPosiciones (self):
         pos = 0
@@ -364,6 +399,11 @@ class strategyPentagramaRu(strategyBaseClass):
         return (data)
 
     def strategyGetOrdersDataFromParams(self, data):
+        # Devuelve una lista con las ordenes que tenemos en la strat 
+        # Y añadimos las que generamos con los param de data
+        # cada orden no es una class, sino un dict
+        # Esto lo hacemos para poder mostrarlo en pantalla en un review.
+
         logging.info('Calculando ordenes de estrat a RU: %s', data)
         lista_orderblocks = []
         lista_orderblocks_new = []
@@ -454,6 +494,62 @@ class strategyPentagramaRu(strategyBaseClass):
 
         return lista_orderblocks
 
+    def strategyActualizaZonesDesdeGUI (self, data):
+        error = False
+        alert_msg = ""
+        alert_color = 'danger'
+
+        try:
+            # Ojo que esta no es lista de class, sino lista de dicts 
+            lista_orderblocks = self.strategyGetOrdersDataFromParams(data)
+        except:
+            logging.error ("Exception occurred añadiendo estrategia", exc_info=True)
+            alert_msg = "Error adquiriendo las zonas desde los params"
+            ret = {'alert_msg': alert_msg, 'alert_color': alert_color}
+            return ret
+
+        # Aqui tenemos una lista de order_blocks a generar y borrar, pero todo lo puede hacer la clase orderbracket.
+        # Aquí solo hay que actualizar el fichero y config
+        #   - Creamos zona nueva si es nuevo
+        #   - Lo marcamos para borrar si ya no lo quiero
+
+        for order_block_data in lista_orderblocks:
+            if order_block_data['TBD'] == 'New':
+                try:
+                    self.strategyAddZone(order_block_data)
+                except:
+                    alert_msg = "Error añadiendo zona en estrategia"
+                    logging.error('Error añadiendo zona en estrategia.', exc_info=True)
+                    error = True
+            else:
+                try:
+                    ret = self.strategyUpdateTBD(order_block_data)
+                except:
+                    alert_msg = "Error cambiando TBD en estrategia"
+                    logging.error('Error cambiando TBD en estrategia.', exc_info=True)
+                    error = True
+                else:
+                    if ret == False:
+                        alert_msg = "Error cambiando TBD en estrategia"
+                        logging.error('Error cambiando TBD en estrategia. Zona no encontrada')
+                        error = True
+
+        if not error:
+            toWrite = {'PentagramaRu': True}
+            try:
+                # Esto no es elegante, pero es comodo
+                self.RTLocalData_.strategies_.strategyWriteFile(toWrite)
+            except:
+                alert_msg = "Error escribiendo estrategia en fichero"
+                logging.error('Error escribiendo estrategia.', exc_info=True)
+            else:
+                alert_color = 'success'
+                alert_msg = "Zonas añadidas y/o actualizadas correctamente. Recarga"
+                logging.info ('Commit de Strat Updata. Todo correcto')
+        
+        ret = {'alert_msg': alert_msg, 'alert_color': alert_color}
+        return ret
+
     def strategyAddZone(self, data):
 
         #data['B_S']
@@ -508,8 +604,19 @@ class strategyPentagramaRu(strategyBaseClass):
         logging.info("     Parace que se ha añadido correctamente")
 
         return True
+
+    def strategyDeleteZone(self, zona):
+        # Hay que hacerlo
+        logging.info("[Estrategia %s (%s)]. Borramos Zona:", self.straType_, self.symbol_)
+        logging.info("     B_S: %s", zona['orderBlock'].B_S_)
+        logging.info("     Price: %s", zona['orderBlock'].Price_)
+        logging.info("     Qty: %s", zona['orderBlock'].Qty_)
+        logging.info("     PrecioTP: %s", zona['orderBlock'].PrecioTP_)
+        logging.info("     PrecioSL: %s", zona['orderBlock'].PrecioSL_)
+        self.orderBlocks_.remove(zona['orderBlock'])
+        self.zones_.remove(zona)
     
-    def strategyUpdateTBD (self, TBDnew, order_block_data):
+    def strategyUpdateTBD (self, order_block_data):
 
         for order_block in self.orderBlocks_:
             if order_block.B_S_ != order_block_data['B_S']:
@@ -524,7 +631,15 @@ class strategyPentagramaRu(strategyBaseClass):
                 continue
             # En este punto debería ser el bueno
 
-            order_block.BracketOrderTBD_ = TBDnew
+            logging.info("[Estrategia %s (%s)]. Actualizamos TDB en Zona:", self.straType_, self.symbol_)
+            logging.info("     B_S: %s", order_block_data['B_S'])
+            logging.info("     Price: %s", order_block_data['Price'])
+            logging.info("     Qty: %s", order_block_data['Qty'])
+            logging.info("     PrecioTP: %s", order_block_data['PrecioTP'])
+            logging.info("     PrecioSL: %s", order_block_data['PrecioSL'])
+            logging.info("     Nuevo TDB: %s", order_block_data['TBD'])
+
+            order_block.BracketOrderTBD_ = order_block_data['TBD']
 
             return True
 

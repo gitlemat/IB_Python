@@ -61,26 +61,32 @@ def insideDetailsPentagramaRu (estrategia):
 
     # Los botones
 
-    breload_text = html.Div('Recargar', className="text9-7 d-inline-block")
+    breload_text = html.Div('Recarga', className="text9-7 d-inline-block")
     breload_icon = html.I(className="bi bi-file-earmark-arrow-up me-2 d-inline-block")
     breload_content = html.Span([breload_icon, breload_text])
     boton_reload = dbc.Button(breload_content, id={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    boton_reload_tip = dbc.Tooltip("Recargar estrategia desde fichero", target={'role': 'ZoneButtonReload', 'strategy':'PentagramaRu', 'symbol': symbol})
     
     bedit_text = html.Div('Editar', className="text9-7 d-inline-block")
     bedit_icon = html.I(className="bi bi-pencil-square me-2 d-inline-block")
     bedit_content = html.Span([bedit_icon, bedit_text])
     boton_update = dbc.Button(bedit_content, id={'role': 'ZoneButtonUpdate', 'strategy':'PentagramaRu', 'symbol': symbol}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    boton_update_tip = dbc.Tooltip("Editar la estrategia", target={'role': 'ZoneButtonUpdate', 'strategy':'PentagramaRu', 'symbol': symbol})
     
     bdelete_text = html.Div('Borrar', className="text9-7 d-inline-block")
     bdelete_icon = html.I(className="bi bi-trash me-2 d-inline-block")
     bdelete_content = html.Span([bdelete_icon, bdelete_text])
     boton_delete = dbc.Button(bdelete_content, id={'role': 'ZoneButtonBorrar', 'strategy':'PentagramaRu', 'symbol': symbol}, className="d-inline-block me-0", n_clicks=0)
-
+    boton_delete_tip = dbc.Tooltip("Borrar la estrategia", target={'role': 'ZoneButtonBorrar', 'strategy':'PentagramaRu', 'symbol': symbol})
+    
     botonesUp = html.Div(
         [
             boton_reload,
+            boton_reload_tip,
             boton_update,
-            boton_delete
+            boton_update_tip,
+            boton_delete,
+            boton_delete_tip
         ],
         className="d-grid gap-2 d-flex justify-content-end",
     )
@@ -398,22 +404,28 @@ def layout_modifyStrat(symbol):
     bpreview_icon = html.I(className="bi bi-eye me-2 d-inline-block")
     bpreview_content = html.Span([bpreview_icon, bpreview_text])
     boton_preview = dbc.Button(bpreview_content, id={'role': 'strategy_update_button_preview', 'strategy':'PentagramaRu', 'symbol': symbol}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    boton_preview_tip = dbc.Tooltip("Actualizar el graph con los parametros de entrada. Es importante para ver si está bien", target={'role': 'strategy_update_button_preview', 'strategy':'PentagramaRu', 'symbol': symbol})
     
     bcommit_text = html.Div('Ejecutar', className="text9-7 d-inline-block")
     bcommit_icon = html.I(className="bi bi-check2-square me-2 d-inline-block")
     bcommit_content = html.Span([bcommit_icon, bcommit_text])
     boton_commit = dbc.Button(bcommit_content, id={'role': 'strategy_update_button_commit', 'strategy':'PentagramaRu', 'symbol': symbol}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    boton_commit_tip = dbc.Tooltip("Ejecutar los cambios. Es importante comprobar con 'Preview' que están bien. Recargar en navegador al final", target={'role': 'strategy_update_button_commit', 'strategy':'PentagramaRu', 'symbol': symbol})
     
     breset_text = html.Div('Restaurar', className="text9-7 d-inline-block")
     breset_icon = html.I(className="bi bi-arrow-counterclockwise me-2 d-inline-block")
     breset_content = html.Span([breset_icon, breset_text])
     boton_reset = dbc.Button(breset_content, id={'role': 'strategy_update_button_reset', 'strategy':'PentagramaRu', 'symbol': symbol}, className="d-inline-block me-0", n_clicks=0)
-
+    boton_reset_tip = dbc.Tooltip("Restaurar los parametros y dejarlos segun la estrategia actual", target={'role': 'strategy_update_button_reset', 'strategy':'PentagramaRu', 'symbol': symbol})
+    
     botonesStrategyUpdate = html.Div(
         [
             boton_preview,
+            boton_preview_tip,
             boton_reset,
-            boton_commit
+            boton_reset_tip,
+            boton_commit,
+            boton_commit_tip
         ],
         className="d-grid gap-2 d-flex justify-content-end",
     )
@@ -459,11 +471,11 @@ def layout_modifyStrat(symbol):
                                         style={'margin-top': '8px', 'margin-bottom': '4px'},
                                         className='font-weight-bold'),
                                     nSells,
-                                    html.P('Primer LMT:',
+                                    html.P('Precio (LMT) de la orden Parent de valor más alto:',
                                         style={'margin-top': '8px', 'margin-bottom': '4px'},
                                         className='font-weight-bold'),
                                     first,
-                                    html.P('Espaciado:',
+                                    html.P('Espaciado del precio de ordenes Parents:',
                                         style={'margin-top': '8px', 'margin-bottom': '4px'},
                                         className='font-weight-bold'),
                                     interSpace,
@@ -475,7 +487,7 @@ def layout_modifyStrat(symbol):
                                         style={'margin-top': '8px', 'margin-bottom': '4px'},
                                         className='font-weight-bold'),
                                     qty,
-                                    html.P('Ganancia TP:',
+                                    html.P('Ganancia Take Profit:',
                                         style={'margin-top': '8px', 'margin-bottom': '4px'},
                                         className='font-weight-bold'),
                                     gain,
@@ -1228,7 +1240,6 @@ def UpdateStratRuPreview (n_button_preview, n_button_commit, switchTBD, qty, nBu
         ]
     
         try:
-            #lista_orderblocks = globales.G_RTlocalData_.strategies_.strategyGetOrdersDataFromParams ('PentagramaRu', data)
             lista_orderblocks = estrategia['classObject'].strategyGetOrdersDataFromParams(data)
         except:
             logging.error ("Exception pidiendo las ordenes", exc_info=True)
@@ -1289,50 +1300,10 @@ def UpdateStratRuPreview (n_button_preview, n_button_commit, switchTBD, qty, nBu
         alert_color = 'danger'
 
         estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
-        try:
-            #lista_orderblocks = globales.G_RTlocalData_.strategies_.strategyGetOrdersDataFromParams ('PentagramaRu', data)
-            lista_orderblocks = estrategia['classObject'].strategyGetOrdersDataFromParams(data)
-        except:
-            logging.error ("Exception occurred añadiendo estrategia", exc_info=True)
-            alert_msg = "Error adquiriendo las zonas desde los params"
-            return no_update, no_update, True, alert_msg, alert_color
-
-        # Aqui tenemos una lista de order_blocks a generar y borrar, pero todo lo puede hacer la clase orderbracket.
-        # Aquí solo hay que actualizar el fichero y config
-
-        for order_block in lista_orderblocks:
-            if order_block['TBD'] == 'New':
-                try:
-                    estrategia['classObject'].strategyAddZone(order_block)
-                except:
-                    alert_msg = "Error añadiendo zona en estrategia"
-                    logging.error('Error añadiendo zona en estrategia.', exc_info=True)
-                    error = True
-            elif order_block['TBD'] == 'TBD':
-                try:
-                    ret = estrategia['classObject'].strategyUpdateTBD('TBD', order_block)
-                except:
-                    alert_msg = "Error cambiando TBD en estrategia"
-                    logging.error('Error cambiando TBD en estrategia.', exc_info=True)
-                    error = True
-                else:
-                    if ret == False:
-                        alert_msg = "Error cambiando TBD en estrategia"
-                        logging.error('Error cambiando TBD en estrategia. Zona no encontrada')
-                        error = True
-
-        if not error:
-            toWrite = {'PentagramaRu': True}
-            try:
-                globales.G_RTlocalData_.strategies_.strategyWriteFile(toWrite)
-            except:
-                alert_msg = "Error escribiendo estrategia en fichero"
-                logging.error('Error escribiendo estrategia.', exc_info=True)
-            else:
-                alert_color = 'success'
-                alert_msg = "Zonas añadidas correctamente. Recarga"
-                logging.info ('Commit de Strat Updata: %s. Todo correcto', symbol)
         
+        ret = estrategia['classObject'].strategyActualizaZonesDesdeGUI(data)
+        alert_msg = ret['alert_msg']
+        alert_color = ret['alert_color']
 
         return no_update, no_update, True, alert_msg, alert_color
 

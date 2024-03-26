@@ -79,7 +79,6 @@ class strategyBaseClass():
                 self.ordersUpdated_ = True
             if ret == -2:
                 # Esto es cuando hay que borrar el orderBlock
-                
                 bStrategyUpdated = True
                 self.ordersUpdated_ = True
 
@@ -103,9 +102,18 @@ class strategyBaseClass():
         # To override
         return None
 
+    def strategyCalcularPosiciones (self):
+        return None
+
     def strategyGetBuildParams(self):
         return None
 
     def strategyGetOrdersDataFromParams (self, data):
+        return None
+
+    def strategyActualizaZonesDesdeGUI (self, data):
+        return None
+    
+    def strategyUpdateTBD (self, order_block_data):
         return None
         
