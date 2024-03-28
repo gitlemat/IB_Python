@@ -30,6 +30,26 @@ def layout_summary_tab ():
         return tabSummary
         
     strategyList = globales.G_RTlocalData_.strategies_.strategyGetAll()
+
+    dfAccount = globales.G_RTlocalData_.accountPandas_.dbGetAccountData()
+    dfAccount = dfAccount.astype({'NetLiquidation':'float'})
+
+    try:
+        LastNetLiq1 = dfAccount.iloc[-1]['NetLiquidation']
+    except:
+        LastNetLiq1 = 0.0
+
+    try:
+        LastNetLiq2 = dfAccount.iloc[-2]['NetLiquidation']
+    except:
+        LastNetLiq2 = 0.0
+
+    if LastNetLiq2 != 0:
+        increment = (LastNetLiq1 - LastNetLiq1) / LastNetLiq2 * 100
+    else:
+        increment = 0
+
+    logging.info ('NetLiq:\n%s\n%s\n%s', LastNetLiq1, LastNetLiq2, increment)
     
     all_cards = []
     included_contracts = []
@@ -151,6 +171,10 @@ def create_card (contrato, fig1, estrategia):
         realizedPnL = formatCurrency(lastPnL['realizedPnL'])
     if lastPnL['unrealizedPnL'] != None:
         unrealizedPnL = formatCurrency(lastPnL['unrealizedPnL'])
+
+    color_rojo = '#ff0000'
+    color_verde = '#366b22'
+    color_negro = '#000000'
     
     if estrategia == None:
         stratType = 'N/A'
@@ -179,14 +203,14 @@ def create_card (contrato, fig1, estrategia):
 
         unreal = formatCurrency(unrealNum)
         if unrealNum < 0:
-            unreal = html.Div(unreal, style={'color':'#ff0000'})
+            unreal = html.Div(unreal, style={'color':color_rojo})
         else:
-            unreal = html.Div(unreal, style={'color':'#366b22'})
+            unreal = html.Div(unreal, style={'color':color_verde})
 
         if allPnL < 0:
-            totalPnl = html.Div(totalPnl, style={'color':'#ff0000'})
+            totalPnl = html.Div(totalPnl, style={'color':color_rojo})
         else:
-            totalPnl = html.Div(totalPnl, style={'color':'#366b22'})
+            totalPnl = html.Div(totalPnl, style={'color':color_verde})
 
         #totalPnl = totalPnl + '/' + unreal
         totalPnl = html.Span(
@@ -206,18 +230,18 @@ def create_card (contrato, fig1, estrategia):
         )
     )
     #, style={'color':'#ffffff','background-color':'#636363'}
-    priceLastColor = '#366b22'
+    priceLastColor = color_verde
     if posQtyNum != None:
         if posQtyNum > 0:
             if priceLastNum < AvgPrice:
-                priceLastColor = '#ff0000'
+                priceLastColor = color_rojo
         elif posQtyNum < 0:
             if priceLastNum > AvgPrice:
-                priceLastColor = '#ff0000'
+                priceLastColor = color_rojo
         else:
-            priceLastColor = '#000000'
+            priceLastColor = color_negro
     else:
-        priceLastColor = '#000000'
+        priceLastColor = color_negro
 
     h6priceList = html.H6("("+ priceLast +")", style={'color':priceLastColor})
 
