@@ -296,6 +296,21 @@ class strategyPentagramaRu(strategyBaseClass):
 
         return ret
 
+    def strategyAssumeError (self, data):
+        ret = False
+
+        lorderId = data['orderId']
+
+        for zoneItem in self.zones_:
+            if zoneItem['orderBlock'].orderBlockGetIfOrderId(lorderId):
+                data['orderStatus'] = 'Filled'
+                ret = zoneItem['orderBlock'].orderBlockOrderUpdated(data)
+                if ret != None:
+                    self.ordersUpdated_ = True
+                break
+
+        return ret
+
     def strategyGetExecPnL (self):
         return self.pandas_.dbGetExecPnL()
 

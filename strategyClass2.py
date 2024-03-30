@@ -87,6 +87,9 @@ class strategyBaseClass():
     def strategyFix (self, data):
         return None
 
+    def strategyAssumeError (self, data):
+        return None
+
     def strategyGetExecPnL (self):
         return None
 

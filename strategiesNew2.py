@@ -104,6 +104,24 @@ class Strategies():
 
         self.strategyWriteFile(toWrite)
 
+    def strategyAssumeError (self, data):
+        # data: 
+        #   orderId  -> si lo tengo
+        #   orderIntId -> por si no tengo orderId
+
+        toWrite = {}
+        ret = None
+
+        orderId = data['orderId']
+        for strategy in self.stratList_:
+            if strategy['classObject'].strategyGetIfOrderId(orderId):
+                ret = strategy['classObject'].strategyAssumeError(data)
+                if ret:
+                    logging.info ('[Estrategia %s (%s)]. Actualizo Fichero', strategy['type'], strategy['symbol'])
+                    toWrite[strategy['type']] = True
+
+        self.strategyWriteFile(toWrite)
+
     def strategyReload (self, stratType, symbol):
         for strategy in self.stratList_:
             if strategy['symbol'] == symbol and strategy['type'] == stratType:

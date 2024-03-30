@@ -118,7 +118,7 @@ class DataLocalRT():
             logging.debug ("Ya tengo la account info:\n%s", self.accountSummary())
             self.accountPandas_.dbUpdateAddAccountData (self.accountData_)
             # Como ya hemos recibido todo, disparo la subscripcion 
-            #self.appObj_.reqAccountUpdates(True, self.accountData_['accountId'])
+            self.appObj_.reqAccountUpdates(True, self.accountData_['accountId'])
             return # no hay nada mas. Ha terminado y punto (mirar IB_API_Client)
             
         account = data['account']

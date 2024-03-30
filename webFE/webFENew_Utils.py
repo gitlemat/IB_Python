@@ -360,7 +360,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                    html.Th("Action", className = 'd-none d-md-table-cell'),
                    html.Th("Status"),
                    html.Th("Qty"),
-                   html.Th("Fix"),
+                   html.Th("Fix/Ack"),
                 ], style={'color':'#ffffff','background-color':'#636363'}
             )   
         )
@@ -464,25 +464,33 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             posSL = posSL * (-1)
         lmtSL = formatCurrency(lmtSL)
 
-        backgroundColorParent = '#c1c2c9'
-        backgroundColorTP = '#e4e5ed'
-        backgroundColorSL = '#e4e5ed'
+        color_parent_normal = '#c1c2c9'
+        color_TP_SL_normal = '#e4e5ed'
+        color_parent_filledOK = '#caf5c9'
+        color_parent_error = '#d6bfba'
+        color_TP_SL_error = 'cf5338'
+
+        backgroundColorParent = color_parent_normal
+        backgroundColorTP = color_TP_SL_normal
+        backgroundColorSL = color_TP_SL_normal
         if statusParent in ['Filled']:
-            backgroundColorParent = '#caf5c9' # Todo bien
-        if statusParent in ['N/A']:
-            if orderBlock.BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F']:
-                backgroundColorParent = '#caf5c9' # Bien
+            backgroundColorParent = color_parent_filledOK # Todo bien
+        elif statusParent in ['N/A']:
+            if orderBlock.BracketOrderFilledState_ in ['ParentFilled', 'ParentFilled+F', 'ParentFilled+EC']:
+                backgroundColorParent = color_parent_filledOK # Bien
             else:
-                backgroundColorParent = '#d6bfba' # Mal
+                backgroundColorParent = color_parent_error # Mal
+        elif fixParent:
+            backgroundColorParent = color_parent_error # Mal
 
         if statusTP in ['Filled']:
-            backgroundColorTP = '#caf5c9'
-        if statusTP in ['N/A']:
-            backgroundColorTP = '#cf5338'
+            backgroundColorTP = color_parent_filledOK
+        elif statusTP in ['N/A'] or fixOCA:
+            backgroundColorTP = color_TP_SL_error
         if statusSL in ['Filled']:
-            backgroundColorSL = '#cf5338'
-        if statusSL in ['N/A']:
-            backgroundColorSL = '#cf5338'
+            backgroundColorSL = color_TP_SL_error
+        elif statusSL in ['N/A'] or fixOCA:
+            backgroundColorSL = color_TP_SL_error
 
         if fixParent:
             boton_color_parent = '#000000'
@@ -504,6 +512,52 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
             id_boton = {'role': 'boton_fix', 'orderIntId': str(orderBlock.intId_), 'symbol': symbol}
         else:
             id_boton = {'role': 'boton_fix', 'orderId': str(orderBlock.orderId_), 'symbol': symbol}
+        
+        id_boton_assume = {'role': 'boton_assume', 'orderId': str(orderBlock.orderId_), 'symbol': symbol}
+
+        fix_boton_Parent = dbc.Button(html.I(className="bi bi-bandaid"),id=id_boton, style={'color': boton_color_parent, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix)
+        fix_boton_Parent_tip = dbc.Tooltip("Regenerar el bracket completo", target=id_boton)
+        fix_assume_boton_Parent = dbc.Button(html.I(className="bi bi-check2-square"),id=id_boton_assume, style={'color': boton_color_parent, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix)
+        fix_assume_boton_Parent_tip = dbc.Tooltip("Acknowledge de que la parent está 'filled'", target=id_boton_assume)
+    
+        botones_fix_parent = html.Div(
+            [
+                fix_boton_Parent,
+                fix_boton_Parent_tip,
+                fix_assume_boton_Parent,
+                fix_assume_boton_Parent_tip,
+            ],
+            className="d-grid d-flex",
+        )
+        
+        fix_boton_TP = dbc.Button(html.I(className="bi bi-bandaid"),id={'role': 'boton_fix', 'orderId': str(orderBlock.orderIdTP_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix)
+        fix_boton_TP_tip = dbc.Tooltip("Regenerar el OCA", target={'role': 'boton_fix', 'orderId': str(orderBlock.orderIdTP_), 'symbol': symbol})
+        fix_assume_boton_TP = dbc.Button(html.I(className="bi bi-check2-square"),id={'role': 'boton_assume', 'orderId': str(orderBlock.orderIdTP_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix)
+        fix_assume_boton_TP_tip = dbc.Tooltip("Acknowledge de que la TP está 'filled'", target={'role': 'boton_assume', 'orderId': str(orderBlock.orderIdTP_), 'symbol': symbol})
+    
+        botones_fix_TP = html.Div(
+            [
+                fix_boton_TP,
+                fix_boton_TP_tip,
+                fix_assume_boton_TP,
+                fix_assume_boton_TP_tip,
+            ],
+            className="d-grid d-flex",
+        )
+        fix_boton_SL = dbc.Button(html.I(className="bi bi-bandaid"),id={'role': 'boton_fix', 'orderId': str(orderBlock.orderIdSL_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix)
+        fix_boton_SL_tip = dbc.Tooltip("Regenerar el OCA", target={'role': 'boton_fix', 'orderId': str(orderBlock.orderIdSL_), 'symbol': symbol})
+        fix_assume_boton_SL = dbc.Button(html.I(className="bi bi-check2-square"),id={'role': 'boton_assume', 'orderId': str(orderBlock.orderIdSL_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix)
+        fix_assume_boton_SL_tip = dbc.Tooltip("Acknowledge de que la SL está 'filled'", target={'role': 'boton_assume', 'orderId': str(orderBlock.orderIdSL_), 'symbol': symbol})
+    
+        botones_fix_SL = html.Div(
+            [
+                fix_boton_SL,
+                fix_boton_SL_tip,
+                fix_assume_boton_SL,
+                fix_assume_boton_SL_tip,
+            ],
+            className="d-grid d-flex",
+        )
 
         insideDetailsStratParent = html.Tr(
             [
@@ -517,7 +571,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionParent), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
                 html.Td(str(statusParent), style={'background-color':'transparent'}),
                 html.Td(str(posParent), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id=id_boton, style={'color': boton_color_parent, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableParentFix), style={'background-color':'transparent'}),
+                html.Td(botones_fix_parent, style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorParent}
         )
 
@@ -533,7 +587,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionTP), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
                 html.Td(str(statusTP), style={'background-color':'transparent'}),
                 html.Td(str(posTP), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(orderBlock.orderIdTP_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
+                html.Td(botones_fix_TP, style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorTP}
         )
 
@@ -549,7 +603,7 @@ def layout_getStrategyPenRuTableOrders (estrategia, update = False):
                 html.Td(str(actionSL), className = 'd-none d-md-table-cell', style={'background-color':'transparent'}),
                 html.Td(str(statusSL), style={'background-color':'transparent'}),
                 html.Td(str(posSL), style={'background-color':'transparent'}),
-                html.Td(dbc.Button(html.I(className="bi bi-bandaid me-2"),id={'role': 'boton_fix', 'orderId': str(orderBlock.orderIdSL_), 'symbol': symbol}, style={'color': boton_color_oca, 'background-color': 'transparent', 'border-color': 'transparent'}, disabled=disableOcaFix), style={'background-color':'transparent'}),
+                html.Td(botones_fix_SL, style={'background-color':'transparent'}),
             ], style={'color':'#000000','background-color':backgroundColorSL}
         )
 

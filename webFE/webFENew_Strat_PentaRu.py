@@ -22,6 +22,7 @@ def insideModalsPentagramaRu ():
     modals = []
 
     modalFix = modal_ordenFix()
+    modalAssume = modal_ordenAcknowledgeFilled()
     modalConfirm = modal_StrategyConfirmar()
     modalCreateStrat = modal_addStrategy()
 
@@ -30,6 +31,7 @@ def insideModalsPentagramaRu ():
     modals.append(modalFix)
     modals.append(modalCreateStrat)
     modals.append(modalConfirm)
+    modals.append(modalAssume)
     modals.append(store1)
 
     return modals
@@ -676,6 +678,72 @@ def modal_ordenFix():
             ),
         ],
         id="modal_fixOrder_main",
+        is_open=False,
+    )
+    return modal
+
+def modal_ordenAcknowledgeFilled():
+
+    orderOrderId = dcc.Input(
+        id = "order_assumeFilled_orderId",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    orderStratType = dcc.Input(
+        id = "order_assumeFilled_stratType",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    orderSymbol = dcc.Input(
+        id = "order_assumeFilled_symbol",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    responseBody = html.Div([
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.P('Tipo Estrategia:', className='font-weight-bold'),
+                        orderStratType
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        html.P('Simbolo:', className='font-weight-bold'),
+                        orderSymbol
+                    ]
+                ),                
+            ]
+        ),
+        html.P('Asumimos que esta orden está Filled: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderOrderId,
+    ])
+    
+    modal = dbc.Modal(
+        [
+            dbc.ModalHeader(dbc.ModalTitle("Orden Asumida como Filled", id = "modal_assumeFilledOrder")),
+            dbc.ModalBody(responseBody, id = "OrdenFixBody"),
+            dbc.ModalFooter(
+                [
+                    dbc.Button(
+                        "Fix", id="modal_assumeFilledOrder_boton_assume", className="ms-auto", n_clicks=0
+                    ),
+                    dbc.Button(
+                        "Close", id="modal_assumeFilledOrder_boton_close", className="ms-auto", n_clicks=0
+                    )
+                ]
+            ),
+        ],
+        id="modal_assumeFilledOrder_main",
         is_open=False,
     )
     return modal
@@ -1385,6 +1453,69 @@ def fixStrategyRuOrdenes (n_button_open, n_button_open2, n_button_fix, n_button_
         Symbol = ctx.triggered_id['symbol']
         stratType = 'PentagramaRu'
         return orderId, orderIntId, stratType, Symbol, True
+
+# Callback para assumeFilled
+@callback(
+    Output("order_assumeFilled_orderId", "value"),
+    Output("order_assumeFilled_stratType", "value"),
+    Output("order_assumeFilled_symbol", "value"),
+    Output("modal_assumeFilledOrder_main", "is_open"),
+    Input({'role': 'boton_assume', 'orderId': ALL, 'symbol': ALL}, "n_clicks"),
+    Input("modal_assumeFilledOrder_boton_assume", "n_clicks"),
+    Input("modal_assumeFilledOrder_boton_close", "n_clicks"),
+    Input("order_assumeFilled_orderId", "value"),
+    Input("order_assumeFilled_stratType", "value"),
+    Input("order_assumeFilled_symbol", "value"),
+    State("modal_assumeFilledOrder_main", "is_open"), 
+    prevent_initial_call = True,
+)
+def assumeStrategyRuOrdenes (n_button_open, n_button_assume, n_button_close, orderId, stratType, Symbol, open_status):
+
+    # Esto es por si las moscas
+    if not ctx.triggered_id:
+        raise PreventUpdate
+    
+    # Esto es por si las moscas
+    pageLoad = True
+    for button in  n_button_open:
+        if button != None:
+            pageLoad = False
+    if n_button_assume:
+        pageLoad = False
+    if n_button_close:
+        pageLoad = False
+    if pageLoad:
+        raise PreventUpdate
+
+
+    logging.info('Trigger %s', ctx.triggered_id)
+
+    if ctx.triggered_id == "modal_assumeFilledOrder_boton_close":
+        return None, None, None, False
+    
+    if ctx.triggered_id == "modal_assumeFilledOrder_boton_assume":
+        
+        #ahora hay que arreglar
+        logging.info('[Orden (%s)] Asumir Filled para esta orden desde GUI', str(orderId))
+        data = {'orderId': orderId}
+
+        stratType = 'PentagramaRu'
+
+        try:
+            result = globales.G_RTlocalData_.strategies_.strategyAssumeError (data)
+            result = True
+        except:
+            logging.error ("Exception occurred", exc_info=True)
+
+        return None, None, None, False
+            
+    orderId = None
+
+    if 'orderId' in ctx.triggered_id:
+        orderId = int(ctx.triggered_id['orderId'])
+        Symbol = ctx.triggered_id['symbol']
+        stratType = 'PentagramaRu'
+        return orderId, stratType, Symbol, True
 
 # Callback para enable/disable cerrarPos
 @callback(

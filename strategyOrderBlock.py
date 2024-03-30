@@ -4,13 +4,17 @@ import datetime
 logger = logging.getLogger(__name__)
 
 orderChildErrorStatus = ['Inactive']
-orderChildValidExecStatusParentFilled = ['Filled', 'Submitted', 'Cancelled', 'PendingSubmit', 'PreSubmitted', 'PendingCancel', 'ApiCancelled']
-orderChildInvalidExecStatusParentNotFilled = ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
+orderChildValidExecStatusParentFilled = ['Filled', 'PreSubmitted', 'Submitted', 'Cancelled', 'PendingSubmit', 'PendingCancel', 'ApiCancelled']
+orderChildValidExecStatusParentNotFilled = ['PreSubmitted', 'PendingSubmit']
 orderInactiveStatus = ['Cancelled', 'PendingCancel', 'Inactive', 'ApiCancelled']
 
 bracketStatusAll = [None, 'ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 'ParentFilled+EC', '+EC', '+EP']
 bracketStatusParentNotExec = [None, '+EC', '+EP']
+bracketStatusParentNotExecNoError = [None]
+bracketStatusParentNotExecError = ['+EC', '+EP']
 bracketStatusParentExec = ['ParentFilled', 'ParentFilled+F', 'ParentFilled+EP', 'ParentFilled+EC']
+bracketStatusParentExecError = ['ParentFilled+EP', 'ParentFilled+EC']
+bracketStatusParentExecNoError = ['ParentFilled', 'ParentFilled+F']
 
 Error_orders_timer_dt = datetime.timedelta(seconds=90)
 
@@ -230,7 +234,7 @@ class bracketOrderClass():
         #     - Sintomas:
         #         - SL_id o TP_id Null
         #         - SL_id o TP_id no existe segun IB
-        #         - SL_id o TP_id en estado erroneo orderChildInvalidExecStatusParentNotFilled -> ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
+        #         - SL_id o TP_id en estado que no es orderChildalidExecStatusParentNotFilled -> ['Filled', 'Submitted', 'Cancelled', 'PendingCancel', 'ApiCancelled']
         #     - Accion:
         #         - Rehacer todo (una OCA no se puede conectar a la parent por API)
         # Parent ejecutada:
@@ -305,10 +309,10 @@ class bracketOrderClass():
                 bRehacerTodoConError = True
                 bErrorParent = True
             # Parent no ejecutada y esta perfectamente, y error en child ( hay que rehacer todo)
-            elif bSLOrderStatus in orderChildInvalidExecStatusParentNotFilled:
+            elif bSLOrderStatus not in orderChildalidExecStatusParentNotFilled:
                 err_msg += "\n" + " "*66 + "El SLOrder [%s] tiene un estado invalido: %s" % (self.orderIdSL_,bSLOrderStatus)
                 bRehacerTodoConError = True
-            elif bTPOrderStatus in orderChildInvalidExecStatusParentNotFilled:
+            elif bTPOrderStatus not in orderChildalidExecStatusParentNotFilled:
                 err_msg += "\n" + " "*66 + "El TPOrder [%s] tiene un estado invalido: %s" % (self.orderIdTP_,bTPOrderStatus)
                 bRehacerTodoConError = True
             elif self.orderIdSL_ == None:
@@ -493,9 +497,17 @@ class bracketOrderClass():
                     ret = self.orderBlockCreateBracketOrder () # Este actualiza BracketOrderFilledState_ a None
                     if ret:
                         self.BracketOrderFilledState_ = None
+                        self.toFix = False
                 else:
                     logging.info ('[Estrategia %s (%s)]. Todo ejecutado pero no rehacemos y salimos', self.strategyType_, self.symbol_)
-                    self.BracketOrderFilledState_ = 'ParentFilled+F' # No debería hacer falta
+                    #self.BracketOrderFilledState_ = 'ParentFilled+F' # No debería hacer falta
+                    self.orderId_ = None
+                    self.orderIdSL_ = None
+                    self.orderIdTP_ = None
+                    self.orderPermId_ = None
+                    self.orderPermIdSL_ = None
+                    self.orderPermIdTP_ = None
+                    self.BracketOrderFilledState_ = None
                     ret = -1
                     self.toFix = 1
             elif bRehacerTodoConError:
@@ -509,15 +521,11 @@ class bracketOrderClass():
                     # La parent no esta, y las child están bien -> Asumimos exec.
                     if self.BracketOrderFilledState_ in bracketStatusParentNotExec:    # Si parent no Exec
                         if bErrorParent:
-                            if bSLOrderStatus in orderChildValidExecStatusParentFilled and bTPOrderStatus in orderChildValidExecStatusParentFilled:
-                                # Si la parent no esta y las child estan en estado valido para parent_exec: asumo que esta exec
-                                self.BracketOrderFilledState_ = 'ParentFilled+EP'
-                            else:
-                                self.BracketOrderFilledState_ = '+EP'
+                            self.BracketOrderFilledState_ = '+EP'
                         else:
                             self.BracketOrderFilledState_ = '+EC'
                     else:
-                        self.BracketOrderFilledState_ = 'ParentFilled+EP'
+                        self.BracketOrderFilledState_ = 'ParentFilled+EC'
 
                     ret = -1
                     if bRehacerOCAConError: # Caso especial en el que la Parent esta exec, y ha pasado algo con las child. No sé si child exec o fallo.
@@ -547,6 +555,9 @@ class bracketOrderClass():
                 bBracketUpdated = -1
             else:
                 bBracketUpdated = True
+        else:
+            # Ningun fallo
+            self.toFix = False
                 
         return bBracketUpdated
 

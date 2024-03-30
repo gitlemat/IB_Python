@@ -196,6 +196,7 @@ def create_card (contrato, fig1, estrategia):
         totalPnl = formatCurrency(allPnL)
         AvgPrice = estrategia['classObject'].strategyGetExecPnL()['avgPrice']
         AvgPriceFmt = formatCurrency(AvgPrice)
+        unrealNum = estrategia['classObject'].strategyGetExecPnLUnrealized()
         try:
             unrealNum = estrategia['classObject'].strategyGetExecPnLUnrealized()
         except:
