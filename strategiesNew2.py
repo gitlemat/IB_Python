@@ -299,5 +299,14 @@ class Strategies():
                 toWrite[strategy['type']] = True
                 self.strategyWriteFile(toWrite)
 
+    def strategyExecAddManual (self, data):
 
+        symbol = data['symbol']
+        strategyType = data['stratType']
+        #logging.info ('Estrategia. Actualizacion en ordenId %s', str(orderId))
+
+        for strategy in self.stratList_:
+            if strategy['symbol'] == symbol and strategy['type'] == strategyType:
+                strategy['classObject'].strategyExecAddManual(data)
+ 
 

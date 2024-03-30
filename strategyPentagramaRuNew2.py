@@ -328,9 +328,9 @@ class strategyPentagramaRu(strategyBaseClass):
         vendido_potencial = priceLast * self.currentPos_
 
         unreal = self.currentPos_ * (priceLast - avgPrice)
-        logging.info ('Pos: %s', self.currentPos_)
-        logging.info ('avgPrice: %s', avgPrice)
-        logging.info ('priceLast: %s', priceLast)
+        logging.debug ('Pos: %s', self.currentPos_)
+        logging.debug ('avgPrice: %s', avgPrice)
+        logging.debug ('priceLast: %s', priceLast)
 
         return unreal
 
@@ -732,6 +732,7 @@ class strategyPentagramaRu(strategyBaseClass):
             logging.error ('[Estrategia PentagramaRu (%s)] No he encontrado la linea en el fichero que actualiza esta estrategia', self.symbol_)
             return False
 
-    
+    def strategyExecAddManual(self, data):
+        self.pandas_.dbAddCommissionsOrderFill(data)
 
     

@@ -352,6 +352,8 @@ class dbPandasStrategy():
 
         records.append(record)
 
+        logging.debug('%s',records )
+
         if len(fields_influx) > 0:
             self.influxIC_.write_data(records, 'executions')
 

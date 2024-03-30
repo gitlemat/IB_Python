@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # influx delete --bucket "ib_prices_lab" --predicate '_measurement="precios" AND symbol="LEQ3"' --start 2023-02-24T15:10:01.944930000Z --stop 2023-02-24T15:40:05.447333000Z 
 # Work
 # influx query 'from(bucket:"ib_prices_lab") |> range(start:-130d) |> filter(fn: (r) => r["_measurement"] == "executions") |> filter(fn: (r) => r["_field"] == "LAST") |> filter(fn: (r) => r["symbol"] == "LEQ3") |> filter(fn: (r) => r["_value"] == 0)'
-
+# influx delete --bucket "ib_data_lab" --predicate '_measurement="executions"' --start 2024-03-10T15:10:01.944930000Z --stop 2024-03-20T15:40:05.447333000Z
 
 class InfluxClient:
     def __init__(self): 

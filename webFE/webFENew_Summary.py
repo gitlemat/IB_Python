@@ -92,6 +92,7 @@ def layout_summary_tab ():
     df_execs = globales.G_RTlocalData_.strategies_.strategyGetAllExecs()
 
     if len(df_execs) > 0:
+        logging.info ('%',df_execs )
         df_execs.sort_index(ascending=False, inplace = True)
         df_execs['time'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
         #df_execs.sort_values(by=['time'], inplace=True, ascending=False)

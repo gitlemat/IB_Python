@@ -11,6 +11,8 @@ from dash.dash_table.Format import Format, Group, Prefix, Scheme, Symbol
 import globales
 import logging
 import random
+import datetime
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ def insideModalsPentagramaRu ():
     modalAssume = modal_ordenAcknowledgeFilled()
     modalConfirm = modal_StrategyConfirmar()
     modalCreateStrat = modal_addStrategy()
+    modalManualExec = modal_addManualExec()
 
     store1 = dcc.Store(id='memory-symbol')
 
@@ -32,6 +35,7 @@ def insideModalsPentagramaRu ():
     modals.append(modalCreateStrat)
     modals.append(modalConfirm)
     modals.append(modalAssume)
+    modals.append(modalManualExec)
     modals.append(store1)
 
     return modals
@@ -182,6 +186,20 @@ def insideDetailsPentagramaRu (estrategia):
         )
     ])
 
+    # Boton para añadir ordenes ejecutadas perdidas:
+    baddexec_text = html.Div('Añadir Exec', className="text9-7 d-inline-block")
+    baddexec_icon = html.I(className="bi bi-trash me-2 d-inline-block")
+    baddexec_content = html.Span([baddexec_icon, baddexec_text])
+    boton_addExec = dbc.Button(baddexec_content, id={'role': 'ButtonAddExec', 'strategy':'PentagramaRu', 'symbol': symbol}, className="d-inline-block me-0", n_clicks=0)
+    boton_addExec_tip = dbc.Tooltip("Añadir manualmente Execution que se haya pedido", target={'role': 'ButtonAddExec', 'strategy':'PentagramaRu', 'symbol': symbol})
+    
+    botonAddExec = html.Div(
+        [
+            boton_addExec,
+            boton_addExec_tip
+        ],
+        className="d-grid gap-2 d-flex justify-content-end",
+    )
     # Las ordenes ejecutadas de PentagramaRu
 
     df_execs = estrategia['classObject'].pandas_.dbGetExecsDataframeAll()
@@ -221,11 +239,14 @@ def insideDetailsPentagramaRu (estrategia):
                 ],  className = 'mb-3' 
             ),
             dbc.Row(
-                html.Div(
-                    tablaExecs, 
-                    id={'role': 'TableExecs', 'strategy':'PentagramaRu', 'symbol': symbol},
-                    className = 'text9-7',
-                ),
+                [
+                    botonAddExec,
+                    html.Div(
+                        tablaExecs, 
+                        id={'role': 'TableExecs', 'strategy':'PentagramaRu', 'symbol': symbol},
+                        className = 'text9-7',
+                    ),
+                ]
             ),
             dbc.Row(
                     graphComponentes, className = 'mb-3' 
@@ -890,6 +911,162 @@ def modal_addStrategy():
     )
     return modal
 
+def modal_addManualExec():
+
+    # Aquí habria que añadir un id para el tipo de estrategia, y con un callback decidir el responseBody
+
+    timestamp_date = dcc.DatePickerSingle(
+        id = "manual_exec_timestamp_date",
+        date=datetime.datetime.now(),
+    )
+
+    timestamp_time = dcc.Input(
+        type='time',
+        id = "manual_exec_timestamp_time",
+        value = '00:00'
+    ) 
+
+    orderStratType = dcc.Input(
+        id = "manual_exec_stratType",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    orderSymbol = dcc.Input(
+        id = "manual_exec_symbol",
+        type = "text",
+        readOnly = True,
+        placeholder = "",
+    )
+
+    execId = dcc.Input(
+        id = "manual_exec_execId",
+        type = "text",
+        placeholder = "0000ffff.ffff0000ff.01",
+    )
+
+    orderId = dcc.Input(
+        id = "manual_exec_orderId",
+        type = "number",
+        placeholder = "0",
+    )
+
+    permId = dcc.Input(
+        id = "manual_exec_permId",
+        type = "number",
+        placeholder = 999999999,
+    )
+
+    qty = dcc.Input(
+        id = "manual_exec_qty",
+        type = "number",
+        placeholder = 1,
+    )
+
+    side = dcc.Dropdown(
+        id = "manual_exec_side",
+        options = ['BOT', 'SLD'], 
+        value = 'BOT', 
+    )
+
+    realizedPnL = dcc.Input(
+        id = "manual_exec_realPnL",
+        type = "number",
+        placeholder = 0,
+    )
+
+    commission = dcc.Input(
+        id = "manual_exec_commission",
+        type = "number",
+        placeholder = 11.88,
+    )
+
+    fillPrice = dcc.Input(
+        id = "manual_exec_fillPrice",
+        type = "number",
+        placeholder = 1.00,
+    )
+
+
+    responseBody = html.Div([
+        html.P('Simbolo Estrategia: ',
+            style={'margin-top': '8px', 'margin-bottom': '4px'},
+            className='font-weight-bold'),
+        orderSymbol,
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.P('Timestamp:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        timestamp_date,
+                        timestamp_time,
+                        html.P('Estrategia:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        orderStratType,
+                        html.P('ExecId:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        execId,
+                        html.P('orderId:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        orderId,
+                        html.P('permId:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        permId,
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        html.P('Qty:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        qty,
+                        html.P('Side:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        side,
+                        html.P('Fill Price:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        fillPrice,
+                        html.P('Commission:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        commission,
+                        html.P('Realized PnL:',
+                            style={'margin-top': '8px', 'margin-bottom': '4px'},
+                            className='font-weight-bold'),
+                        realizedPnL,
+                    ]
+                )
+            ]
+        ),
+    ])
+    
+    modal = dbc.Modal(
+        [
+            dbc.ModalHeader(dbc.ModalTitle("Añadir Exec Manualmente", id = "modalManualExecHeader")),
+            dbc.ModalBody(responseBody, id = "modalManualExecBody"),
+            dbc.ModalFooter([
+                dbc.Button(
+                    "Añadir Exec", id="modalManualExec_boton_create", className="ms-auto", n_clicks=0
+                ),
+                dbc.Button(
+                    "Salir", id="modalManualExec_boton_close", className="ms-auto", n_clicks=0
+                )
+            ]),
+        ],
+        id="modalManualExec_main",
+        is_open=False,
+    )
+    return modal
+
 def modal_StrategyConfirmar():
     modal = dbc.Modal(
                 [
@@ -1516,6 +1693,130 @@ def assumeStrategyRuOrdenes (n_button_open, n_button_assume, n_button_close, ord
         Symbol = ctx.triggered_id['symbol']
         stratType = 'PentagramaRu'
         return orderId, stratType, Symbol, True
+
+# Callback para añador exec manualmente
+@callback(
+    Output("manual_exec_orderId", "value"),
+    Output("manual_exec_stratType", "value"),
+    Output("manual_exec_symbol", "value"),
+    Output("manual_exec_execId", "value"),
+    Output("manual_exec_permId", "value"),
+    Output("manual_exec_qty", "value"),
+    Output("manual_exec_side", "value"),
+    Output("manual_exec_realPnL", "value"),
+    Output("manual_exec_commission", "value"),
+    Output("manual_exec_fillPrice", "value"),
+    Output("manual_exec_timestamp_date", "date"),
+    Output("manual_exec_timestamp_time", "value"),
+    Output("modalManualExec_main", "is_open"),
+    Input({'role': 'ButtonAddExec', 'strategy': ALL, 'symbol': ALL}, "n_clicks"),
+    Input("modalManualExec_boton_create", "n_clicks"),
+    Input("modalManualExec_boton_close", "n_clicks"),
+    Input("manual_exec_orderId", "value"),
+    Input("manual_exec_stratType", "value"),
+    Input("manual_exec_symbol", "value"),
+    Input("manual_exec_execId", "value"),
+    Input("manual_exec_permId", "value"),
+    Input("manual_exec_qty", "value"),
+    Input("manual_exec_side", "value"),
+    Input("manual_exec_realPnL", "value"),
+    Input("manual_exec_commission", "value"),
+    Input("manual_exec_fillPrice", "value"),
+    Input("manual_exec_timestamp_date", "date"),
+    Input("manual_exec_timestamp_time", "value"),
+    State("modalManualExec_main", "is_open"), 
+    prevent_initial_call = True,
+)
+def addManualExec (n_button_open, n_button_add, n_button_close, orderId, stratType, symbol, execId, permId, qty, side, realPnL, commission, fillPrice, timestamp_date, timestamp_time, open_status):
+
+    # Esto es por si las moscas
+    if not ctx.triggered_id:
+        raise PreventUpdate
+    
+    if ctx.triggered_id == "modalManualExec_boton_close":
+        logging.info('Trigger %s', ctx.triggered_id)
+        return None, None, None, None, None, None, None, None, None, None, None, None, False
+    
+    if ctx.triggered_id == "modalManualExec_boton_create":
+        logging.info('Trigger %s', ctx.triggered_id)
+        #ahora hay que añadir la exec
+        #timestamp_date = datetime.datetime.strptime(timestamp_date, '%Y-%m-%dT%H:%M:%S.%f')
+        timestamp_date = datetime.datetime.strptime(timestamp_date, '%Y-%m-%d')
+        try:
+            hour = int(timestamp_time[0:2])
+        except:
+            hour = 18
+        try:
+            minute = int(timestamp_time[3:])
+        except:
+            minute = 0
+        timestamp_date = timestamp_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        timestamp_date = utils.date2local (timestamp_date)
+
+        try:
+            qty = float(qty)
+        except:
+            qty = 1.0
+        try:
+            realPnL = float(realPnL)
+        except:
+            realPnL = 0.0
+        try:
+            permId = int (permId)
+        except:
+            permId = 999999999
+        try:
+            fillPrice = float (fillPrice)
+        except:
+            fillPrice = 0.0
+
+        logging.info ('Estrategia [%s] del tipo: %s. Añadimos Exec desde GUI:', symbol, stratType)
+        logging.info ('     orderId: %s', orderId)
+        logging.info ('     permId: %s', permId)
+        logging.info ('     execId: %s', execId)
+        logging.info ('     qty: %s', qty)
+        logging.info ('     side: %s', side)
+        logging.info ('     realPnL: %s', realPnL)
+        logging.info ('     commission: %s', commission)
+        logging.info ('     fillPrice: %s', fillPrice)
+        logging.info ('     timestamp date: %s', timestamp_date)
+        
+        data = {}
+        data['symbol'] = symbol
+        data['stratType'] = stratType
+        data['timestamp'] = timestamp_date
+        data['ExecId'] = execId
+        data['OrderId'] = orderId
+        data['PermId'] = permId
+        data['Quantity'] = qty
+        data['Side'] = side 
+        data['RealizedPnL'] = realPnL
+        data['Commission'] = commission
+        data['FillPrice'] = fillPrice
+
+        try:
+            result = globales.G_RTlocalData_.strategies_.strategyExecAddManual (data)
+            result = True
+        except:
+            logging.error ("Exception occurred", exc_info=True)
+
+        return None, None, None, None, None, None, None, None, None, None, None, None, False
+            
+    if 'role' in ctx.triggered_id:
+        logging.info('Trigger %s', ctx.triggered_id)
+        symbol = ctx.triggered_id['symbol']
+        stratType = 'PentagramaRu'
+        execId = '0000ffff.ffff0000ff.01'
+        permId = 9999999
+        qty = 1
+        side = 'BOT'
+        realPnL = 0.0
+        commission = 11.88
+        #fillPrice = 0.0
+        date = datetime.date.today()
+        time = '18:00'
+        return None, stratType, symbol, execId, permId, qty, side, realPnL, commission, fillPrice, date, time, True
+    raise PreventUpdate
 
 # Callback para enable/disable cerrarPos
 @callback(

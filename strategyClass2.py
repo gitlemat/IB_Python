@@ -119,4 +119,7 @@ class strategyBaseClass():
     
     def strategyUpdateTBD (self, order_block_data):
         return None
+
+    def strategyExecAddManual(self, data):
+        return None
         
