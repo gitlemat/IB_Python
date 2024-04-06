@@ -113,6 +113,18 @@ class dbPandasAccount():
     def dbGetAccountData(self):
         return self.dfAccountEvo_
 
+    def dbGetAccountDataLast(self):
+        return self.dfAccountEvo_.iloc[-1]
+
+    def dbGetAccountDataUntilYesterday(self):
+        yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
+        yesterdayEnd = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=None)
+        yesterdayEnd = utils.date2local (yesterdayEnd)
+        
+        ret = self.dfAccountEvo_[(yesterdayEnd > self.dfAccountEvo_.index)].tail(5)
+
+        return ret
+
     def dbUpdateAddAccountData (self, data):
         
         keys_account = [
@@ -152,13 +164,15 @@ class dbPandasAccount():
         newlineL = []
         newlineL.append (data)
 
-        if different and (timestamp - self.last_refresh_db_ > datetime.timedelta(hours=24)):
-            self.influxIC_.influxUpdateAccountData (self.accountId_, data)
+        if different:
+            if (timestamp - self.last_refresh_db_ > datetime.timedelta(hours=12)) and timestamp.hour > 22:
+                self.influxIC_.influxUpdateAccountData (self.accountId_, data)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
-            #logging.info ('Escribo valor para %s: %s', self.symbol_, dfDelta)
+            logging.debug ('Añado valor para %s: %s', self.accountId_, dfDelta)
             #self.dfAccountEvo_ = pd.concat([self.dfAccountEvo_, dfDelta]) #, ignore_index=True
             self.dfAccountEvo_ = dbPandasConcat(self.dfAccountEvo_, dfDelta)
+            self.last_refresh_db_ = timestamp
             self.toPrint = True
     
 
@@ -176,7 +190,7 @@ class dbPandasStrategy():
 
         self.symbol_ = symbol
         self.influxIC_ = influxIC
-        self.strategyType = strategyType
+        self.strategyType_ = strategyType
         self.toPrint = True
         
         self.dbReadInflux()
@@ -186,8 +200,8 @@ class dbPandasStrategy():
     def dbReadInflux(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes')
         # ["_time", "ExecId", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"]
-        self.dfExecs_ = self.influxIC_.influxGetExecDataFrame (self.symbol_, self.strategyType)
-        self.dfExecCount_ = self.influxIC_.influxGetExecCountDataFrame (self.symbol_, self.strategyType)
+        self.dfExecs_ = self.influxIC_.influxGetExecDataFrame (self.symbol_, self.strategyType_)
+        self.dfExecCount_ = self.influxIC_.influxGetExecCountDataFrame (self.symbol_, self.strategyType_)
 
     def dbGetExecsDataframeAll(self):
         return self.dfExecs_
@@ -331,7 +345,7 @@ class dbPandasStrategy():
         
         records = []
         record = {}
-        tags = {'symbol': self.symbol_, 'strategy': self.strategyType}
+        tags = {'symbol': self.symbol_, 'strategy': self.strategyType_}
         time = data['timestamp']
         time = utils.dateLocal2UTC (time)
         
@@ -573,7 +587,7 @@ class dbPandasContrato():
         try:
             lastRecord = self.dfPnl_.iloc[-1]
         except:
-            logging.error ('El df_ esta vacio para %s', self.symbol_)
+            logging.debug ('El df_ de PnL esta vacio para %s', self.symbol_)
         else:
             if 'dailyPnL' in lastRecord:
                 lastPnL['dailyPnL'] = lastRecord['dailyPnL']
@@ -669,14 +683,11 @@ class dbPandasContrato():
 
 
     def dbUpdateAddPnL (self, data):
- 
         keys_pnl = ['dailyPnL','realizedPnL','unrealizedPnL']
-        logging.debug ('Actulizamos con %s', data)
-
         logging.debug ('[Pandas] - Pandas data: %s', data) 
 
         try:
-            logging.debug ('[Pandas] - Escribir data0: %s', self.dfPnl_) 
+            logging.debug ('[Pandas] - Escribir data: %s', self.dfPnl_) 
             lastone = self.dfPnl_.iloc[-1].to_dict()
         except:     # self.dfPnl_ es vacio. Se deja como incompleto para qie no escriba
             differentPnL = True
@@ -704,16 +715,17 @@ class dbPandasContrato():
         newlineL.append (data)
 
         if differentPnL:
+            logging.info('Se actuliza: %s', newlineL)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
             #self.dfPnlDelta_ = pd.concat([self.dfPnlDelta_, dfDelta]) #, ignore_index=True
+            self.dfPnl_ = dbPandasConcat (self.dfPnl_, dfDelta)
             self.dfPnlDelta_ = dbPandasConcat (self.dfPnlDelta_, dfDelta)
+            self.toPrintPnL = True
             if len(self.dfPnlDelta_.index) > 10:
                 self.influxIC_.influxUpdatePnL (self.symbol_, self.dfPnlDelta_)
-                #self.dfPnl_ = pd.concat([self.dfPnl_, self.dfPnlDelta_])
-                self.dfPnl_ = dbPandasConcat (self.dfPnl_, self.dfPnlDelta_)
                 self.dfPnlDelta_ = None
-                self.toPrintPnL = True
+                
 
     def dbUpdateAddVolume(self, data):
         keys_pnl = ['Volume']

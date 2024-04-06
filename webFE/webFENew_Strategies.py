@@ -33,32 +33,65 @@ def layout_strategies_tab():
 
     botonCreateStrat1 = webFE.webFENew_Strat_PentaRu.createStratBoton()
 
+    breload_text = html.Div('Recargar Todas', className="text9-7 d-inline-block")
+    breload_icon = html.I(className="bi bi-file-earmark-arrow-up me-2 d-inline-block")
+    breload_content = html.Span([breload_icon, breload_text])
+    boton_reload = dbc.Button(breload_content, id={'role': 'ZoneButtonReloadAll'}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    boton_reload_tip = dbc.Tooltip("Recargar todas las estrategias desde el fichero", target={'role': 'ZoneButtonReloadAll'})
+    
+    bcrear_text = html.Div('Crear Strategias', className="text9-7 d-inline-block")
+    bcrear_icon = html.I(className="bi bi-plus-square me-2 d-inline-block")
+    bcrear_content = html.Span([bcrear_icon, bcrear_text])
+    boton_crear = dbc.Button(bcrear_content, id={'role': 'strategy_add_new_general'}, className="text9-7 d-inline-block me-0", n_clicks=0)
+    boton_crear_tip = dbc.Tooltip("Abrir menu para crear nuevas estrategias", target={'role': 'strategy_add_new_general'})
+    
+    botonesStrategyTopButtons = html.Div(
+        [
+            boton_reload,
+            boton_reload_tip,
+            boton_crear,
+            boton_crear_tip
+        ],
+        className="d-grid gap-2 d-flex",
+    )
+
+    caja_add_strategies_contenido = html.Div(
+        [
+            botonCreateStrat1,
+        ],
+        className="d-grid gap-2 d-flex",
+    )
+
+    caja_add_strategies = dbc.Collapse(
+        dbc.Row(
+            dbc.Col(
+                dbc.Card(caja_add_strategies_contenido, body=True)
+            ),
+        ),
+        id={'role': 'colapse_strategy_add_general'},
+        is_open=False,
+        className = 'mb-3',
+    )
+    
     tabEstrategias = [
         dbc.Row(
             [
 
                 dbc.Col(
-                    html.P("Lista de Estrategias", className='text-left mb-0 text-secondary display-6'),
+                    html.P("Estrategias", className='text-left mb-0 text-secondary display-6'),
                     className = 'ps-0',
                     width = 7
                 ),
-                dbc.Col(
-                    [
-                        html.Div(
-                            dbc.Button("Reload Todas", id={'role': 'ZoneButtonReloadAll'}, className="text9-7 me-0", n_clicks=0),
-                            className="text-end"
-                        ),
-                        html.Div(
-                            botonCreateStrat1,
-                            className="text-end"
-                        )
-                    ],
-                    className = 'pe-0',
-                    width = 5
-                ),
             ],
-            className = 'mb-4',
+            className = 'mb-3',
         ),
+        dbc.Row(
+            [
+                botonesStrategyTopButtons
+            ],
+            className = 'mb-3',
+        ),
+        caja_add_strategies,
         dbc.Row(
             [
                 html.Hr()
@@ -68,7 +101,8 @@ def layout_strategies_tab():
             [
                 dbc.Col(html.Div("Symbol"), id='strat-header-symbol', className = 'text9-7 bg-primary mr-1', xs=5, md=3), # xs-5 md-3
                 dbc.Col(html.Div("Pos"), id='strat-header-pos', className = 'text9-7 bg-primary mr-1', xs=1, md=1),    # xs-1 
-                dbc.Col(html.Div("Buy/Sell/Last"), id='strat-header-bsl', className = 'text9-7 bg-primary mr-1', xs=4, md=2), # md-2 d-none d-md-block
+                dbc.Col(html.Div("AvgCost"), id='strat-header-bsl', className = 'text9-7 bg-primary mr-1', xs=2, md=1), # md-2 d-none d-md-block
+                dbc.Col(html.Div("Last"), id='strat-header-bsl', className = 'text9-7 bg-primary mr-1', xs=2, md=1), # md-2 d-none d-md-block
                 dbc.Col(html.Div("PnL Estrategia"), id='strat-header-pnl', className = 'text9-7 d-none d-md-block bg-primary mr-1', md=3), # md-3 d-none d-md-block
                 dbc.Col(html.Div("Exec (Hoy/Total)"), className = 'text9-7 d-none d-md-block bg-primary', md=2), # md-2 d-none d-md-block
                 dbc.Col(html.Div("Enabled"), id='strat-header-en', className = 'text9-7 md-1 bg-primary', xs=2, md=1), # xs-2
@@ -116,7 +150,7 @@ def layout_strategies_tab():
 
     return tabEstrategias
 
-def modalsStrategia ():
+def modalsStrategia ():   # Igual esto se puede quitar si añadimos los modals a insideDetailsStrategia
     modals = []
     modals += webFE.webFENew_Strat_PentaRu.insideModalsPentagramaRu ()
     
@@ -155,17 +189,17 @@ def layout_getStrategyHeader (estrategia, update = False):
             logging.debug ('Header estrategia no actualizado. No hay datos nuevos')
             return no_update
 
-    totalPnl = formatCurrency(estrategia['classObject'].strategyGetExecPnL()['PnL'])
+    AvgPrice = estrategia['classObject'].strategyGetExecPnL()['avgPrice']
+    AvgPriceFmt = formatCurrency(AvgPrice)
+    todayPnl = formatCurrency(estrategia['classObject'].strategyGetExecPnL()['PnL'])
+    unrealNum = estrategia['classObject'].strategyGetExecPnLUnrealized()
+    unrealNumFmt = formatCurrency(unrealNum)
 
-    priceBuy = ''
-    priceSell = ''
+    totalPnl = todayPnl+'/'+unrealNumFmt
+
     priceLast = ''
-    priceTotal = ''
     if contrato != None:
-        priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
-        priceSell = formatCurrency(contrato['currentPrices']['SELL'])
         priceLast = formatCurrency(contrato['currentPrices']['LAST'])
-        priceTotal = priceBuy + '/' + priceSell + '/' + priceLast
 
     execToday = 'Na'
     execTotal = 'Na'
@@ -185,7 +219,8 @@ def layout_getStrategyHeader (estrategia, update = False):
         [
             dbc.Col(html.Button(symbol,id={'role': 'boton_strategy_header', 'strategy':strategyType, 'symbol': symbol}), class_name = 'text9-7 bg-primary mr-1', xs=5, md=3),
             dbc.Col(html.Div(posQty), class_name = 'bg-primary mr-1', xs=1, md=1),
-            dbc.Col(html.Div(priceTotal), class_name = 'bg-primary mr-1', xs=4, md=2),
+            dbc.Col(html.Div(AvgPriceFmt), class_name = 'bg-primary mr-1', xs=2, md=1),
+            dbc.Col(html.Div(priceLast), class_name = 'bg-primary mr-1', xs=2, md=1),
             dbc.Col(html.Div(totalPnl), class_name = 'd-none d-md-block bg-primary mr-1', md=3),
             dbc.Col(html.Div(execString), class_name = 'd-none d-md-block bg-primary mr-1', md=2),
             dbc.Col(dbc.Switch(id={'role': 'switchStratEnabled', 'strategy':strategyType, 'symbol': symbol}, input_class_name = color_switch, value = stratEnabled), class_name = 'bg-primary mr-1', xs=2, md=1),
@@ -288,3 +323,14 @@ def reloadStrats (n_button_open, n_button_close, open_status):
 
     return responseHeader, responseBody, True
 
+# Callback para colapsar o mostrar crear Strategias
+@callback(
+    Output({'role': 'colapse_strategy_add_general'}, "is_open"),
+    Input({'role': 'strategy_add_new_general'}, "n_clicks"),
+    State({'role': 'colapse_strategy_add_general'}, "is_open"),
+    prevent_initial_call = True,
+)
+def toggle_colapse_strategy_add(n_button, is_open):
+    if n_button:
+        return not is_open
+    return is_open

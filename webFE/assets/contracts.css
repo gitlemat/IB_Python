@@ -16,23 +16,27 @@
     background-color: transparent;
   }
 
-  .noPads {
-    padding-left: 0px;
-    padding-right: 0px;
-    padding-top: 0px;
-    padding-bottom: 0px;
+.noPads {
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+@media (max-width: 768px) {
+  .text9-7 {
+      font-size: .7rem;
   }
+  .text20-9 {
+    font-size: 1.2rem;
+  }
+}
 
-
-  @media (max-width: 768px) {
-    .text9-7 {
-        font-size: .7rem;
-    }
+@media (min-width: 768px) {
+  .text9-7 {
+      font-size: .9rem;
+  }
+  .text20-9 {
+    font-size: 2rem;
   }
   
-  @media (min-width: 768px) {
-    .text9-7 {
-        font-size: .9rem;
-    }
-    
-  }
+}

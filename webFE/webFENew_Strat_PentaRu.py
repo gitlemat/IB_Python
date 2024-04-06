@@ -17,7 +17,7 @@ import utils
 logger = logging.getLogger(__name__)
 
 def createStratBoton ():
-    boton = dbc.Button("CrearPentaRu", id={'role': 'boton_create_strat', 'stratType': 'PentagramaRu'}, className="text9-7 me-0", n_clicks=0)
+    boton = dbc.Button("CrearPentaRu", id={'role': 'boton_create_strat', 'stratType': 'PentagramaRu'}, className="text9-7 d-inline-block me-0", n_clicks=0)
     return boton
 
 def insideModalsPentagramaRu ():
@@ -46,6 +46,31 @@ def insideDetailsPentagramaRu (estrategia):
 
     symbol = estrategia['symbol']
     stratType = estrategia['type']
+
+    # Caja que solo se muestra en pantalla pequeña:
+
+    todayPnl = formatCurrency(estrategia['classObject'].strategyGetExecPnL()['PnL'])
+    unrealNum = estrategia['classObject'].strategyGetExecPnLUnrealized()
+    unrealNumFmt = formatCurrency(unrealNum)
+    totalPnl = todayPnl + '/' + unrealNumFmt
+
+    execToday = 'Na'
+    execTotal = 'Na'
+    execToday = estrategia['classObject'].pandas_.dbGetExecCountToday()
+    execTotal = estrategia['classObject'].pandas_.dbGetExecCountAll()
+    execString = str(execToday) + '/' + str(execTotal)
+
+    caja_pnl_execs_contenido = html.Div(
+        dbc.Row(
+                [
+                    html.Div("Execs:" + execString),
+                    html.Div("Total PnL:" + totalPnl)
+                ]
+            ),
+            className="text9-7",
+        )
+
+    caja_pnl_execs = dbc.Card(caja_pnl_execs_contenido, body=True)
 
     # Hacemos los botones e info inicial
 
@@ -102,8 +127,8 @@ def insideDetailsPentagramaRu (estrategia):
     contenido_caja = html.Div(
         dbc.Row(
                 [
-                    dbc.Col(grupo_switches, width=6),
-                    dbc.Col(botonesUp, width=6)
+                    dbc.Col(grupo_switches, md=6),
+                    dbc.Col(botonesUp, md=6)
                 ]
             ),
         )
@@ -229,6 +254,10 @@ def insideDetailsPentagramaRu (estrategia):
             dbc.Row(
                     caja_inicial_top, className = 'mb-3' 
             ),
+            dbc.Row(
+                    caja_pnl_execs, className = 'd-block d-md-none mb-3'
+            ),
+            
             dbc.Row(
                     colapsar, className = 'mb-3'
             ),

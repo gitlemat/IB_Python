@@ -16,10 +16,28 @@ logger = logging.getLogger(__name__)
 
 def layout_summary_tab ():
 
+    precios = create_preciosTop()
+
     tabSummary = [
         dbc.Row(
             [
-                html.P("Resumen Global", className='text-left text-secondary mb-4 ps-0 display-6'),
+                dbc.Col(
+                    [
+                        html.P("Global", className='text-left text-secondary mb-4 ps-0 display-6')
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        html.Div(
+                            precios, id ={'role':'precios_header'}
+                        ),
+                        dcc.Interval(
+                            id={'role': 'Intervalprecios_header'},
+                            interval= 3000, # in milliseconds
+                            n_intervals=0
+                        )
+                    ]
+                ),
                 html.Hr()
             ]
         ),
@@ -30,26 +48,6 @@ def layout_summary_tab ():
         return tabSummary
         
     strategyList = globales.G_RTlocalData_.strategies_.strategyGetAll()
-
-    dfAccount = globales.G_RTlocalData_.accountPandas_.dbGetAccountData()
-    dfAccount = dfAccount.astype({'NetLiquidation':'float'})
-
-    try:
-        LastNetLiq1 = dfAccount.iloc[-1]['NetLiquidation']
-    except:
-        LastNetLiq1 = 0.0
-
-    try:
-        LastNetLiq2 = dfAccount.iloc[-2]['NetLiquidation']
-    except:
-        LastNetLiq2 = 0.0
-
-    if LastNetLiq2 != 0:
-        increment = (LastNetLiq1 - LastNetLiq1) / LastNetLiq2 * 100
-    else:
-        increment = 0
-
-    logging.info ('NetLiq:\n%s\n%s\n%s', LastNetLiq1, LastNetLiq2, increment)
     
     all_cards = []
     included_contracts = []
@@ -63,12 +61,11 @@ def layout_summary_tab ():
 
         included_contracts.append(symbol)
 
-        #fig1 = webFE.webFENew_Strategies.layout_getFigura1(estrategia)
-        fig1 = layout_getFigureHistorico(contrato)  # de Utils
+        this_card = create_card (contrato, estrategia)
 
-        this_card = create_card (contrato, fig1, estrategia)
+        data = {'card':this_card, 'symbol': symbol, 'stratType': estrategia['type']}
 
-        all_cards.append(this_card)
+        all_cards.append(data)
 
     for gConId, contrato in contractList.items():
         indirect = globales.G_RTlocalData_.contractIndirectoGet (gConId) # Podria leer de contrato, pero es una guarregria (como mucho de lo que hay aqui)
@@ -80,19 +77,18 @@ def layout_summary_tab ():
         if symbol in included_contracts:
             continue
 
-        #fig1 = webFE.webFENew_Contratos.getFiguraComp(contrato)
-        fig1 = layout_getFigureHistorico(contrato)  # de Utils
+        this_card = create_card (contrato, None)
 
-        this_card = create_card (contrato, fig1, None)
+        data = {'card':this_card, 'symbol': symbol, 'stratType': ''}
 
-        all_cards.append(this_card)
+        all_cards.append(data)
 
     # Ahora añadimos la lista de execs a tabSummary
 
     df_execs = globales.G_RTlocalData_.strategies_.strategyGetAllExecs()
 
     if len(df_execs) > 0:
-        logging.info ('%',df_execs )
+        logging.debug ('%s',df_execs )
         df_execs.sort_index(ascending=False, inplace = True)
         df_execs['time'] = df_execs.index.strftime("%d/%m/%Y - %H:%M:%S")
         #df_execs.sort_values(by=['time'], inplace=True, ascending=False)
@@ -122,11 +118,36 @@ def layout_summary_tab ():
 
     for i in range(0, len(all_cards), 2):
         logging.debug ('Card: %d, %d', i, len(all_cards))
-        column1 = dbc.Col(all_cards[i], id='summary-card-l-'+str(i), md=6)
+        #column1 = dbc.Col(all_cards[i]['card'], id='summary-card-l-'+str(i), md=6)
+        #dbc.Col(html.Div("PnL (daily/real/unreal)"), id='contract-header-comm', className = 'text9-7 d-none d-md-block bg-primary', md = 2),
+        column1 = dbc.Col(
+            [
+                html.Div(
+                    all_cards[i]['card'], id={'role':'summary-card', 'symbol':all_cards[i]['symbol'], 'stratType':all_cards[i]['stratType']}
+                ),
+                dcc.Interval(
+                    id={'role': 'Interval-summary-card', 'symbol':all_cards[i]['symbol'], 'stratType':all_cards[i]['stratType']},
+                    interval= 3000, # in milliseconds
+                    n_intervals=0
+                )
+            ], md=6
+        )
+            
         column2 = None
         if i + 1 < len(all_cards):
-            column2 = dbc.Col(all_cards[i+1], id='summary-card-r-'+str(i+1), md=6)
-        
+            #column2 = dbc.Col(all_cards[i+1]['card'], id={'role':'summary-card', 'symbol':all_cards[i+1]['symbol'], 'stratType':all_cards[i+1]['stratType']}, md=6)
+            column2 = dbc.Col(
+                [
+                    html.Div(
+                        all_cards[i+1]['card'], id={'role':'summary-card', 'symbol':all_cards[i+1]['symbol'], 'stratType':all_cards[i+1]['stratType']}
+                    ),
+                    dcc.Interval(
+                        id={'role': 'Interval-summary-card', 'symbol':all_cards[i+1]['symbol'], 'stratType':all_cards[i+1]['stratType']},
+                        interval= 3000, # in milliseconds
+                        n_intervals=0
+                    )
+                ], md=6
+            )
         row = dbc.Row(
             [
                 column1,
@@ -146,7 +167,63 @@ def layout_summary_tab ():
 
     return tabSummary
 
-def create_card (contrato, fig1, estrategia):
+def create_preciosTop ():
+    color_rojo = '#ff0000'
+    color_verde = '#366b22'
+    color_negro = '#000000'
+
+    if globales.G_RTlocalData_.accountPandas_ == None:
+        return None
+    dfAccountYesterday = globales.G_RTlocalData_.accountPandas_.dbGetAccountDataUntilYesterday()
+    #dfAccountYesterday = dfAccountYesterday.astype({'NetLiquidation':'float'})
+    dfAccountToday = globales.G_RTlocalData_.accountPandas_.dbGetAccountDataLast()
+
+
+    try:
+
+        NetLiqLast = float(dfAccountToday['NetLiquidation'])
+    except:
+        NetLiqLast = 0.0
+
+    try:
+        NetLiqYesterday = float(dfAccountYesterday.iloc[-1]['NetLiquidation'])
+    except:
+        NetLiqYesterday = 0.0
+
+    if NetLiqYesterday != 0:
+        increment = (NetLiqLast - NetLiqYesterday) / NetLiqYesterday * 100
+    else:
+        increment = 0
+
+    diff = NetLiqLast - NetLiqYesterday
+
+    logging.debug ('NetLiq:\n%s\n%s\n%s\n%s', NetLiqYesterday, NetLiqLast, diff, increment)
+
+    if diff < 0:
+        priceLastColor = color_rojo
+    else:
+        priceLastColor = color_verde
+
+    NetLiqLast = formatCurrency(NetLiqLast)
+    diff = formatCurrency(diff)
+    increment = "{:,.2f}".format(increment)
+
+    h6priceList1 = html.Div(str(NetLiqLast) +"€", style={'color':color_negro},className='text20-9')
+    h6priceList2 = html.Div(str(diff) + "€", style={'color':priceLastColor},className='text9-7')
+    h6priceList3 = html.Div("(" + str(increment) + "%)", style={'color':priceLastColor},className='text9-7')
+
+    precios = html.Span(
+        [
+            h6priceList1,
+            html.Div([h6priceList2,h6priceList3])
+        ], className="gap-2 d-flex justify-content-end"
+    )
+
+    return precios
+
+def create_card (contrato, estrategia):
+    if contrato == None:
+        return None
     symbol = contrato['fullSymbol']
     priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
     priceSell = formatCurrency(contrato['currentPrices']['SELL'])
@@ -163,9 +240,9 @@ def create_card (contrato, fig1, estrategia):
     priceTotal = "BUY:" + priceBuy + '/SELL:' + priceSell
 
     lastPnL = contrato['dbPandas'].dbGetLastPnL()
-    dailyPnL = ''
-    realizedPnL = ''
-    unrealizedPnL = ''
+    dailyPnL = '$-.-'
+    realizedPnL = '$-.-'
+    unrealizedPnL = '$-.-'
     if lastPnL['dailyPnL'] != None:
         dailyPnL = formatCurrency(lastPnL['dailyPnL'])
     if lastPnL['realizedPnL'] != None:
@@ -180,7 +257,7 @@ def create_card (contrato, fig1, estrategia):
     if estrategia == None:
         stratType = 'N/A'
         posQtyNum = None
-        posQty = 'N/A'
+        posQty = '0'
         execToday = 'N/A'
         execTotal = 'N/A'
         execString = 'N/A'
@@ -197,7 +274,6 @@ def create_card (contrato, fig1, estrategia):
         totalPnl = formatCurrency(allPnL)
         AvgPrice = estrategia['classObject'].strategyGetExecPnL()['avgPrice']
         AvgPriceFmt = formatCurrency(AvgPrice)
-        unrealNum = estrategia['classObject'].strategyGetExecPnLUnrealized()
         try:
             unrealNum = estrategia['classObject'].strategyGetExecPnLUnrealized()
         except:
@@ -224,6 +300,7 @@ def create_card (contrato, fig1, estrategia):
                                 ], className="d-grid gap-2 d-flex justify-content-end"
                             )
 
+    fig1 = layout_getFigureHistorico(contrato)  # de Utils
     graphColumn1 = html.Div(
         dcc.Graph(
                 id={'role': 'graphDetailsStrat', 'strategy': stratType, 'symbol': symbol},
@@ -312,4 +389,48 @@ def create_card (contrato, fig1, estrategia):
     )
 
     return this_card
+
+
+#Callback para actualizar las Cards
+@callback(
+    Output({'role':'summary-card', 'stratType':MATCH, 'symbol': MATCH}, "children"),
+    Input({'role': 'Interval-summary-card', 'stratType':MATCH, 'symbol': MATCH}, 'n_intervals'),
+    prevent_initial_call = True,
+)
+def actualizarCard (n_intervals):
+    if not ctx.triggered_id:
+        raise PreventUpdate
+
+    symbol = ctx.triggered_id['symbol']
+    stratType = ctx.triggered_id['stratType']
+    logging.debug ('Actualizando card estrategia: %s', symbol)
+
+    contract = globales.G_RTlocalData_.contractGetBySymbol(symbol)
+    
+    estrategia = None
+    if stratType != '' and globales.G_RTlocalData_.strategies_ != None:
+        estrategia = globales.G_RTlocalData_.strategies_.strategyGetStrategyBySymbolAndType (symbol, 'PentagramaRu')
+    resp = create_card (contract, estrategia)
+
+    if resp == None:
+        resp = no_update
+
+    return resp
+
+#Callback para actualizar los precios de la cabecera
+@callback(
+    Output({'role':'precios_header'}, "children"),
+    Input({'role':'Intervalprecios_header'}, 'n_intervals'),
+    prevent_initial_call = True,
+)
+def actualizarPreciosTops (n_intervals):
+    if not ctx.triggered_id:
+        raise PreventUpdate
+
+    resp = create_preciosTop ()
+
+    if resp == None:
+        resp = no_update
+
+    return resp
 

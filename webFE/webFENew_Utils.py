@@ -29,6 +29,7 @@ def formatCurrency (cantidad):
         else:
             main_currency = currency
         new_main_currency = main_currency.replace(",", ".")
+
         if '.' in currency:
             currency = new_main_currency + fractional_separator + fractional_currency
         else:
@@ -161,7 +162,9 @@ def layout_getFigureToday (contrato):
                        title_x = 0.5,
                        title_xanchor = 'center',
                        margin=dict(l=0, r=0, t=40, b=40),
-                       hovermode="x unified")
+                       hovermode="x unified",
+                       dragmode=False
+    )
 
     contrato['dbPandas'].toPrint = False
 
@@ -330,7 +333,8 @@ def layout_getFigura_split (symbolSpread, base = False):
                        title_xanchor = 'center',
                        margin=dict(l=0, r=0, t=40, b=40),
                        legend_x=0, legend_y=1,
-                       hovermode="x unified"
+                       hovermode="x unified",
+                       dragmode=False
                     )
 
     return fig3

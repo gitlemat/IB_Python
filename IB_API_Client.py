@@ -331,19 +331,21 @@ class IBI_App(EWrapper, EClient):
 
     @iswrapper
     def updateAccountValue(self, key: str, val: str, currency: str,accountName: str):
-        logging.info("UpdateAccountValue. Key: %s, Value: %s, Currency: %s, AccountName: %s",key,val, currency, accountName)
+        data = {'account': accountName, 'tag':key, 'value':val, 'currency': currency}
+        queueEntry = {'type':'account', 'data': data}
+        self.CallbacksQueuePrio_.put(queueEntry)
+        logging.debug("UpdateAccountValue. Key: %s, Value: %s, Currency: %s, AccountName: %s",key,val, currency, accountName)
 
     def updatePortfolio(self, contract: Contract, position: Decimal,marketPrice: float, marketValue: float, averageCost: float, unrealizedPNL: float, realizedPNL: float, accountName: str):
-        print("UpdatePortfolio.", "Symbol:", contract.symbol, "SecType:", contract.secType, "Exchange:",contract.exchange, "Position:", decimalMaxString(position), "MarketPrice:", floatMaxString(marketPrice),"MarketValue:", floatMaxString(marketValue), "AverageCost:", floatMaxString(averageCost), "UnrealizedPNL:", floatMaxString(unrealizedPNL), "RealizedPNL:", floatMaxString(realizedPNL), "AccountName:", accountName)
-        logging.info("UpdatePortfolio")
-        logging.info("---------------")
-        logging.info("Symbol: %s", contract.symbol)
-        logging.info("Position: %s", position)
-        logging.info("MarketPrice: %s", marketPrice)
-        logging.info("marketValue: %s", marketValue)
-        logging.info("averageCost: %s", averageCost)
-        logging.info("UnrealizedPNL: %s", unrealizedPNL)
-        logging.info("realizedPNL: %s", realizedPNL)
+        logging.debug("UpdatePortfolio")
+        logging.debug("---------------")
+        logging.debug("Symbol: %s", contract.symbol)
+        logging.debug("Position: %s", position)
+        logging.debug("MarketPrice: %s", marketPrice)
+        logging.debug("marketValue: %s", marketValue)
+        logging.debug("averageCost: %s", averageCost)
+        logging.debug("UnrealizedPNL: %s", unrealizedPNL)
+        logging.debug("realizedPNL: %s", realizedPNL)
 
     @iswrapper  
     def reqPositions (self):

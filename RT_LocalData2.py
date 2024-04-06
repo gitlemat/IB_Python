@@ -55,6 +55,7 @@ class DataLocalRT():
 
         self.accountData_ = {}
         self.accountPandas_ = None
+        self.accountInit_ = False
         self.orderList_ = []  # includes orders and contracts (hay que sacar los contracts a puntero externo, y los usan las posiciones)
         self.contractDict_ = {}  # Directamente dict de contracts
 
@@ -110,25 +111,49 @@ class DataLocalRT():
 
     def accountTagUpdate (self, data):
 
+        keys_account = [
+            'accountId', 'Cushion', 'LookAheadNextChange', 'AccruedCash', 
+            'AvailableFunds', 'BuyingPower', 'EquityWithLoanValue', 'ExcessLiquidity', 'FullAvailableFunds',
+            'FullExcessLiquidity','FullInitMarginReq','FullMaintMarginReq','GrossPositionValue','InitMarginReq',
+            'LookAheadAvailableFunds','LookAheadExcessLiquidity','LookAheadInitMarginReq','LookAheadMaintMarginReq',
+            'MaintMarginReq','NetLiquidation','TotalCashValue'
+        ]
+
         if self.accountPandas_ == None and 'accountId' in self.accountData_: 
             self.accountPandas_ = pandasDB.dbPandasAccount (self.accountData_['accountId'], self.influxIC_) 
 
-        reqId = data['reqId']
+        updated = False
         if 'end' in data:
-            logging.debug ("Ya tengo la account info:\n%s", self.accountSummary())
+            logging.debug ("Tipo de account info: End")
+        if 'reqId' in data:
+            logging.debug ("Tipo de account info: Summary")
+        if 'currency' in data:
+            logging.debug ("Tipo de account info: Update")
+
+
+        #reqId = data['reqId']
+        if ('end' not in data):
+            account = data['account']
+            tag = data['tag']
+            value = data['value']
+
+            if tag in keys_account:
+                updated = True
+                dictLocal = {}
+                dictLocal[tag] = value
+                dictLocal['accountId'] = account
+                self.accountData_.update (dictLocal)
+                logging.debug ("Escribo la account info:\n%s", dictLocal)
+        else:
+            if not self.accountInit_:
+                logging.debug ("Escribo la account info:\n%s", self.accountSummary())
+            self.accountInit_ = True
+            
+        if ('end' in data) or ('currency' in data and self.accountInit_ == True and updated == True):
             self.accountPandas_.dbUpdateAddAccountData (self.accountData_)
+        if ('end' in data):
             # Como ya hemos recibido todo, disparo la subscripcion 
             self.appObj_.reqAccountUpdates(True, self.accountData_['accountId'])
-            return # no hay nada mas. Ha terminado y punto (mirar IB_API_Client)
-            
-        account = data['account']
-        tag = data['tag']
-        value = data['value']
-
-        dictLocal = {}
-        dictLocal[tag] = value
-        dictLocal['accountId'] = account
-        self.accountData_.update (dictLocal)
 
 
     def accountSummary (self):
@@ -346,13 +371,13 @@ class DataLocalRT():
         reqIdPnL = data['reqId']        
         pnlType = data['pnlType']
 
-        logging.debug ('PnL actualizado (req: %d):', reqIdPnL)
-        logging.debug ('    dailyPnL: %d', data['dailyPnL'])
-        logging.debug ('    realizedPnL: %d', data['realizedPnL'])
-        logging.debug ('    unrealizedPnL: %d', data['unrealizedPnL'])
+        logging.info ('PnL actualizado (req: %d):', reqIdPnL)
+        logging.info ('    dailyPnL: %d', data['dailyPnL'])
+        logging.info ('    realizedPnL: %d', data['realizedPnL'])
+        logging.info ('    unrealizedPnL: %d', data['unrealizedPnL'])
         if pnlType == 'single':
-            logging.debug ('    Pos: %d', data['pos'])
-            logging.debug ('    Value: %d', data['value'])
+            logging.info ('    Pos: %d', data['pos'])
+            logging.info ('    Value: %d', data['value'])
 
 
         pnl = {}
@@ -771,7 +796,11 @@ class DataLocalRT():
 
                 allReady = True
 
-                for conReqLeg in contrato['contractReqIdLegs']:       
+                logging.debug ('-------------------------------------')
+                logging.debug ('Analizo: %s', contrato['fullSymbol'])
+
+                for conReqLeg in contrato['contractReqIdLegs']:  
+                    #conReqLeg = {'conId': , 'reqId': None, 'reqIdPnL':None, 'ratio': leg.ratio, 'action': leg.action, 'lSymbol': contratoLeg['contract'].localSymbol}
                     if conReqLeg['reqIdPnL'] == None:
                         allReady = False            # No todos los legs estan subscritos
                         break
@@ -780,29 +809,65 @@ class DataLocalRT():
                         allReady = False
                         break
 
+                    # Esto lo hago para ponderar el peso de cada PnL segun las posiciones reales
+
+                    logging.debug ('Pnl self.pnl_: %s', self.pnl_[legReqId])
+                    logging.debug ('Pnl conReqLeg: %s', conReqLeg)
+
+                    pos_total_leg = float(abs(self.contractDict_[conReqLeg['conId']]['pos_total']))
+                    logging.debug ('   Pos Total: %s', pos_total_leg)
+                    pos_este_contrato = int(abs(contrato['pos']))
+                    logging.debug ('   Pos Local: %s', pos_este_contrato)
+
                     if dailyPnL != None:   # Si es None es que no están todos
                         if not 'dailyPnL' in self.pnl_[legReqId]:  
                             dailyPnL = None   
                         else:
-                            dailyPnL += self.pnl_[legReqId]['dailyPnL']
+                            leg_dailyPnL = self.pnl_[legReqId]['dailyPnL']
+                            if pos_total_leg != 0:
+                                leg_dailyPnL = leg_dailyPnL / pos_total_leg * abs(conReqLeg['ratio'])
+                            else:
+                                leg_dailyPnL = 0
+                            dailyPnL += leg_dailyPnL * pos_este_contrato
 
                     if realizedPnL != None:   # Si es None es que no están todos
                         if not 'realizedPnL' in self.pnl_[legReqId]:  
                             realizedPnL = None   
                         else:
-                            realizedPnL += self.pnl_[legReqId]['realizedPnL']
+                            leg_realizedPnL = self.pnl_[legReqId]['realizedPnL']
+                            if pos_total_leg != 0:
+                                leg_realizedPnL = leg_realizedPnL / pos_total_leg * abs(conReqLeg['ratio'])
+                            else:
+                                leg_realizedPnL = 0
+                            realizedPnL += leg_realizedPnL * pos_este_contrato
 
                     if unrealizedPnL != None:   # Si es None es que no están todos
                         if not 'unrealizedPnL' in self.pnl_[legReqId]:  
                             unrealizedPnL = None   
                         else:
-                            unrealizedPnL += self.pnl_[legReqId]['unrealizedPnL']
-
+                            leg_unrealizedPnL = self.pnl_[legReqId]['unrealizedPnL']
+                            if pos_total_leg != 0:
+                                leg_unrealizedPnL = leg_unrealizedPnL / pos_total_leg * abs(conReqLeg['ratio'])
+                            else:
+                                leg_unrealizedPnL = 0
+                            unrealizedPnL += leg_unrealizedPnL * pos_este_contrato
+                            
                     if value != None:   # Si es None es que no están todos
                         if not 'value' in self.pnl_[legReqId]:  
                             value = None   
                         else:
-                            value += self.pnl_[legReqId]['value']
+                            leg_valuePnL = self.pnl_[legReqId]['value']
+                            if pos_total_leg != 0:
+                                leg_valuePnL = leg_valuePnL / pos_total_leg * abs(conReqLeg['ratio'])
+                            else:
+                                leg_valuePnL = 0
+                            value += leg_valuePnL * pos_este_contrato
+
+                logging.debug ('pos:%s', contrato['pos'])
+                logging.debug ('dailyPnL:%s', dailyPnL)
+                logging.debug ('realizedPnL:%s', realizedPnL)
+                logging.debug ('unrealizedPnL:%s', unrealizedPnL)
+                logging.debug ('value:%s', value)
 
                 if allReady != False:
                     bUpdated = False
@@ -827,6 +892,7 @@ class DataLocalRT():
                                      'realizedPnL':contrato['pnl']['realizedPnL'], 
                                      'unrealizedPnL':contrato['pnl']['unrealizedPnL']
                                      }
+                        logging.debug ('Actualizo %s con: %s', contrato['fullSymbol'], data_args)
                         if self.strategies_.strategyGetStrategyTypesBySymbol(lSymbol) != None:   # Solo añado a la DB si forma parte de una strategia
                             contrato['dbPandas'].dbUpdateAddPnL(data_args) # Si estamos aqui es que hay dbPandas
                    
@@ -1330,23 +1396,23 @@ class DataLocalRT():
         
         #if not strategy or 'classObject' not in strategy:
         if not currentSymbolStrategy:
-            logging.error ('[Execution (%d)] Orden Ejecutada. Pero no pertenece a ninguna estrategia', orderId)
+            logging.info ('[Execution (%d)] Orden Ejecutada. Pero no pertenece a ninguna estrategia', orderId)
             return False   
-        #logging.info ('    Estrategia: %s [%s]', strategy['type'], strategy['symbol'])
-        logging.info ('    Estrategia: %s [%s]', currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_)
+        else:
+            logging.info ('    Estrategia: %s [%s]', currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_)
   
 
         #currentSymbolStrategy = strategy['classObject']
 
         # Miramos que la estrategia esté activada (debería)
-        if currentSymbolStrategy.stratEnabled_ == False:
+        if currentSymbolStrategy and currentSymbolStrategy.stratEnabled_ == False:
             logging.error ('    Pero la estrategia esta disabled!!!!')
             #return False
         
         #orden = self.orderGetByOrderId(orderId)
         
         # Esto es por asegurar, por si solo llega el exec. No debería pasar
-        if orden['Executed'] == False:
+        if orden['Executed'] == False and currentSymbolStrategy:
             data2 = {'orderId': orderId, 'contractObj': exec_contract, 'orderObj': orden['order'], 'paramsDict':None }
             currentSymbolStrategy.strategyOrderUpdated (data2)  
         
@@ -1378,7 +1444,10 @@ class DataLocalRT():
         data_new['numLegs'] = len(contract['contractReqIdLegs'])
         data_new['contractSecType'] = contract['contract'].secType
         #data_new['strategy_type'] = strategy['type']
-        data_new['strategy_type'] = currentSymbolStrategy.straType_
+        if currentSymbolStrategy:
+            data_new['strategy_type'] = currentSymbolStrategy.straType_
+        else:
+            data_new['strategy_type'] = 'N/A'
         #data_new['lastFillPrice'] = orden['params']['lastFillPrice']
         data_new['lastFillPrice'] = executionObj.price
         
@@ -1440,12 +1509,13 @@ class DataLocalRT():
 
         orderId = orden['order'].orderId
         #strategy = self.strategies_.strategyGetStrategyObjByOrderId (orderId)
-        logging.debug ('Strategia: %s', currentSymbolStrategy)
+        
         #if not strategy or 'classObject' not in strategy:
         if not currentSymbolStrategy:
-            logging.error('[Comision (%s)] Esta comissionReport no es de ninguna orden que tenga estrategia. ExecId: %s', orderId, dataCommission.execId)
-            return
-        logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s', orderId, currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_, dataCommission.execId)
+            logging.info('[Comision (%s)] Esta comissionReport no es de ninguna orden que tenga estrategia. ExecId: %s', orderId, dataCommission.execId)
+            return False
+        else:
+            logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s', orderId, currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_, dataCommission.execId)
         logging.info ('    Comission: %s. RealizedPnL: %s', dataCommission.commission, dataCommission.realizedPNL)
 
 

@@ -22,6 +22,8 @@ class Strategies():
         #  {'symbol': lineSymbol, 'type': 'Pentagrama', 'classObject': classObject}
 
         self.stratList_ = [] 
+
+        self.pandasNoStrat_ = pandasDB.dbPandasStrategy ('NaN', 'NaN', self.RTLocalData_.influxIC_)
         
         try:
             self.strategyInit()

@@ -33,14 +33,12 @@ def layout_contratos_tab ():
             ),
             dbc.Row(
                 [
-                    dbc.Col(html.Div("Symbol"), id='contract-header-symbol', className = 'text9-7 bg-primary mr-1', xs=5, md = 4),
+                    dbc.Col(html.Div("Symbol"), id='contract-header-symbol', className = 'text9-7 bg-primary mr-1', xs=5, md = 3),
                     dbc.Col(html.Div("Pos"), id='contract-header-pos', className = 'text9-7 bg-primary mr-1', xs=1, md=1),
                     dbc.Col(html.Div("AvgPrice"), id='contract-header-avg', className = 'text9-7 bg-primary', xs=2, md=1),
-                    dbc.Col(html.Div("Buy"), id='contract-header-buy', className = 'text9-7 d-none d-md-block bg-success', md = 1),
-                    dbc.Col(html.Div("Sell"), id='contract-header-sell', className = 'text9-7 d-none d-md-block bg-primary', md = 1),
                     dbc.Col(html.Div("Last"), id='contract-header-last', className = 'text9-7 bg-primary',  xs=2, md=1),
-                    dbc.Col(html.Div("PnL (daily/real/unreal)"), id='contract-header-comm', className = 'text9-7 d-none d-md-block bg-primary', md = 2),
-                    dbc.Col(html.Div("Order"), id='contract-header-order', className = 'text9-7 bg-primary',  xs=2, md=1),
+                    dbc.Col(html.Div("PnL (daily/real/unreal)"), id='contract-header-comm', className = 'text9-7 d-none d-md-block bg-primary', md = 4),
+                    dbc.Col(html.Div("Order"), id='contract-header-order', className = 'text9-7 bg-primary',  xs=2, md=2),
                 ], className = 'mb-3 text-white'
                 ),
             ]
@@ -167,13 +165,11 @@ def contratosObtenerFilas (contrato, update = False):
     else:
         posQty = posicion 
         posavgCost = formatCurrency(contrato['posAvgPrice'])
-    priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
-    priceSell = formatCurrency(contrato['currentPrices']['SELL'])
     priceLast = formatCurrency(contrato['currentPrices']['LAST'])
     
-    dailyPnL = ''
-    realizedPnL = ''
-    unrealizedPnL = ''
+    dailyPnL = '$-.-'
+    realizedPnL = '$-.-'
+    unrealizedPnL = '$-.-'
     totalPnl = ''
     lastPnL = contrato['dbPandas'].dbGetLastPnL()
     if lastPnL['dailyPnL'] != None:
@@ -188,14 +184,12 @@ def contratosObtenerFilas (contrato, update = False):
     # Cada fila de cabecera
     headerRow = dbc.Row(
             [
-                dbc.Col(html.Button(symbol,className = 'botonContract', id={'role': 'botonContract', 'gConId': str(gConId)}), className = 'text9-7 bg-primary mr-1', xs=5, md=4),
+                dbc.Col(html.Button(symbol,className = 'botonContract', id={'role': 'botonContract', 'gConId': str(gConId)}), className = 'text9-7 bg-primary mr-1', xs=5, md=3),
                 dbc.Col(html.Div(posQty), className = 'text9-7 bg-primary mr-1', xs=1, md=1),
                 dbc.Col(html.Div(posavgCost), className = 'text9-7 bg-primary', xs=2, md=1),
-                dbc.Col(html.Div(priceBuy), className = 'text9-7 d-none d-md-block bg-success', md=1),
-                dbc.Col(html.Div(priceSell), className = 'text9-7 d-none d-md-block bg-primary', md=1),
                 dbc.Col(html.Div(priceLast), className = 'text9-7 bg-primary', xs=2, md=1),
-                dbc.Col(html.Div(totalPnl), className = 'text9-7 d-none d-md-block bg-primary', md=2),
-                dbc.Col(html.Button(html.I(className="bi bi-bag-plus me-2"),className = 'botonContract', id={'role': 'boton_order_create', 'gConId': str(gConId)}), className = 'text9-7 bg-primary',  xs=2, md=1),
+                dbc.Col(html.Div(totalPnl), className = 'text9-7 d-none d-md-block bg-primary', md=4),
+                dbc.Col(html.Button(html.I(className="bi bi-bag-plus me-2"),className = 'botonContract', id={'role': 'boton_order_create', 'gConId': str(gConId)}), className = 'text9-7 bg-primary',  xs=2, md=2),
             ], className = 'text-white mb-1',
     )  
 
