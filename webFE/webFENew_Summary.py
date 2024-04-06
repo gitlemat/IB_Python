@@ -224,6 +224,8 @@ def create_preciosTop ():
 def create_card (contrato, estrategia):
     if contrato == None:
         return None
+    if contrato['dbPandas'] == None:
+        return None
     symbol = contrato['fullSymbol']
     priceBuy = formatCurrency(contrato['currentPrices']['BUY'])
     priceSell = formatCurrency(contrato['currentPrices']['SELL'])

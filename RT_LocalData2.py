@@ -367,13 +367,13 @@ class DataLocalRT():
         reqIdPnL = data['reqId']        
         pnlType = data['pnlType']
 
-        logging.info ('PnL actualizado (req: %d):', reqIdPnL)
-        logging.info ('    dailyPnL: %d', data['dailyPnL'])
-        logging.info ('    realizedPnL: %d', data['realizedPnL'])
-        logging.info ('    unrealizedPnL: %d', data['unrealizedPnL'])
+        logging.debug ('PnL actualizado (req: %d):', reqIdPnL)
+        logging.debug ('    dailyPnL: %d', data['dailyPnL'])
+        logging.debug ('    realizedPnL: %d', data['realizedPnL'])
+        logging.debug ('    unrealizedPnL: %d', data['unrealizedPnL'])
         if pnlType == 'single':
-            logging.info ('    Pos: %d', data['pos'])
-            logging.info ('    Value: %d', data['value'])
+            logging.debug ('    Pos: %d', data['pos'])
+            logging.debug ('    Value: %d', data['value'])
 
 
         pnl = {}

@@ -719,7 +719,7 @@ class dbPandasContrato():
         newlineL.append (data)
 
         if differentPnL:
-            logging.info('Se actuliza: %s', newlineL)
+            logging.debug('Se actuliza: %s', newlineL)
             dfDelta = pd.DataFrame.from_records(newlineL)
             dfDelta.set_index('timestamp', inplace=True)
             #self.dfPnlDelta_ = pd.concat([self.dfPnlDelta_, dfDelta]) #, ignore_index=True

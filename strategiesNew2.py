@@ -58,6 +58,9 @@ class Strategies():
             dfPart_['Strategy'] = strategy['type'] + '/' + strategy['symbol']
             #df = pd.concat([df, dfPart_])
             df = pandasDB.dbPandasConcat(df, dfPart_)
+        dfPart_ = self.pandasNoStrat_.dbGetExecsDataframeAll()
+        dfPart_['Strategy'] = 'Nan/' + dfPart_['symbol']
+        df = pandasDB.dbPandasConcat(df, dfPart_)
         return df
 
     def strategyEnableDisable (self, symbol, strategyType, state):
