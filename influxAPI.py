@@ -325,22 +325,34 @@ class InfluxClient:
         todayStart = utils.dateLocal2UTC (todayStart)
         todayStop = utils.dateLocal2UTC (todayStop)
         param = {"_bucket": self._bucket_execs, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
-        query = '''
-        from(bucket: _bucket)
-        |> range(start: _start, stop: _stop)
-        |> filter(fn:(r) => r._measurement == "executions")
-        |> filter(fn:(r) => r.symbol == _symbol)
-        |> filter(fn:(r) => r.strategy == _strategyType)
-        |> filter(fn:(r) => r["_field"] == "Commission" or r["_field"] == "OrderId" or r["_field"] == "ExecId" or r["_field"] == "Quantity" or r["_field"] == "Side" or r["_field"] == "RealizedPnL" or r["_field"] == "FillPrice" or r["_field"] == "Side" or r["_field"] == "RealizedPnL" or r["_field"] == "PermId")
-        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
-        |> keep(columns: ["_time", "ExecId", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"])
-        |> sort(columns: ["_time"], desc: _desc)
-        '''
+        if strategyType != 'NaN':
+            query = '''
+            from(bucket: _bucket)
+            |> range(start: _start, stop: _stop)
+            |> filter(fn:(r) => r._measurement == "executions")
+            |> filter(fn:(r) => r.symbol == _symbol)
+            |> filter(fn:(r) => r.strategy == _strategyType)
+            |> filter(fn:(r) => r["_field"] == "Commission" or r["_field"] == "OrderId" or r["_field"] == "ExecId" or r["_field"] == "Quantity" or r["_field"] == "Side" or r["_field"] == "RealizedPnL" or r["_field"] == "FillPrice" or r["_field"] == "Side" or r["_field"] == "RealizedPnL" or r["_field"] == "PermId")
+            |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+            |> keep(columns: ["_time", "ExecId", "symbol", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"])
+            |> sort(columns: ["_time"], desc: _desc)
+            '''
+        else:
+            query = '''
+            from(bucket: _bucket)
+            |> range(start: _start, stop: _stop)
+            |> filter(fn:(r) => r._measurement == "executions")
+            |> filter(fn:(r) => r.strategy == _strategyType)
+            |> filter(fn:(r) => r["_field"] == "Commission" or r["_field"] == "OrderId" or r["_field"] == "ExecId" or r["_field"] == "Quantity" or r["_field"] == "Side" or r["_field"] == "RealizedPnL" or r["_field"] == "FillPrice" or r["_field"] == "Side" or r["_field"] == "RealizedPnL" or r["_field"] == "PermId")
+            |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+            |> keep(columns: ["_time", "ExecId", "symbol", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"])
+            |> sort(columns: ["_time"], desc: _desc)
+            '''
 
         result = self.query_data_frame(query, param)
 
         if len(result) == 0:
-            df_temp = pd.DataFrame(columns = ['timestamp', 'ExecId', 'PermId', 'OrderId', 'Quantity', 'Side', 'RealizedPnL', 'Commission', 'FillPrice'])
+            df_temp = pd.DataFrame(columns = ['timestamp', 'ExecId', "symbol", 'PermId', 'OrderId', 'Quantity', 'Side', 'RealizedPnL', 'Commission', 'FillPrice'])
             df_temp.set_index('timestamp', inplace=True)
             return df_temp
     
@@ -369,18 +381,31 @@ class InfluxClient:
         todayStart = utils.dateLocal2UTC (todayStart)
         todayStop = utils.dateLocal2UTC (todayStop)
         param = {"_bucket": self._bucket_execs, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_strategyType": strategyType, "_desc": False}
-        query = '''
-        from(bucket: _bucket)
-        |> range(start: 0)
-        |> filter(fn:(r) => r._measurement == "executions")
-        |> filter(fn:(r) => r.symbol == _symbol)
-        |> filter(fn: (r) => r["strategy"] == _strategyType)
-        |> filter(fn:(r) => r._field == "ExecId")
-        |> aggregateWindow(every: 24h, fn: count, createEmpty: false, timeSrc: "_start")
-        |> sort(columns: ["_time"], desc: _desc)
-        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-        |> keep(columns: ["_time", "ExecId"])
-        '''
+        if strategyType != 'NaN':
+            query = '''
+            from(bucket: _bucket)
+            |> range(start: 0)
+            |> filter(fn:(r) => r._measurement == "executions")
+            |> filter(fn:(r) => r.symbol == _symbol)
+            |> filter(fn: (r) => r["strategy"] == _strategyType)
+            |> filter(fn:(r) => r._field == "ExecId")
+            |> aggregateWindow(every: 24h, fn: count, createEmpty: false, timeSrc: "_start")
+            |> sort(columns: ["_time"], desc: _desc)
+            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+            |> keep(columns: ["_time", "ExecId"])
+            '''
+        else:
+            query = '''
+            from(bucket: _bucket)
+            |> range(start: 0)
+            |> filter(fn:(r) => r._measurement == "executions")
+            |> filter(fn: (r) => r["strategy"] == _strategyType)
+            |> filter(fn:(r) => r._field == "ExecId")
+            |> aggregateWindow(every: 24h, fn: count, createEmpty: false, timeSrc: "_start")
+            |> sort(columns: ["_time"], desc: _desc)
+            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+            |> keep(columns: ["_time", "ExecId"])
+            '''
 
         result = self.query_data_frame(query, param)
 

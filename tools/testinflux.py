@@ -3,7 +3,7 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 TOKEN = 't5bQAqy-7adBzGjFCaKkNcqAJxMBEGOGlYk8X4E2AMQWb20xI-TFFOcOYb60k0Ewnt6lgnIPByzh8Cof5JTADA=='
 ORG = 'rodsic.com'
-BUCKET = 'ib_prices'
+BUCKET = 'ib_data_lab'
 BUCKET_1h = 'ib_prices_1h'
 
 def testToday():
@@ -184,15 +184,14 @@ def testExec():
     client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
 
     print ("todayStop")
-    param = {"_bucket": BUCKET, "_symbol": "HEM3-2HEN3+HEQ3", "_strategy": "Pentagrama", "_desc": False}
+    param = {"_bucket": BUCKET, "_symbol": "HEM3-2HEN3+HEQ3", "_strategy": "PentagramaRu", "_desc": False}
     query = '''
     from(bucket: _bucket)|> range(start: 0)
     |> filter(fn:(r) => r._measurement == "executions")
-    |> filter(fn:(r) => r.symbol == _symbol)
     |> filter(fn:(r) => r.strategy == _strategy)
     |> filter(fn:(r) => r._field == "OrderId" or r._field == "Quantity" or r._field == "Side" or r._field == "RealizedPnL" or r._field == "Commission")
     |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
-    |> keep(columns: ["_time", "ExecId", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission"])
+    |> keep(columns: ["_time", "ExecId", "PermId", "straty", "symbol", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission"])
     |> sort(columns: ["_time"], desc: _desc)
     '''
 

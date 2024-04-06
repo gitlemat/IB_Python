@@ -335,7 +335,8 @@ class dbPandasStrategy():
         #self.dfExecs_ = pd.concat([self.dfExecs_, dfDelta]) #, ignore_index=True
         self.dfExecs_ = dbPandasConcat(self.dfExecs_, dfDelta)
         self.dbAddExecToCount() 
-        self.dbAddExecPnL(dataFlux)
+        if self.strategyType_ != 'NaN':
+            self.dbAddExecPnL(dataFlux)
         self.dbUpdateInfluxCommission (dataFlux)
 
         self.toPrint = True
@@ -345,7 +346,10 @@ class dbPandasStrategy():
         
         records = []
         record = {}
-        tags = {'symbol': self.symbol_, 'strategy': self.strategyType_}
+        if self.strategyType_ != 'NaN':
+            tags = {'symbol': self.symbol_, 'strategy': self.strategyType_}
+        else:
+            tags = {'symbol': data['Symbol'], 'strategy': self.strategyType_}
         time = data['timestamp']
         time = utils.dateLocal2UTC (time)
         

@@ -96,14 +96,10 @@ class DataLocalRT():
 
     def executionAnalisys (self, data):
         #Podemos hacer más cosas, de momento solo informamos a las estrategias
-        
-        #self.strategies_.strategyIndexOrderExecuted(data)   # Esto entra a traves de la orden
         self.orderAddExecData(data)
 
     def commissionAnalisys (self, data):
         #Podemos hacer más cosas, de momento solo informamos a las estrategias
-        
-        #self.strategies_.strategyIndexOrderCommission(data)   # Esto entra a traves de la orden
         self.orderAddCommissionData (data)
 
     ########################################
@@ -1396,7 +1392,7 @@ class DataLocalRT():
         
         #if not strategy or 'classObject' not in strategy:
         if not currentSymbolStrategy:
-            logging.info ('[Execution (%d)] Orden Ejecutada. Pero no pertenece a ninguna estrategia', orderId)
+            logging.info ('    Orden %d Ejecutada. Pero no pertenece a ninguna estrategia', orderId)
             return False   
         else:
             logging.info ('    Estrategia: %s [%s]', currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_)
@@ -1518,6 +1514,9 @@ class DataLocalRT():
             logging.info ('[Comision (%s)] Commission en Estrategia %s [%s]. ExecId: %s', orderId, currentSymbolStrategy.straType_, currentSymbolStrategy.symbol_, dataCommission.execId)
         logging.info ('    Comission: %s. RealizedPnL: %s', dataCommission.commission, dataCommission.realizedPNL)
 
+        gConId = orden['contractId']
+        contract = self.contractGetContractbyGconId(gConId)
+        lSymbol = contract['fullSymbol']
 
         # Cada orden puede tener varios ExecId. Uno por cada partial fill
         dataExec = None
@@ -1556,6 +1555,7 @@ class DataLocalRT():
         dataFlux = {}
         dataFlux['timestamp'] = time
         dataFlux['ExecId'] = index + '01.01'
+        dataFlux['Symbol'] = lSymbol
         dataFlux['OrderId'] = dataExec['OrderId']
         dataFlux['PermId'] = dataExec['PermId']
         dataFlux['Quantity'] = orden['ExecsList'][index]['Quantity'] 
@@ -1567,8 +1567,11 @@ class DataLocalRT():
         # Y borrar todo el orden['ExecsList'][index]
         logging.info ('    Commission Order Finalizada [100%]')
 
-        #strategy['classObject'].pandas_.dbAddCommissionsOrderFill(dataFlux)
-        currentSymbolStrategy.pandas_.dbAddCommissionsOrderFill(dataFlux)
+        if currentSymbolStrategy:
+            currentSymbolStrategy.pandas_.dbAddCommissionsOrderFill(dataFlux)
+        else:
+            # Este es elgenerico para las execs que no tiene strat
+            self.strategies_.pandasNoStrat_.dbAddCommissionsOrderFill(dataFlux)
       
         orden['ExecsList'].pop(index)
 
