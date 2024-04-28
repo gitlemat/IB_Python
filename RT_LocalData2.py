@@ -419,7 +419,8 @@ class DataLocalRT():
 
         contrato = {}
         contrato['gConId'] = gConId
-        contrato['fullSymbol'] = None
+        contrato['fullSymbol'] = None       # Es el Symbol en folmato LEZ3
+        contrato['fullSymbol_YY'] = None    # Es el Symbol en folmato LEZ23 en vez de LEZ3
         contrato['contract'] = contractObj
         contrato['pos'] = None         # En esta tengo las que presento en pantalla normalizadas (quitando las quw van a bags)
         contrato['pos_total'] = None   # Aqui están todas tal cual viene de ib
@@ -588,7 +589,10 @@ class DataLocalRT():
         if len(contrato['contractReqIdLegs']) > 0:
             contrato['hasContractSymbols'] = True
             lSymbol = self.contractSummaryBrief (contrato['gConId'])     
+            lSymbol_YY = self.contractSummaryBrief (contrato['gConId'], True)  
             contrato['fullSymbol'] = lSymbol      
+            contrato['fullSymbol_YY'] = lSymbol_YY
+            logging.info ('SymolYY: %s', lSymbol_YY)   
             contrato['dbPandas'] = pandasDB.dbPandasContrato (lSymbol, self.influxIC_)           # No se puede hasta que no tenga todos los simbolos
             # Pillo los ultimos precios guardados en DB
             logging.info ('Pido precios de BD para %s', lSymbol)
@@ -1148,7 +1152,8 @@ class DataLocalRT():
             summaryStr += '         Date: ' + str(contrato['contract'].lastTradeDateOrContractMonth) + '\n'
         return summaryStr
                 
-    def contractSummaryBrief (self, gConId):
+    def contractSummaryBrief (self, gConId, bAskYY = False):
+        #bAskYY es para pedir con formato HEZ23
         result = True
         summaryStr = ''
         if gConId in self.contractDict_:
@@ -1160,7 +1165,7 @@ class DataLocalRT():
             spreadInfoList = [] 
             # No me fio del orden de los combolegs. Lo meto en una lista volatil, se ordena e imprime
             for leg in contrato['contract'].comboLegs:
-                spreadLocalSymbol, spreadDate = self.legSummaryBriefExtract(leg, contrato['contract'].symbol)
+                spreadLocalSymbol, spreadDate = self.legSummaryBriefExtract(leg, contrato['contract'].symbol, bAskYY)
                 spreadAction = leg.action
                 spreadRatio = leg.ratio
                 spreadInfoList.append({"localSymbol":spreadLocalSymbol, "Action":spreadAction, "Ratio": spreadRatio, "Date":spreadDate})
@@ -1194,7 +1199,8 @@ class DataLocalRT():
                             
         return summaryStr  
         
-    def legSummaryBriefExtract (self, leg, symbol):   
+    def legSummaryBriefExtract (self, leg, symbol, bAskYY):   
+        #bAskYY es para pedir con formato HEZ23
         exists = False
         contrato1 = Contract()
         if leg.conId in self.contractDict_:
@@ -1209,6 +1215,9 @@ class DataLocalRT():
         else:
             lsymbol = contrato1.localSymbol
             LTD = contrato1.lastTradeDateOrContractMonth
+
+        if bAskYY:
+            lsymbol = self.convertLsymbol2YY (lsymbol)
 
         return lsymbol, LTD
 
@@ -1247,6 +1256,22 @@ class DataLocalRT():
             nItem += 1
                         
         return summaryStr
+
+    def convertLsymbol2YY (self, lsymbol):
+        # Aqui no llegan BAGs
+        if lsymbol[-2].isnumeric(): # El año ya tiene 2 cifras
+            return lsymbol
+
+        if lsymbol[-1].isnumeric():
+            return lsymbol # no lo se transformar
+
+        ahora = datetime.datetime.now()
+        decada = str(ahora.year)[-2]
+        lsymbol = lsymbol[:-1] + decada + lsymbol[-1:]
+
+        return lsymbol
+        
+
 
     ########################################
     # orders

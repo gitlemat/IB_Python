@@ -349,7 +349,7 @@ class dbPandasStrategy():
         if self.strategyType_ != 'NaN':
             tags = {'symbol': self.symbol_, 'strategy': self.strategyType_}
         else:
-            tags = {'symbol': data['Symbol'], 'strategy': self.strategyType_}
+            tags = {'symbol': data['Symbol'], 'strategy': self.strategyType_} #self.strategyType_ va a ser siempre NaN para este caso
         time = data['timestamp']
         time = utils.dateLocal2UTC (time)
         

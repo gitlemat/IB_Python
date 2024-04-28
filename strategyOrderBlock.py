@@ -666,6 +666,9 @@ class bracketOrderClass():
         if self.B_S_ == 'S':
             BS = -1
 
+        if self.BracketOrderFilledState_ == 'ParentFilled+F':  # Si está todo ejecutado, este block tiene 0
+            return 0
+
         orderParent = self.RTLocalData_.orderGetByOrderId(self.orderId_)
         qty = 0
         if not orderParent:

@@ -23,6 +23,7 @@ class Strategies():
 
         self.stratList_ = [] 
 
+        # Esta es un pandas para las Exec que no son de estrategia
         self.pandasNoStrat_ = pandasDB.dbPandasStrategy ('NaN', 'NaN', self.RTLocalData_.influxIC_)
         
         try:

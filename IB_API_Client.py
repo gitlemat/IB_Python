@@ -469,14 +469,25 @@ class IBI_App(EWrapper, EClient):
             return None
         
     def code2date (self, code): #Z2 -> 202212
-        
-        if len(code) != 2:
+                                #Z23 -> 202312
+        year = 2024
+        if len(code) == 2:
+            if code[-1].isnumeric() == False:
+                return None
+            year = '202' + code[1]
+        elif len(code) == 3:
+            if code[-1].isnumeric() == False:
+                return None
+            if code[-2].isnumeric() == False:
+                return None
+            year = '20' + code[1:]
+        else:
             return None
-        
-        month = self.letter2Month (code[-2])
+            
+        month = self.letter2Month (code[0])
         if not month:
             return None
-        year = '202' + code[-1]
+        
         date = year + month
         return (date)
 
@@ -516,9 +527,14 @@ class IBI_App(EWrapper, EClient):
         
         return contract1
         
-    def contractSimpleFUTcreate (self, futCode):
-        symbol = futCode[:-2] # Pillo todo menos ultimas 2 chars
-        code1 = futCode[-2:] # Pillo ultimas 2 chars
+    def contractSimpleFUTcreate (self, futCode): #HEZ3 o HEZ23 o ZMS2 o ZMS23
+        if futCode[-2].isnumeric(): # El año tiene 2 cifras
+            symbol = futCode[:-3] # Pillo todo menos ultimas 3 chars
+            code1 = futCode[-3:] # Pillo ultimas 3 chars
+        else:
+            symbol = futCode[:-2] # Pillo todo menos ultimas 2 chars
+            code1 = futCode[-2:] # Pillo ultimas 2 chars
+
         date1 = self.code2date (code1)
 
         if not date1:
