@@ -18,6 +18,11 @@ def layout_strategies_tab():
 
     #strategyPentagrama_ = globales.G_RTlocalData_.strategies_.strategyPentagramaObj_.strategyPentagramaGetAll()
     #strategyPentagramaRu_ = globales.G_RTlocalData_.strategies_.strategyPentagramaRuObj_.strategyPentagramaRuGetAll()
+    if globales.G_RTlocalData_ == None:
+        return None
+    if globales.G_RTlocalData_.strategies_ == None:
+        return None
+    
     strategyList = globales.G_RTlocalData_.strategies_.strategyGetAll()
 
     #{'symbol': symbol, 'type': type, 'classObject': classObject}
