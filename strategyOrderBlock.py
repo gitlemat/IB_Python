@@ -309,10 +309,10 @@ class bracketOrderClass():
                 bRehacerTodoConError = True
                 bErrorParent = True
             # Parent no ejecutada y esta perfectamente, y error en child ( hay que rehacer todo)
-            elif bSLOrderStatus not in orderChildalidExecStatusParentNotFilled:
+            elif bSLOrderStatus not in orderChildValidExecStatusParentNotFilled:
                 err_msg += "\n" + " "*66 + "El SLOrder [%s] tiene un estado invalido: %s" % (self.orderIdSL_,bSLOrderStatus)
                 bRehacerTodoConError = True
-            elif bTPOrderStatus not in orderChildalidExecStatusParentNotFilled:
+            elif bTPOrderStatus not in orderChildValidExecStatusParentNotFilled:
                 err_msg += "\n" + " "*66 + "El TPOrder [%s] tiene un estado invalido: %s" % (self.orderIdTP_,bTPOrderStatus)
                 bRehacerTodoConError = True
             elif self.orderIdSL_ == None:
