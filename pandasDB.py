@@ -659,10 +659,10 @@ class dbPandasContrato():
             self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()
         else:
             if dataLAST > self.dfPrint_['high'].iloc[-1]:
-                self.dfPrint_['high'].iloc[-1] = dataLAST
+                self.dfPrint_.loc[self.dfPrint_.index[-1], 'high'] = dataLAST
             if dataLAST < self.dfPrint_['low'].iloc[-1]:
-                self.dfPrint_['low'].iloc[-1] = dataLAST
-            self.dfPrint_['close'].iloc[-1] = dataLAST
+                self.dfPrint_.loc[self.dfPrint_.index[-1], 'low'] = dataLAST
+            self.dfPrint_.loc[self.dfPrint_.index[-1], 'close'] = dataLAST
 
         if len (self.dfcompPrint_) == 0 :
             return
@@ -680,10 +680,13 @@ class dbPandasContrato():
             self.dfcompPrint_ = dbPandasConcat (self.dfcompPrint_, dfDelta)
         else:
             if dataLAST > self.dfcompPrint_['high'].iloc[-1]:
-                self.dfcompPrint_['high'].iloc[-1] = dataLAST
+                #self.dfcompPrint_['high'].iloc[-1] = dataLAST
+                self.dfcompPrint_.loc[self.dfcompPrint_.index[-1], 'high'] = dataLAST
             if dataLAST < self.dfcompPrint_['low'].iloc[-1]:
-                self.dfcompPrint_['low'].iloc[-1] = dataLAST
-            self.dfcompPrint_['close'].iloc[-1] = dataLAST
+                #self.dfcompPrint_['low'].iloc[-1] = dataLAST
+                self.dfcompPrint_.loc[self.dfcompPrint_.index[-1], 'low'] = dataLAST
+            #self.dfcompPrint_['close'].iloc[-1] = dataLAST
+            self.dfcompPrint_.loc[self.dfcompPrint_.index[-1], 'close'] = dataLAST
 
 
     def dbUpdateAddPnL (self, data):

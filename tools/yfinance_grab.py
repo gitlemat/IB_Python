@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 def yfinanceGet():  # No lo uso. Solo para test
     symbols = []
-    symbols.append('HEZ23.CME')
-    symbols.append('HEG24.CME')
-    symbols.append('HEJ24.CME')
+    symbols.append('HEM25.CME')
+    symbols.append('HEN25.CME')
+    symbols.append('HEQ25.CME')
     
     data_output_1m = {}
     data_output_1h = {}
@@ -60,6 +60,24 @@ def yfinanceGet():  # No lo uso. Solo para test
         #data_output_1m[symbol].index[-1]
 
     return data_output_1m, data_output_1h, data_output_1d
+
+def dataframe_assign_tz (df_, tz_):
+    try:
+        df_.index = df_.index.tz_localize(tz_)
+    except:
+        logging.error ('Error al asignar TZ a Df')
+    else:
+        return df_
+    
+    try:
+        df_.index = df_.index.tz_convert(tz_)
+    except:
+        logging.error ('Error al convertir el TZ de Df')
+    else:
+        return df_
+    
+    return df_
+
 
 def symbolList (contractCode):
     contractList = []
@@ -114,6 +132,9 @@ def yfinanceGetDelta1h(symbol_arg, end_date_arg = None):
         
         size = 1
         data_final = pd.DataFrame()
+        data_final_1m = pd.DataFrame()
+        data_final_1h = pd.DataFrame()
+        data_final_1d = pd.DataFrame()
         
         if not end_date_arg:
             end_date = datetime.datetime.now()
@@ -130,51 +151,64 @@ def yfinanceGetDelta1h(symbol_arg, end_date_arg = None):
         code_yf = code_yf[:-1] + decadeDigit + code_yf[-1] + ".CME"
             
         while size > 0:
-            logging.info ('Descargando %s desde %s a %s', symbol['code'], start_date, end_date) 
+            logging.info ('Descargando (1m) %s desde %s a %s', symbol['code'], start_date, end_date) 
             data = yf.download(code_yf, end=end_date, start=start_date, interval="1m")
-            data_final = pd.concat([data, data_final])
+            data_final_1m = pd.concat([data, data_final_1m])
             size = data.size
             if size > 0:
                 end_date = start_date
                 start_date = start_date - datetime.timedelta(days=3)
+
+        data_final_1m = dataframe_assign_tz (data_final_1m, 'America/Chicago')
     
         size = 1
         while size > 0:
-            logging.info ('Descargando %s desde %s a %s', symbol['code'], start_date, end_date) 
+            logging.info ('Descargando (1h) %s desde %s a %s', symbol['code'], start_date, end_date) 
             data = yf.download(code_yf, end=end_date, start=start_date, interval="1h")
-            data_final = pd.concat([data, data_final])
+            data_final_1h = pd.concat([data, data_final_1h])
             size = data.size
             if size > 0:
                 end_date = start_date
                 start_date = start_date - datetime.timedelta(days=3)
-        '''
+
+        data_final_1h = dataframe_assign_tz (data_final_1h, 'America/Chicago')
+        
         size = 1
         while size > 0:
-            logging.info ('Descargando %s desde %s a %s', symbol['code'], start_date, end_date) 
+            logging.info ('Descargando (1d) %s desde %s a %s', symbol['code'], start_date, end_date) 
             data = yf.download(code_yf, end=end_date, start=start_date, interval="1d")
-            data_final = pd.concat([data, data_final])
+            data_final_1d = pd.concat([data, data_final_1d])
             size = data.size
             if size > 0:
                 end_date = start_date
                 start_date = start_date - datetime.timedelta(days=3)
-        '''
-
-        data_final.index.names = ['timestamp']
-        try:
-            data_final = data_final.tz_localize('America/Chicago')
-        except:
-            pass
         
+        data_final_1d = dataframe_assign_tz (data_final_1d, 'America/Chicago')
+
+        data_final = pd.concat([data_final_1d, data_final_1h])
+        data_final = pd.concat([data_final, data_final_1m])
+        
+        data_final.index.names = ['timestamp']
+        logging.info('\n%s', data_final)
+        '''
+        try:
+            #data_final = data_final.tz_localize('America/Chicago')
+            data_final.index = data_final.index.tz_localize('America/Chicago')
+        except:
+            logging.error('Error asignando el TZ', exc_info=True)
+        
+        logging.info('\n%s', data_final)
+        '''
         try:
             data_output[symbol['code']] = data_final.resample('1h').agg({'Open': 'first','High':'max','Low':'min','Close':'last'}).ffill()
         except:
-            logging.error('\n%s', data_final)
+            logging.error('Error en resample de OCHL', exc_info=True)
 
         try:
             data_output_vol_series[symbol['code']] = data_final['Volume'].resample('1d').sum()
             #data_final_vol[symbol['code']] = pd.DataFrame({'timestamp':data_output_vol_series.index, 'Volume':data_output_vol_series.values})
         except:
-            logging.error('\n%s', data_final)
+            logging.error('Error en resample de Volume', exc_info=True)
         
 
         # Quito findes de semana, y horas fuera de mercado. 
