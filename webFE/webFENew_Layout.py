@@ -3,6 +3,7 @@ import webFE.webFENew_Contratos
 import webFE.webFENew_Strategies
 import webFE.webFENew_Account
 import webFE.webFENew_Logs
+import webFE.webFENew_Math
 import webFE.webFENew_Summary
 from dash import MATCH, ALL, Input, Output, State, ctx, no_update, callback
 from dash import html
@@ -72,8 +73,9 @@ def layout_sidebar():
                         dbc.NavLink("Estrategias", id="nav-2", href="/Estrategias", active="exact"),
                         dbc.NavLink("Contratos", id="nav-3", href="/Contratos", active="exact"),
                         dbc.NavLink("Ordenes", id="nav-4", href="/Ordenes", active="exact"),
-                        dbc.NavLink("Cuenta", id="nav-5", href="/Account", active="exact"),
-                        dbc.NavLink("Logs", id="nav-6", href="/Logs", active="exact"),
+                        dbc.NavLink("Math", id="nav-5", href="/Math", active="exact"),
+                        dbc.NavLink("Cuenta", id="nav-6", href="/Account", active="exact"),
+                        dbc.NavLink("Logs", id="nav-7   ", href="/Logs", active="exact"),
                     ],
                     vertical=True,
                     pills=True,
@@ -122,6 +124,8 @@ def render_page_content(pathname):
         return webFE.webFENew_Contratos.layout_contratos_tab()
     elif pathname == "/Ordenes":
         return webFE.webFENew_Ordenes.layout_ordenes_tab()
+    elif pathname == "/Math":
+        return webFE.webFENew_Math.layout_math_tab()
     elif pathname == "/Account":
         return webFE.webFENew_Account.layout_account_tab()
     elif pathname == "/Logs":

@@ -114,6 +114,32 @@ class InfluxClient:
                 return False
             else:
                 return True
+            
+    def influxGetGlobalContractList (self):
+        logging.info('Leyendo todos los contratos en Influx')
+        param = {"_bucket": self._bucket_ohcl}
+        logging.debug('      Params: %s', param)
+
+        query = '''
+        import "influxdata/influxdb/schema"
+        schema.measurementTagValues(
+            bucket: _bucket,
+            tag: "symbol",
+            measurement: "precios",
+            start: 0,
+        )
+        '''
+    
+        query_api = self._client.query_api()
+        result = query_api.query(org=self._org, query=query, params = param )
+    
+        results = []
+        for table in result:
+          for record in table.records:
+            results.append(record.get_value())
+        
+    
+        return results
 
     def influxGetTodayDataFrame (self, symbol):
         logging.info('Leyendo precios de hoy de Influx para: %s', symbol)
@@ -186,9 +212,9 @@ class InfluxClient:
         result = self.query_data_frame(query, param)
         return result
 
-    def influxGetOchlDataFrame (self, symbol):
+    def influxGetOchlDataFrame (self, symbol, dias = 180):
         logging.info('Leyendo precios OCHL de Influx para: %s', symbol)
-        todayStart = datetime.datetime.today() - datetime.timedelta(days=180)
+        todayStart = datetime.datetime.today() - datetime.timedelta(days=dias)
         todayStop = datetime.datetime.today()
         todayStart = todayStart.replace(hour = 15, minute = 0, second = 0, microsecond=0)
         todayStop = todayStop.replace(hour = 23, minute = 59, second = 59, microsecond=999999)
@@ -204,6 +230,46 @@ class InfluxClient:
         |> filter(fn:(r) => r._field == "open" or r._field == "close" or r._field == "high" or r._field == "low")
         |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
         |> keep(columns: ["_time", "open", "close", "high", "low"])
+        |> sort(columns: ["_time"], desc: _desc)
+        '''
+
+        result = self.query_data_frame(query, param)
+
+        if len(result) == 0:
+            dfcomp_ = pd.DataFrame(columns = ['timestamp','open','high','low','close'])
+            dfcomp_.set_index('timestamp', inplace=True)
+            return dfcomp_
+    
+        result.rename(columns = {'_time':'timestamp'}, inplace = True)
+        result.drop(columns=['result','table'], inplace=True)
+        result.set_index('timestamp', inplace=True)
+
+        try:
+            result.index = result.index.tz_convert('Europe/Madrid')
+        except:
+            result.index = result.index.tz_localize(None)
+            result.index = result.index.tz_localize('Europe/Madrid')
+        #result.index = result.index + pd.DateOffset(hours=1)
+
+        logging.debug('%s', result)
+
+        return result
+    
+    def influxGetCloseValueDataFrame (self, symbol, start, stop):
+        logging.info('Leyendo precios Close de Influx para: %s', symbol)
+        todayStart = start
+        todayStop = stop
+
+        param = {"_bucket": self._bucket_ohcl, "_start": todayStart, "_stop": todayStop, "_symbol": symbol, "_desc": False}
+        
+        query = '''
+        from(bucket: _bucket)
+        |> range(start: _start)
+        |> filter(fn:(r) => r._measurement == "precios")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn:(r) => r._field == "close")
+        |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> keep(columns: ["_time", "close"])
         |> sort(columns: ["_time"], desc: _desc)
         '''
 

@@ -14,16 +14,13 @@ import tools.yfinance_grab as yf
 logger = logging.getLogger(__name__)
 
 class DataLocalRT():
+    # GlobalData:
+    #    contractListPandas_: Lista de todos los symbolos in influx
+    #
     # accountData_:
     #    accountData_: Dict con todos los tag/value que recibimos de IB
     #    toPrint: Pues eso
 
-    # positionList_:
-    #    gConId: gConId
-    #    pos_n: Numero de posiciones
-    #    avgCost: Coste medio?
-    #    toPrint: Algo ha cambiado y hay que imprimir
-    #
     # contractList_:
     #    gConId: conID + leg_conIDs...
     #    contract: contrackObj de Ib
@@ -55,6 +52,7 @@ class DataLocalRT():
 
         self.accountData_ = {}
         self.accountPandas_ = None
+        self.contractListPandas_ = None # Es la lista de todos los contratos en InfluxDB
         self.accountInit_ = False
         self.orderList_ = []  # includes orders and contracts (hay que sacar los contracts a puntero externo, y los usan las posiciones)
         self.contractDict_ = {}  # Directamente dict de contracts
@@ -65,6 +63,14 @@ class DataLocalRT():
         self.contractInconplete_ = False
 
         self.dataFeed = True
+
+    ########################################
+    # Global Init
+
+    # Cargar los valores que son globales a todo. 
+
+    def globalRT_init (self):
+        self.contractListPandas_ = pandasDB.dbPandasGlobal(self.influxIC_)
 
 
     ########################################
@@ -1263,7 +1269,7 @@ class DataLocalRT():
             return lsymbol
 
         if lsymbol[-1].isnumeric():
-            return lsymbol # no lo se transformar
+            return lsymbol # no lo se transformar  -> PORQUEEEEE??????
 
         ahora = datetime.datetime.now()
         decada = str(ahora.year)[-2]

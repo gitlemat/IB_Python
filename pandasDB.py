@@ -95,9 +95,9 @@ class dbPandasAccount():
         self.last_refresh_db_ = timestamp
         self.toPrint = True
 
-        self.dbReadInflux()
+        self.dbReadInfluxAccount()
         
-    def dbReadInflux(self):
+    def dbReadInfluxAccount(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes')
         self.dfAccountEvo_ = self.influxIC_.influxGetAccountDataFrame (self.accountId_)
         if len (self.dfAccountEvo_) > 0:
@@ -175,6 +175,35 @@ class dbPandasAccount():
             self.last_refresh_db_ = timestamp
             self.toPrint = True
     
+##############################################
+# Global
+#
+
+class dbPandasGlobal():
+
+    def __init__(self, influxIC):
+        self.Contracts_ = {}
+        self.influxIC_ = influxIC
+        
+        self.dbReadInfluxGlobal()
+
+    def dbReadInfluxGlobal(self):
+        logging.debug  ('Leemos de influx y cargamos los dataframes')
+        new_cl = []
+        try:
+            res_cl_ = self.influxIC_.influxGetGlobalContractList ()
+        except:
+            logging.error ('Error cargando los contratos de InfluxDB', exc_info=True )
+            res_cl_ = []
+
+        for code in res_cl_:
+            code_decomp = utils.contractCode2list(code)
+            code_len = len (code_decomp)
+            code_reg = {'symbol': code, 'nLegs': code_len}
+            new_cl.append (code_reg)
+
+        self.Contracts_ = new_cl
+        logging.debug ('Esta es la lista de contratos: %s', new_cl)
 
 ##############################################
 # Strategy
@@ -193,11 +222,11 @@ class dbPandasStrategy():
         self.strategyType_ = strategyType
         self.toPrint = True
         
-        self.dbReadInflux()
+        self.dbReadInfluxStrat()
 
         self.dbGetExecPnLInit()  # Alimentamos el self.ExecsPnL_
 
-    def dbReadInflux(self):
+    def dbReadInfluxStrat(self):
         logging.debug  ('Leemos de influx y cargamos los dataframes')
         # ["_time", "ExecId", "PermId", "OrderId", "Quantity", "Side", "RealizedPnL", "Commission", "FillPrice"]
         self.dfExecs_ = self.influxIC_.influxGetExecDataFrame (self.symbol_, self.strategyType_)

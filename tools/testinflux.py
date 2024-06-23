@@ -77,7 +77,7 @@ def testOhcl():
     todayStop = todayStop.replace(hour = 20, minute = 15, second = 0, microsecond=0)
     print (todayStart)
     week = datetime.datetime.today() - datetime.timedelta(days = 70)
-    param = {"_bucket": "ib_prices_1h_lab", "_start": todayStart, "_stop": todayStop, "_symbol": "HEM3-2HEN3+HEQ3", "_desc": False}
+    param = {"_bucket": "ib_prices_1h", "_start": todayStart, "_stop": todayStop, "_symbol": "HEM22-2HEN22+HEQ22", "_desc": False}
     query = '''
     from(bucket: _bucket)|> range(start: _start, stop: _stop)
     |> filter(fn:(r) => r._measurement == "precios")
@@ -282,5 +282,31 @@ def testAccount():
     #result.index = result.index + pd.DateOffset(hours=1)
 
     return result
+
+
+def testGlobalContractList():
+
+    client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
+
+    query = '''
+    import "influxdata/influxdb/schema"
+    schema.measurementTagValues(
+        bucket: "ib_prices_1h",
+        tag: "symbol",
+        measurement: "precios",
+        start: 0,
+    )
+    '''
+
+    query_api = client.query_api()
+    result = query_api.query(org=ORG, query=query )
+
+    results = []
+    for table in result:
+      for record in table.records:
+        results.append(record.get_value())
+    
+
+    return results
 
 

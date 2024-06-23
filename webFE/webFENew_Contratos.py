@@ -46,7 +46,6 @@ def layout_contratos_tab ():
 
     #################################
     # Preparacion de Tab de contratos
-    logging.info ('Contratos')
     tabContratos_ind = []
     tabContratos_dir = []
     for gConId, contrato in data.items():

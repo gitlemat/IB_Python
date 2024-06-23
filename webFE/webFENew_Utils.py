@@ -44,7 +44,7 @@ def formatCurrencySmall (cantidad, digits_integer):
         logging.error ('La cantidad no es correcta')
         return None
     if digits_integer < 1:
-        return canidad
+        return cantidad
 
     template = 1
     fin = False

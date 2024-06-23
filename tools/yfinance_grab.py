@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 def yfinanceGet():  # No lo uso. Solo para test
     symbols = []
-    symbols.append('HEM25.CME')
-    symbols.append('HEN25.CME')
-    symbols.append('HEQ25.CME')
+    symbols.append('HEM24.CME')
+    #symbols.append('HEN25.CME')
+    #symbols.append('HEQ25.CME')
     
     data_output_1m = {}
     data_output_1h = {}
@@ -244,4 +244,42 @@ def yfinanceGetDelta1h(symbol_arg, end_date_arg = None):
     return data_output, data_output_vol_series
 
 
+def calcular_best_media ():
+    df1_, df_vol = yfinanceGetDelta1h('HEM5')
+    
+    df_list = df1_['HEM5']['close'].to_list()
+
+    step = 25
+    init = round(min(df_list) * 100)
+    end = round (max (df_list) * 100) + step
+
+    print ('Max: ', str(max))
+    print ('Min: ', str(min))
+    
+    cross_n = {}
+
+    for level in range (init, end, step):
+        print ('Evaluamos Level', str(level))
+
+        cross_n[level] = 0
+        # Primero vemos donde está el primero
+        if df_list[0] > level:
+            var = 1 # El primer valor está por encima del level 
+        else:
+            var = -1 # Está por debajo
+        for value in df_list:
+            nvalue = value * 100
+            print ('.....valor: ', nvalue)
+            if nvalue > level:
+                lvar = 1 # El primer valor está por encima del level 
+            else:
+                lvar = -1 # Está por debajo
+            if lvar != var:
+                cross_n[level] += 1
+                var = lvar
+
+    
+
+
+    return cross_n
 

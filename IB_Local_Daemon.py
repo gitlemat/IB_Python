@@ -261,6 +261,11 @@ def main():
     logging.info("#")
     logging.info("#")
 
+    # Cargamos los contratos de la InfluxDB.
+
+    logging.info("Cargando los contratos de la influxDB....")
+    globales.G_RTlocalData_.globalRT_init()
+
     # Cargamos los contratos de la watchlist y fin.
                                
     logging.info("Cargando los contratos de la watchlist....")
