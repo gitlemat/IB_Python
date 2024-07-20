@@ -27,7 +27,7 @@ def layout_contratos_tab ():
     tabContratos = [
             dbc.Row(
                 [
-                    html.P("Lista de Contratos", className='text-left text-secondary mb-4 ps-0 display-6'),
+                    html.P("IB Contratos", className='text-left text-secondary mb-4 ps-0 display-6'),
                     html.Hr()
                 ]
             ),

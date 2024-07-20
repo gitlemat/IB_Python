@@ -1,4 +1,6 @@
 import argparse
+from datetime import datetime 
+import logging
 
 def formatCurrencySmall (cantidad, digits_integer):
     try:

@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify
-from dash import Dash
+from dash import Dash, DiskcacheManager
 import webFE.webFENew_Layout
 import dash_bootstrap_components as dbc
 import logging
+import diskcache
+
+cache = diskcache.Cache("./cache")
+background_callback_manager = DiskcacheManager(cache)
 
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
@@ -12,6 +16,7 @@ external_stylesheets = [dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP]
 appDashFE_ = Dash(
     server=server,
     external_stylesheets=external_stylesheets,
+    background_callback_manager=background_callback_manager,
     update_title=None,
     meta_tags=[
         {"name": "viewport", "content": "width=device-width, initial-scale=1"}

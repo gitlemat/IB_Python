@@ -147,8 +147,11 @@ def yfinanceGetDelta1h(symbol_arg, end_date_arg = None):
         start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
         code_yf = symbol['code']
-        decadeDigit = getCurrentDecadeDigit()
-        code_yf = code_yf[:-1] + decadeDigit + code_yf[-1] + ".CME"
+        if code_yf[-2].isnumeric():
+            code_yf = code_yf + ".CME"
+        else:
+            decadeDigit = getCurrentDecadeDigit()
+            code_yf = code_yf[:-1] + decadeDigit + code_yf[-1] + ".CME"
             
         while size > 0:
             logging.info ('Descargando (1m) %s desde %s a %s', symbol['code'], start_date, end_date) 

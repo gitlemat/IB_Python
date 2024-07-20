@@ -5,15 +5,29 @@ import influxAPI
 import logging
 import utils
 import pandasDB
+import globales
 
-def calcular_best_media_symbols (symbol_list, dist_min = 0):
+def calcular_best_media_symbols (symbol_list, params):
+    
     dfcross_all = pd.DataFrame(columns = ['level'])
     if symbol_list == None or len (symbol_list) < 1:
         return dfcross_all
     influxIC_ = influxAPI.InfluxClient()
     dfcross_all = pd.DataFrame(columns = ['level'])
+    logging.info('%s', params)
+
+    dataFamilies_ = globales.G_RTlocalData_.contractListPandas_.Families_
+
+    symbol_list_total = []
+    
     for symbol in symbol_list:
-        dfcross_n = calcular_best_media (symbol, influxIC_, dist_min)
+        if symbol in dataFamilies_:
+            symbol_list_total += dataFamilies_[symbol]['symbols']
+        else:
+            symbol_list_total.append (symbol)
+
+    for symbol in symbol_list_total:
+        dfcross_n = calcular_best_media (symbol, influxIC_, params)
         dfcross_all = pandasDB.dbPandasConcat(dfcross_all,dfcross_n)
 
     # {'LEM23-2LEQ23+LEV23': {-100:23, -8:3,....}}
@@ -29,8 +43,25 @@ def calcular_best_media_symbols (symbol_list, dist_min = 0):
     return dfcross_all
 
 
-def calcular_best_media (symbol, influxIC_, dist_min = 0):
+def calcular_best_media (symbol, influxIC_, params):
     
+    if 'distancia' in params:
+        dist_min = params['distancia']
+    else:
+        dist_min = 0
+
+    if 'delta_init' in params and params['delta_init'] != None:
+        delta_init = params['delta_init']
+    else:
+        delta_init = 0
+
+    if 'delta_end' in params and params['delta_end'] != None:
+        delta_end = params['delta_end']
+    else:
+        delta_end = 0
+
+    '''
+
     cl = utils.contractCode2list(symbol)
 
     ahora = datetime.datetime.now()
@@ -60,21 +91,31 @@ def calcular_best_media (symbol, influxIC_, dist_min = 0):
             year_stop = year
 
     year_start -=2
-    
+
     symbolStart = datetime.datetime.strptime("01 January " + str(year_start), "%d %B %Y")
     symbolStop = datetime.datetime.strptime("31 December " + str(year_stop), "%d %B %Y")
+    '''
 
+    dfcross_n = pd.DataFrame(columns = ['level',symbol])
+    dfcross_n.set_index('level', inplace=True)
+
+    symbolStart, symbolStop = influxIC_.influxGetFirstLastRecordsDataFrame(symbol)
+
+    if symbolStart == None or symbolStop == None:
+        logging.error ('Resultado de fechas vacio')
+        return dfcross_n
+    
     symbolStart = utils.dateLocal2UTC (symbolStart)
     symbolStop = utils.dateLocal2UTC (symbolStop)
+
+    symbolStart = symbolStart + datetime.timedelta(days=delta_init)
+    symbolStop = symbolStop - datetime.timedelta(days=delta_end)
 
     df1_ = influxIC_.influxGetCloseValueDataFrame (symbol, symbolStart, symbolStop)
     df1Close_ = df1_['close']
     df_list = df1_['close'].to_list()
 
     logging.debug('%s', df1Close_)
-
-    dfcross_n = pd.DataFrame(columns = ['level',symbol])
-    dfcross_n.set_index('level', inplace=True)
 
     if len (df1Close_) == 0:
         logging.error ('Resultado vacio')

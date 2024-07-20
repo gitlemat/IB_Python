@@ -1,5 +1,5 @@
 import webFE.webFENew_Ordenes
-import webFE.webFENew_Contratos
+import webFE.webFENew_ContratosIB
 import webFE.webFENew_Strategies
 import webFE.webFENew_Account
 import webFE.webFENew_Logs
@@ -101,7 +101,7 @@ def render_page_content(pathname):
     elif pathname == "/Estrategias":
         return webFE.webFENew_Strategies.layout_strategies_tab()
     elif pathname == "/Contratos":
-        return webFE.webFENew_Contratos.layout_contratos_tab()
+        return webFE.webFENew_ContratosIB.layout_contratos_tab()
     elif pathname == "/Ordenes":
         return webFE.webFENew_Ordenes.layout_ordenes_tab()
     elif pathname == "/Account":

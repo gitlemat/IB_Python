@@ -324,10 +324,10 @@ class strategyPentagramaRu(strategyBaseClass):
         contrato = self.RTLocalData_.contractGetBySymbol(self.symbol_)
         priceLast = contrato['currentPrices']['LAST'] * lotes_contrato
 
-        comprado = avgPrice * self.currentPos_
-        vendido_potencial = priceLast * self.currentPos_
+        comprado = float(avgPrice) * float(self.currentPos_)
+        vendido_potencial = float(priceLast) * float(self.currentPos_)
 
-        unreal = self.currentPos_ * (priceLast - avgPrice)
+        unreal = float(self.currentPos_) * (float(priceLast) - float(avgPrice))
         logging.debug ('Pos: %s', self.currentPos_)
         logging.debug ('avgPrice: %s', avgPrice)
         logging.debug ('priceLast: %s', priceLast)

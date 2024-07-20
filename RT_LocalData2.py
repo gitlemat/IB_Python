@@ -171,6 +171,7 @@ class DataLocalRT():
       
     def positionUpdate (self, data):
         posEnd = data['positionEnd']
+        
         if posEnd:
             self.postionFixSpreads()
             return
@@ -193,6 +194,8 @@ class DataLocalRT():
         # self.contractDict_[gConId]['pos'] = nPosition  # Solo haría falta esto cuando lo pase todo.
         self.contractDict_[gConId]['pos_total'] = nPosition  # Solo haría falta esto cuando lo pase todo.
         self.contractDict_[gConId]['posAvgPrice'] = avgCost/lotes_contrato
+
+        self.postionFixSpreads()
 
         return (result)
 
@@ -822,7 +825,10 @@ class DataLocalRT():
 
                     pos_total_leg = float(abs(self.contractDict_[conReqLeg['conId']]['pos_total']))
                     logging.debug ('   Pos Total: %s', pos_total_leg)
-                    pos_este_contrato = int(abs(contrato['pos']))
+                    try:
+                        pos_este_contrato = int(abs(contrato['pos']))
+                    except:
+                        pos_este_contrato = 0
                     logging.debug ('   Pos Local: %s', pos_este_contrato)
 
                     if dailyPnL != None:   # Si es None es que no están todos

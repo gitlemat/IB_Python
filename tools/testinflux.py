@@ -309,4 +309,42 @@ def testGlobalContractList():
 
     return results
 
+def testFirstLast():
+
+    client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
+
+    param = {"_bucket": BUCKET_1h, "_symbol": "HEM23-2HEN23+HEQ23", "_desc": False}
+
+    query = '''
+    data = from(bucket: _bucket)
+    |> range(start: 0)
+    |> filter(fn:(r) => r._measurement == "precios")
+    |> filter(fn:(r) => r.symbol == _symbol)
+    |> filter(fn:(r) => r._field == "close")
+
+    data
+    |> first()
+    |> yield(name: "first")
+    data
+    |> last()
+    |> yield(name: "last")
+
+    '''
+
+    query_api = client.query_api()
+    result = query_api.query_data_frame(org=ORG, query=query, params=param )    
+
+    return result
+
+'''
+    import warnings
+    from influxdb_client.client.warnings import MissingPivotFunction
+
+    warnings.simplefilter("ignore", MissingPivotFunction)
+
+    union(tables:[
+        _data |> first(),
+        _data |> last(),
+    ])
+'''
 

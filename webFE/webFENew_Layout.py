@@ -1,5 +1,6 @@
 import webFE.webFENew_Ordenes
-import webFE.webFENew_Contratos
+import webFE.webFENew_ContratosIB
+import webFE.webFENew_ContratosView
 import webFE.webFENew_Strategies
 import webFE.webFENew_Account
 import webFE.webFENew_Logs
@@ -71,11 +72,12 @@ def layout_sidebar():
                     [
                         dbc.NavLink("Summary", id="nav-1", href="/Summary", active="exact"),
                         dbc.NavLink("Estrategias", id="nav-2", href="/Estrategias", active="exact"),
-                        dbc.NavLink("Contratos", id="nav-3", href="/Contratos", active="exact"),
+                        dbc.NavLink("Contratos IB", id="nav-3", href="/Contratos", active="exact"),
                         dbc.NavLink("Ordenes", id="nav-4", href="/Ordenes", active="exact"),
-                        dbc.NavLink("Math", id="nav-5", href="/Math", active="exact"),
-                        dbc.NavLink("Cuenta", id="nav-6", href="/Account", active="exact"),
-                        dbc.NavLink("Logs", id="nav-7   ", href="/Logs", active="exact"),
+                        dbc.NavLink("Contract View", id="nav-5", href="/ContractView", active="exact"),
+                        dbc.NavLink("Math", id="nav-6", href="/Math", active="exact"),
+                        dbc.NavLink("Cuenta", id="nav-7", href="/Account", active="exact"),
+                        dbc.NavLink("Logs", id="nav-8", href="/Logs", active="exact"),
                     ],
                     vertical=True,
                     pills=True,
@@ -121,9 +123,11 @@ def render_page_content(pathname):
     elif pathname == "/Estrategias":
         return webFE.webFENew_Strategies.layout_strategies_tab()
     elif pathname == "/Contratos":
-        return webFE.webFENew_Contratos.layout_contratos_tab()
+        return webFE.webFENew_ContratosIB.layout_contratos_tab()
     elif pathname == "/Ordenes":
         return webFE.webFENew_Ordenes.layout_ordenes_tab()
+    elif pathname == "/ContractView":
+        return webFE.webFENew_ContratosView.layout_contractView_tab()
     elif pathname == "/Math":
         return webFE.webFENew_Math.layout_math_tab()
     elif pathname == "/Account":

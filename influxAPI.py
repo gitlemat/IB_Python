@@ -8,9 +8,11 @@ import os
 from dotenv import load_dotenv
 import sys
 import logging
+import warnings
+from influxdb_client.client.warnings import MissingPivotFunction
 
 UNSET_DOUBLE = sys.float_info.max
-
+warnings.simplefilter("ignore", MissingPivotFunction)
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +257,49 @@ class InfluxClient:
 
         return result
     
+    def influxGetFirstLastRecordsDataFrame (self, symbol):
+        logging.info('Leyendo primer y ultimo record en Influx para: %s', symbol)
+        
+        param = {"_bucket": self._bucket_ohcl, "_symbol": symbol, "_desc": False}
+        
+        query = '''
+        _data = from(bucket: _bucket)
+        |> range(start: 0)
+        |> filter(fn:(r) => r._measurement == "precios")
+        |> filter(fn:(r) => r.symbol == _symbol)
+        |> filter(fn:(r) => r._field == "close")
+
+        _data
+        |> first()
+        |> yield(name: "first")
+        _data
+        |> last()
+        |> yield(name: "last")
+        '''
+
+        result = self.query_data_frame(query, param)
+
+        if len(result) == 0:
+            return None, None
+
+        try:
+            firstdate = result[0]['_time'].to_list()[0]
+        except:
+            logging.error ('Error leyendo las fechas')
+            firstdate = None
+        try:
+            lastdate = result[1]['_time'].to_list()[0]
+        except:
+            logging.error ('Error leyendo las fechas')
+            lastdate = None
+
+        if firstdate > lastdate:
+            temp = lastdate
+            lastdate = firstdate
+            firstdate = temp
+
+        return firstdate, lastdate
+    
     def influxGetCloseValueDataFrame (self, symbol, start, stop):
         logging.info('Leyendo precios Close de Influx para: %s', symbol)
         todayStart = start
@@ -264,7 +309,7 @@ class InfluxClient:
         
         query = '''
         from(bucket: _bucket)
-        |> range(start: _start)
+        |> range(start: _start, stop: _stop)
         |> filter(fn:(r) => r._measurement == "precios")
         |> filter(fn:(r) => r.symbol == _symbol)
         |> filter(fn:(r) => r._field == "close")
@@ -276,7 +321,7 @@ class InfluxClient:
         result = self.query_data_frame(query, param)
 
         if len(result) == 0:
-            dfcomp_ = pd.DataFrame(columns = ['timestamp','open','high','low','close'])
+            dfcomp_ = pd.DataFrame(columns = ['timestamp','close'])
             dfcomp_.set_index('timestamp', inplace=True)
             return dfcomp_
     
