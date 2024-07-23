@@ -8,5 +8,6 @@
 /market
 /strategies
 /.env
+/cache
 ._*
 .DS_Store

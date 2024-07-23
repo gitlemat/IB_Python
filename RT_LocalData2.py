@@ -47,21 +47,24 @@ class DataLocalRT():
     def __init__(self):
         self.verboseBrief = False
         self.appObj_ = None
-        self.strategies_ = None # Se inicializa desde Local_Daemon llamando al constructor dr Strategies, y ese lo copia aqui
         self.influxIC_ = influxAPI.InfluxClient()
 
         self.accountData_ = {}
         self.accountPandas_ = None
-        self.contractListPandas_ = None # Es la lista de todos los contratos en InfluxDB
         self.accountInit_ = False
+        
         self.orderList_ = []  # includes orders and contracts (hay que sacar los contracts a puntero externo, y los usan las posiciones)
-        self.contractDict_ = {}  # Directamente dict de contracts
+        
+        self.contractDict_ = {}  # Directamente dict de contracts de IB (solo los que vienen de IB)
+        self.contractListPandas_ = None # Es la lista de todos los contratos en InfluxDB
+        self.contractListGeneral_ = None
 
         self.tickPrices_ = {}    # Key: reqId ['12'] ---> {12: {'BID': 10, 'ASK': 10.1, 'LAST': 10.1, 'HIGH': 11, 'LOW': 9, 'OPEN':10.5, 'CLOSE': 10.2}}
         self.pnl_ = {}
 
+        self.strategies_ = None # Se inicializa desde Local_Daemon llamando al constructor dr Strategies, y ese lo copia aqui
+        
         self.contractInconplete_ = False
-
         self.dataFeed = True
 
     ########################################
@@ -71,6 +74,7 @@ class DataLocalRT():
 
     def globalRT_init (self):
         self.contractListPandas_ = pandasDB.dbPandasGlobal(self.influxIC_)
+        self.contractListGeneral_ = self.contractFamiliesInit()
 
 
     ########################################
@@ -1283,6 +1287,45 @@ class DataLocalRT():
 
         return lsymbol
         
+    ########################################
+    # Familia contratos sefguimiento (no IB)
+
+    # ['HE'] = ['HEM-2HEN+HEQ', 'HEZ-2HEG+HEJ']
+    #           'HEM-2HEN+HEQ' -> ['HEM24-2HEN24+HEQ24', 'HEM23-2HEN23+HEQ23', 'HEM22-2HEN22+HEQ22']
+
+    def contractFamiliesInit (self):
+
+        contract_view_list = {}
+        contract_view_list['HE'] = ['HEM-2HEN+HEQ', 'HEZ-2HEG+HEJ']
+        contract_view_list['LE'] = ['LEM-2LEN+LEQ', 'LEM-2LEQ+LEV', 'LEZ-2LEG+LEJ', 'LEJ-2LEM+LEQ', 'LEZ-2LEG+LEJ']
+        contract_view_list['ZL'] = ['ZLN-2ZLZ+ZLN', 'ZLN-2ZLQ+ZLU']
+        contract_view_list['CC'] = ['CCZ-2CCH+CCK', 'CCH-2CCK+CCN', 'CCN-2CCU+CCZ', 'CCU-2CCZ+CCH']
+        contract_view_list['HO'] = ['HOH-2HOJ+HOK']
+        contract_view_list['GF'] = ['GFJ-2GFK+GFQ', 'GFQ-2GFU+GFV']
+        contract_view_list['CL'] = ['CLQ-2CLV+CLZ', 'CLZ-2CLH+CLN', 'CLZ-2CLH+CLZ', 'CLF-2CLG+CLH', 'CLM-2CLZ+CLM', 'CLX-2CLZ+CLF', 'CLU-2CLV+CLX']
+        contract_view_list['NG'] = ['NGV-2NGX+NGZ','NGZ-2NGF+NGG','NGM-2NGN+NGQ','NGX-2NGZ+NGF']
+        contract_view_list['RB'] = ['RBH-2RBJ+RBK']
+        contract_view_list['ZM'] = ['ZMH-2ZMK+ZMN','ZMQ-2ZMV+ZMZ']
+        contract_view_list['ZS'] = ['ZSH-2ZSK+ZSN']
+        contract_view_list['ZC'] = ['ZCN-2ZCU+ZCZ', 'ZCK-2ZCN+ZCU']
+        contract_view_list['ZW'] = ['ZWZ-2ZWH+ZWK', 'ZWH-2ZWN+ZWZ']
+        contractCode = {}
+        
+        for code in contract_view_list:
+            contractFamily = {}
+            for symbolFamily in contract_view_list[code]:
+                cont = self.contractFamiliesAdd(symbolFamily)
+                contractFamily[symbolFamily] = cont
+            contractCode[code] = contractFamily
+
+        return contractCode
+
+    def contractFamiliesAdd(self, symbolFamily):
+        contratoFamily = {}
+        contratoFamily['symbolFamily'] = symbolFamily
+        contratoFamily['dbPandas'] = None # 
+
+        return contratoFamily    
 
 
     ########################################

@@ -181,6 +181,9 @@ class dbPandasAccount():
 
 class dbPandasGlobal():
 
+    # Este guarda la lista de contratos (spreads y todo) que tengo en influx
+    # Tambien la familia a la que pertenece
+
     def __init__(self, influxIC):
         self.Contracts_ = []      # [{'symbol': symbol, 'nLegs': code_len, 'family': familyCode}]
         self.Families_ = {}       # {'HEM-2HEN+HEQ':{'symbols':[],  'nLegs': code_len, 'firstYear': n, 'lastYear': n}}

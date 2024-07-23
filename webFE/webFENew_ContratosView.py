@@ -308,7 +308,7 @@ def addCardGraphCode(set_progress, value_onoff, className):
         
             stopDateRef = None # tomamos la del pimero para poder dibujar correctamente
 
-            last2symbols = utils.last2yearsFromFamily(symbol)
+            last2symbols = utils.last2yearsFromFamily(code)
         
             for symbol in symbols_de_mariposa:
                 # Primero leemos la fecha de cada simbolo

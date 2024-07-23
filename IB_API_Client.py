@@ -722,7 +722,7 @@ class IBI_App(EWrapper, EClient):
         try:
             slOrderId = self.placeOrder (contract_symbol, contract, slOrder) 
         except:
-            logging.error ("Error emplazando la orden SL. Cancelamos la TP (%s)", parentOrderId, tpOrderId)
+            logging.error ("Error emplazando la orden SL. Cancelamos la TP (%s)", tpOrderId)
             self.cancelOrderByOrderId (tpOrderId)
             return None
  

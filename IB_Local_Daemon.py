@@ -128,14 +128,14 @@ def main():
     
     client_id = 0
     if _mode == 'Lab':
-        _port = 4002
+        _port = 4004
         _host = 'lab_ib_gateway'
     elif _mode == 'Prod':
-        _port = 4001 # En realidad es 4001 para prod
+        _port = 4003 # En realidad es 4001 para prod, pero socat me lo pasa a 4003
         _host = 'prod_ib_gateway'
         logging.info ('# SISTEMA EN PRODUCCION !!!!!')
     else:
-        _port = 4002 # En realidad es 4011 para prod
+        _port = 4004 # En realidad es 4001 para prod
         _host = 'lab_ib_gateway'
 
     logging.info ('#')
