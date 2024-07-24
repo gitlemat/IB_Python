@@ -484,7 +484,7 @@ class dbPandasContrato():
             try:
                 self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()   
             except:
-                self.dfPrint_ = pd.DataFrame(columns = ['timestamp', 'LAST'])
+                self.dfPrint_ = pd.DataFrame(columns = ['timestamp', 'open', 'close', 'high', 'low'])
                 self.dfPrint_.set_index('timestamp', inplace=True)
                 self.dfPrint_.index = pd.to_datetime(self.dfPrint_.index)
         else:
