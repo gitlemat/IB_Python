@@ -545,7 +545,10 @@ class dbPandasContrato():
         
         #logging.info('Pandas: %s', self.df_.index)
         #logging.info('otimeDT: %s', otimeDT)
-        ret = self.dfPrint_[(self.dfPrint_.index > otimeDT)]
+        if len(self.dfPrint_.index) > 0:
+            ret = self.dfPrint_[(self.dfPrint_.index > otimeDT)]
+        else:
+            ret = self.dfPrint_
 
         return ret
 
