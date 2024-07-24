@@ -481,7 +481,12 @@ class dbPandasContrato():
         
         self.df_ = self.dbReadInfluxPrices()   
         if len(self.df_) >= 0:
-            self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()   
+            try:
+                self.dfPrint_ = self.df_['LAST'].resample('5min').ohlc()   
+            except:
+                self.dfPrint_ = pd.DataFrame(columns = ['timestamp', 'LAST'])
+                self.dfPrint_.set_index('timestamp', inplace=True)
+                self.dfPrint_.index = pd.to_datetime(self.dfPrint_.index)
         else:
             self.dfPrint_ = self.df_['LAST']
         self.dfcomp_ = self.dbReadInfluxPricesComp()

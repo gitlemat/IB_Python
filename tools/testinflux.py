@@ -7,7 +7,7 @@ BUCKET = 'ib_data_lab'
 BUCKET_1h = 'ib_prices_1h'
 
 def testToday():
-    client = InfluxDBClient(url="http://192.168.2.131:8086", token=TOKEN)
+    client = InfluxDBClient(url="http://192.168.2.130:8086", token=TOKEN)
     today = datetime.datetime.today()#  - datetime.timedelta(days = 1)
 
     now  = datetime.datetime.now()
@@ -67,7 +67,7 @@ def getLast(client):
     return result
 
 def testOhcl():
-    client = InfluxDBClient(url="http://localhost:8086", token=TOKEN)
+    client = InfluxDBClient(url="http://192.168.2.130:8086", token=TOKEN)
     #today = datetime.datetime.today()  - datetime.timedelta(days = 1)
 
     #today = today.replace(hour = 14, minute = 0, second = 0, microsecond=0)
@@ -76,6 +76,7 @@ def testOhcl():
     todayStart = todayStart.replace(hour = 15, minute = 10, second = 0, microsecond=0)
     todayStop = todayStop.replace(hour = 20, minute = 15, second = 0, microsecond=0)
     print (todayStart)
+    todayStart = 0
     week = datetime.datetime.today() - datetime.timedelta(days = 70)
     param = {"_bucket": "ib_prices_1h", "_start": todayStart, "_stop": todayStop, "_symbol": "HEM22-2HEN22+HEQ22", "_desc": False}
     query = '''
