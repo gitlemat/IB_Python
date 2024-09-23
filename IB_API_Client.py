@@ -756,6 +756,8 @@ class IBI_App(EWrapper, EClient):
         except:
             logging.error ("Error emplazando la orden Parent")
             return None
+        else:
+            time.sleep(0.5)
 
         tpAction = "SELL" if action == "BUY" else "BUY"
         tpOrder = self.orderCreate(tpAction, 'LMTGTC', takeProfitLimitPrice, quantity)
@@ -768,6 +770,8 @@ class IBI_App(EWrapper, EClient):
             logging.error ("Error emplazando la orden TF. Cancelamos la Parent (%s)", parentOrderId)
             self.cancelOrderByOrderId (parentOrderId)
             return None
+        else:
+            time.sleep(0.5)
  
         slAction = "SELL" if action == "BUY" else "BUY"
         slOrder = self.orderCreate(slAction, 'STPGTC', stopLossPrice, quantity)
@@ -781,6 +785,8 @@ class IBI_App(EWrapper, EClient):
             self.cancelOrderByOrderId (parentOrderId)
             self.cancelOrderByOrderId (tpOrderId)
             return None
+        else:
+            time.sleep(0.5)
  
         bracketOrder = {'parentOrderId': parentOrderId, 'tpOrderId': tpOrderId, 'slOrderId': slOrderId}
         self.reqAllOpenOrders()
