@@ -312,7 +312,7 @@ def create_card (contrato, estrategia):
     )
     #, style={'color':'#ffffff','background-color':'#636363'}
     priceLastColor = color_verde
-    if posQtyNum != None:
+    if posQtyNum != None and priceLastNum != None:
         if posQtyNum > 0:
             if priceLastNum < AvgPrice:
                 priceLastColor = color_rojo

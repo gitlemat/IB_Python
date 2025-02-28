@@ -322,7 +322,9 @@ class strategyPentagramaRu(strategyBaseClass):
         tPnL = ExecData['PnL']
 
         contrato = self.RTLocalData_.contractGetBySymbol(self.symbol_)
-        priceLast = contrato['currentPrices']['LAST'] * lotes_contrato
+        priceLast = 0
+        if contrato['currentPrices']['LAST'] != None:
+            priceLast = contrato['currentPrices']['LAST'] * lotes_contrato
 
         comprado = float(avgPrice) * float(self.currentPos_)
         vendido_potencial = float(priceLast) * float(self.currentPos_)
