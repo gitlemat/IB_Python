@@ -6,7 +6,6 @@ from strategyClass2 import strategyBaseClass
 import utils
 
 
-
 logger = logging.getLogger(__name__)
 
 #  ------------ 2
@@ -323,7 +322,7 @@ class strategyPentagramaRu(strategyBaseClass):
 
         contrato = self.RTLocalData_.contractGetBySymbol(self.symbol_)
         priceLast = 0
-        if contrato['currentPrices']['LAST'] != None:
+        if contrato != None and contrato['currentPrices'] != None and contrato['currentPrices']['LAST'] != None:
             priceLast = contrato['currentPrices']['LAST'] * lotes_contrato
 
         comprado = float(avgPrice) * float(self.currentPos_)

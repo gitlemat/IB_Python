@@ -12,12 +12,12 @@ import argparse
 import time
 import datetime
 import IB_API_Client
-#import wsServer
 import strategiesNew2
 import webFE.webFENew_App
 import os
 import utils
 import queue
+from alarmManager import alarmManagerG
 
 from dotenv import load_dotenv
 
@@ -60,23 +60,6 @@ def SetupLogger():
                         format=recfmt, datefmt=timefmt)
     logger = logging.getLogger()              # El root looger afecta a todos los demas
     logger.setLevel(logging.INFO)
-    '''
-    console_handler = logging.StreamHandler() # Esto sirve para que los INFO o más altos salgan por consola
-    console_handler.setLevel(logging.INFO)
-    logger.addHandler(console_handler)
-    '''
-'''
-def wsServer_loop(wsServer1, _mode):
-
-    #wsServer1 = wsServer.wsServer(appObj)
-    if _mode == 'Lab':
-        port_ = 9998
-    elif _mode == 'Prod':
-        port_ = 9997
-    else:
-        port_ = 9998
-    wsServer1.wsServerIB(port_)
-'''
 
 def webFE_loop(_mode):
 
@@ -87,9 +70,27 @@ def webFE_loop(_mode):
     else:
         port_ = 5500
     webFE.webFENew_App.appDashFE_.run_server(port=port_, debug=False, threaded=True, host= '0.0.0.0')
+
+def reconnect_loop (app):
+
+    max_con_fails = 0
     
-def run_loop(app):
-	app.run()
+    while True:
+        if isinstance(app.nextorderId, int):
+            logging.info("Conectado con TWS")
+            alarmManagerG.clear_alarma(1001)
+            break
+        else:
+            alarmManagerG.add_alarma({'code':1001})
+            if max_con_fails == 0:
+                logging.info("Waiting for connection...")
+            max_con_fails += 1
+            # LLegado cierto momento se podría hacer algo con t_api_thread
+            if max_con_fails > 6:
+                logging.info("Demasiado tiempo esperando. Reconectando.......")
+                max_con_fails = 0
+                app.reconnect()
+            time.sleep(10) 
 
 def main():
     load_dotenv()
@@ -155,23 +156,26 @@ def main():
     #   8.- Pedimos a las estrategia que registren la ordenes que usan
     #   9.- Cargamos watchlist de contratos
     #   10.- Loop:
-    #       a.- Comprobar conexion
-    #       b.- Comprobar que tenemos ordenes. Si no-> se piden
-    #       c.- Comprobar que tenemos posiciones. Si no-> se piden
-    #       d.- Comprobar sin contratos incompletos. Si hay-> se piden datos
-    #       e.- Comprobar si hay que cargar watchlist
-    #       f.- Comprobar loop de strategias
-    #       g.- Recorrer queue
+    #       1º  Miramos como esta la conexion entre este python y TWS
+    #       2º. Miramos si las ordenes estan pilladas
+    #       3º. Miramos si las posiciones estan bien
+    #       4º. Miramos si los contratos estan bien
+    #       5º. Miramos si nos hemos recuperado de algo
+    #       6º. Miramos si las estrategias estan bien
+    #       7º. Gestionamos la cola Prio
+    #       8º. Gestionamos la cola Normal
+    #       9º. Gestionamos si cargamos los compPrices
+    #       10º. Gestionamos si cargamos los Prices
 
 
-
+    # app.run()
     app = IB_API_Client.IBI_App(_host, _port, client_id, globales.G_RTlocalData_)
-    t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)
-    t_api_thread.start()
+    #t_api_thread = threading.Thread(target=run_loop, args=(app,), daemon=True)
+    #t_api_thread = threading.Thread(target=app.run, daemon=True)
+    #t_api_thread.start()
     
     # Init web page
     #webFE1 = webFE.webFE(globals.G_RTlocalData_)
-    #t_webFE = threading.Thread(name='webFE', target=webFE_loop, args=(webFE1,))
     t_webFE = threading.Thread(name='webFE', target=webFE_loop, args=(_mode,))
     t_webFE.start()
 
@@ -182,12 +186,15 @@ def main():
 
     # Esperamos que esté conectado
 
+    reconnect_loop (app)
+
+    '''
+
     max_con_fails = 0
     
     while True:
         if isinstance(app.nextorderId, int):
             logging.info("Conectado con TWS")
-            app.initConnected_ = True
             break
         else:
             if max_con_fails == 0:
@@ -199,6 +206,7 @@ def main():
                 max_con_fails = 0
                 app.reconnect()
             time.sleep(10)    
+    '''
 
     time.sleep (3)
     logging.info("Conexion establecida con TWS.")
@@ -249,7 +257,7 @@ def main():
     
     app.CallbacksQueuePrio_ = TempQueue
 
-    # Le decimos a las estrategias que pongan en RT cuales sin sus ordenes
+    # Le decimos a las estrategias que pongan en RT cuales son sus ordenes
     strategyIns.strategySubscribeOrdersInit()
 
     # En este punto, toas las ordened, posiciones y AccountInfo ha sido tratado
@@ -260,11 +268,6 @@ def main():
     logging.info("Ya hemos procesado toda la info inicial.")
     logging.info("#")
     logging.info("#")
-
-    # Cargamos los contratos de la InfluxDB.
-
-    logging.info("Cargando los contratos de la influxDB....")
-    globales.G_RTlocalData_.globalRT_init()
 
     # Cargamos los contratos de la watchlist y fin.
                                
@@ -277,16 +280,41 @@ def main():
     
     ###########################################
     # Loop Principal
+    # 1º miramos como esta la conexion entre este python y TWS
+    # 2º. Miramos si las ordenes estan pilladas
+    # 3º. Miramos si las posiciones estan bien
+    # 4º. Miramos si los contratos estan bien
+    # 5º. Miramos si nos hemos recuperado de algo
+    # 6º. Miramos si las estrategias estan bien
+    # 7º. Gestionamos la cola Prio
+    # 8º. Gestionamos la cola Normal
+    # 9º. Gestionamos si cargamos los compPrices
+    # 10º. Gestionamos si cargamos los Prices
+
     last_refresh_DB_time = datetime.datetime.now()
     last_refresh_DBcomp_time = datetime.datetime.now()
     try:
         while True:
             time.sleep(loop_timer)
             ahora = datetime.datetime.now()
-            #app.CallbacksQueue_.qsize()
-            if app.initConnected_== False:
-                app.initReady_ = False
+
+            # 1º miramos como esta la conexion entre este python y TWS
+            connState = app.check_connection_TWS()
+
+            if connState == 1:
+                logging.error('Error en la conexion con TWS. Desconectado')
+                logging.error('Error en la conexion con TWS. Vamos a reconctar....')
+                time.sleep(10)
+                app.initOrders_ = False
+                app.initPositions_ = False
+                reconnect_loop (app)
                 continue
+
+            if connState == 2:
+                logging.error('Error en la conexion con TWS. Conecting...')
+                continue
+
+            # 2º. Miramos si las ordenes estan pilladas
             if app.initOrders_ == False:  # Conectado pero sin ordenes
                 app.initReady_ = False
                 # Primero hay que borrar la lista actual por si se han cerrado o cancelado ordenes
@@ -296,6 +324,8 @@ def main():
                 except:
                     logging.error('Error en el loop con reqAllOpenOrders', exc_info=True)
                 continue # Que no continue si initOrders_ == False
+
+            # 3º. Miramos si las posiciones estan bien:
             if app.initPositions_ == False:
                 app.initReady_ = False
                 # Primero hay que borrar la lista actual por si se han cerrado o cancelado ordenes
@@ -305,7 +335,8 @@ def main():
                 except:
                     logging.error('Error en el loop con reqPositions', exc_info=True)
                 continue # Que no continue si initPositions_ == False
-    
+
+            # 4º. Miramos si los contratos estan bien:
             try:
                 contratosIncompletos = globales.G_RTlocalData_.contractCheckStatus()  # Ver si los BAGs tienen sus legs completas
                                                                                       # Y ver si tenemos todos los simbolos y subscripcion a tick
@@ -320,18 +351,22 @@ def main():
                     logging.error('Error en el loop con contractReqDetailsAllMissing', exc_info=True)
                 continue
 
+            # 5º. Miramos si nos hemos recuperado de algo:
             if app.initReady_ == False:         # Si aqui está False, es que hemos recuperado
                 app.initReady_ = True             # Si llegamos aquí es que todo bien
                 try:
                     globales.G_RTlocalData_.contractLoadFixedWatchlist()
                 except:
                     logging.error('Error en el loop con contractLoadFixedWatchlist', exc_info=True)
+                continue
 
+            # 6º. Miramos si las estrategias estan bien:
             try:
                 strategyIns.strategyIndexCheckAll() # Compruebo las strategias
             except:
                 logging.error('Error en el loop con strategyIndexCheckAll', exc_info=True)
 
+            # 7º. Gestionamos la cola Prio:
             while app.CallbacksQueuePrio_.empty() == False:
                 callbackItem = app.CallbacksQueuePrio_.get()
                 if 'type' not in callbackItem:
@@ -375,6 +410,7 @@ def main():
                         except:
                             logging.error('Error en el loop con dataFeedSetState', exc_info=True)
 
+            # 8º. Gestionamos la cola Normal:
             ahora = datetime.datetime.now()
             while app.CallbacksQueue_.empty() == False:
                 callbackItem = app.CallbacksQueue_.get()
@@ -394,6 +430,7 @@ def main():
                     break
 
 
+            # 9º. Gestionamos si cargamos los compPrices
             ahora = datetime.datetime.now()
             if (ahora - last_refresh_DBcomp_time > datetime.timedelta(minutes=15)):
                 last_refresh_DBcomp_time = ahora
@@ -402,6 +439,7 @@ def main():
                 except:
                     logging.error('Error en el loop con contractReloadCompPrices', exc_info=True)
 
+            # 10º. Gestionamos si cargamos los Prices
             ahora = datetime.datetime.now()
             if (ahora - last_refresh_DB_time > datetime.timedelta(minutes=5)):
                 last_refresh_DB_time = ahora

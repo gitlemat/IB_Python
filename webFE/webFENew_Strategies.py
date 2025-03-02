@@ -174,7 +174,7 @@ def insideDetailsStrategia (estrategia):
 def layout_getStrategyHeader (estrategia, update = False):
 
     if estrategia == None:
-        return no_update
+        return None
     
     symbol = estrategia['symbol']
     strategyType = estrategia['type']
@@ -183,7 +183,7 @@ def layout_getStrategyHeader (estrategia, update = False):
     contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
     if not contrato:
         logging.error ('Error cargando estrategia Headerde %s. No tenemos el contrato cargado en RT_Data', symbol)
-        return no_update
+        return None
     
     if update == True:
         # contrato['dbPandas'].toPrint Es el precio del contrato

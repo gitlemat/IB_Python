@@ -293,14 +293,14 @@ def insideDetailsPentagramaRu (estrategia):
     return collapseDetails
 
 def layout_getFigureHistoricoPenRu (estrategia):
-
+    fig1 = go.Figure()
     symbol = estrategia['symbol']
     contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
     if not contrato:
         logging.error ("Error cargando grafico historico de %s. No tenemos el contrato cargado en RT_Data", symbol)
-        return no_update
+        return fig1
     if contrato['dbPandas'] == None:
-        return no_update
+        return fig1
 
     df_comp = contrato['dbPandas'].dbGetDataframeComp()
 
@@ -335,20 +335,21 @@ def addZonesLinesHistoricoRu (fig1, estrategia, df_comp):
     return fig1
 
 def layout_getFigureTodayPenRu (estrategia, update = False):
-    if estrategia == None:
-        return no_update
+    fig2 = go.Figure()
+    if estrategia == fig2:
+        return fig2
 
     symbol = estrategia['symbol']
     contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
 
     if not contrato:
         logging.error ('Error cargando grafico de Hoy de %s. No tenemos el contrato cargado en RT_Data', symbol)
-        return no_update
+        return fig2
     if contrato['dbPandas'] == None:
-        return no_update
+        return fig2
     if (contrato['dbPandas'].toPrint == False) and (update == True):
         logging.debug ('Grafico no actualizado. No hay datos nuevos')
-        return no_update
+        return fig2
 
     dfToday = contrato['dbPandas'].dbGetDataframeToday()
     LastPrice = None

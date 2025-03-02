@@ -6,12 +6,16 @@ from ibapi.order_condition import Create, OrderCondition
 from ibapi.utils import iswrapper
 from ibapi import utils
 from ibapi.account_summary_tags import *
+from ibapi.errors import *
 
 from decimal import Decimal
 import time
 import queue
 import logging
 import globales
+import threading
+from alarmManager import alarmManagerG
+
 
 logger = logging.getLogger(__name__)
 logging.getLogger('ibapi').setLevel(logging.WARNING)
@@ -20,6 +24,12 @@ logging.getLogger('ibapi.client').setLevel(logging.WARNING)
 logging.getLogger('ibapi.contract').setLevel(logging.WARNING)
 logging.getLogger('ibapi.order').setLevel(logging.WARNING)
 
+connection_errors = (
+    CONNECT_FAIL, UPDATE_TWS, NOT_CONNECTED, UNKNOWN_ID, UNSUPPORTED_VERSION, 
+    #BAD_LENGTH, BAD_MESSAGE, 
+    SOCKET_EXCEPTION, FAIL_CREATE_SOCK, SSL_FAIL, 
+)
+connection_error_codes = [error.code() for error in connection_errors]  
 
 class IBI_App(EWrapper, EClient):
     #Intializes our main classes 
@@ -42,7 +52,6 @@ class IBI_App(EWrapper, EClient):
         self.RTLocalData_ = RTlocalData
         self.nextorderId = None
         
-        self.initConnected_ = False
         self.initOrders_ = False
         self.initPositions_ = False
         self.initAccount_ = False
@@ -66,17 +75,40 @@ class IBI_App(EWrapper, EClient):
 
         #def connect_app(self, ipaddress, portid, clientid):
         #Connects to the server with the ipaddress, portid, and clientId specified in the program execution area
-        self.connect(ipaddress, portid, clientid)
-        '''
-        #Initializes the threading
-        thread = threading.Thread(target = self.run)
-        thread.start()
-        setattr(self, "_thread", thread)
-        '''
+        #self.connect(ipaddress, portid, clientid)
+
+        self.tws_connect()
+
+    def tws_connect(self):
+        self.connect(self.ipaddress_, self.portid_, self.clientid_)
+        t_api_thread = threading.Thread(target=self.run)
+        t_api_thread.start()
+        setattr(self, "_thread", t_api_thread)
 
     def reconnect (self):
         self.disconnect()
-        self.connect(self.ipaddress_, self.portid_, self.clientid_)
+        self.tws_connect()
+
+    def disconnect (self):
+        super().disconnect()
+
+    def check_connection_TWS (self):
+        # 0: connected
+        # 1: not_connected
+        # 2: connecting
+
+        connState = self.connState
+        isConnected = connState == EClient.CONNECTED
+        ret_con = 0
+        if not isConnected:
+            isConnecting = connState == EClient.CONNECTING
+            if isConnecting:
+                ret_con = 2
+            else:
+                ret_con = 1
+                self.nextorderId = None
+
+        return ret_con
 
     def reqIdNew(self):
         i = 0
@@ -95,6 +127,14 @@ class IBI_App(EWrapper, EClient):
     def error(self, id, errorCode, errorString, advancedOrderRejectJson=""):
         #super().error(id, errorCode, errorString, advancedOrderRejectJson)
         ## Overrides the native method EWrapper
+        if errorCode in connection_error_codes and self.connState not in (EClient.CONNECTING,):
+            logging.error(
+                f'Desconexion con connection_error {errorCode} "{errorString}"')
+            self.disconnect()
+            if hasattr(self, "_thread"):
+                self._thread.join(5)
+                time.sleep(5)
+        errormessage = ''
         if errorCode == 202:
             errormessage = "[202] Order Cancelled. %s" % (errorString)
         elif errorCode == 2104:
@@ -103,13 +143,17 @@ class IBI_App(EWrapper, EClient):
             errormessage = "[2106] A historical data farm is connected"
         elif errorCode == 2158:
             errormessage = "[2158] Sec-def data farm connection is OK" 
-        elif errorCode == 1102:
-            errormessage = "[1102] %s" % (errorString)
-            self.initConnected_ = True
+        elif errorCode == 1100:
+            errormessage = "[1100] Sec-def data farm connection is OK" 
+            alarma = {'code':errorCode}
+            alarmManagerG.add_alarma(alarma)
+        elif errorCode in [1101, 1102]:
+            errormessage = "[%d] %s" % (errorCode, errorString)
             self.initOrders_ = False
             self.initPositions_ = False
             self.initAccount_ = False
             self.initReady_ = False
+            alarmManagerG.clear_alarma(1100)
         elif errorCode == 10197:
             queueEntry = {'type':'error', 'data': errorCode}
             self.CallbacksQueuePrio_.put(queueEntry)
@@ -294,6 +338,7 @@ class IBI_App(EWrapper, EClient):
         ## Overriden method EWrapper
         super().nextValidId(orderId)
         self.nextorderId = orderId
+        logging.info("Recibido nextValidId: %d", orderId)
         #print('The next valid order id is: ', self.nextorderId)
     
     @iswrapper    

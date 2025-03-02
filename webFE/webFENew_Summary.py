@@ -57,7 +57,7 @@ def layout_summary_tab ():
         contrato = globales.G_RTlocalData_.contractGetBySymbol(symbol)
         if not contrato:
             logging.error ('Error cargando estrategia Headerde %s. No tenemos el contrato cargado en RT_Data', symbol)
-            return no_update
+            continue
 
         included_contracts.append(symbol)
 

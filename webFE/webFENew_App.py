@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify
+from flask_restful import Resource, Api
 from dash import Dash, DiskcacheManager
 import webFE.webFENew_Layout
 import dash_bootstrap_components as dbc
 import logging
 import diskcache
+from alarmManager import alarmManagerG
 
 cache = diskcache.Cache("./cache")
 background_callback_manager = DiskcacheManager(cache)
@@ -56,6 +58,16 @@ events_list = [
 
 @server.route('/restAPI', methods=['GET'])
 def restAPI():
+
+   if request.method == 'GET':
+       if len(events_list) > 0:
+           # encode list of events in json
+           return jsonify(events_list)
+       else:
+           'Event not found', 404
+
+@server.route('/restAPI/AlarmasActivas', methods=['GET'])
+def restAPI2():
 
    if request.method == 'GET':
        if len(events_list) > 0:
